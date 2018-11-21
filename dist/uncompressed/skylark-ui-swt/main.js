@@ -1,6 +1,16 @@
 define([
     "./ui",
-    "./Widget"
+    "./Widget",
+    "./Accordion",
+    "./Button",
+    "./Carousel",
+    "./Checkbox",
+    "./Menu",
+    "./Pagination",
+    "./Progressbar",
+    "./Radio",
+    "./Textbox",
+    "./Toolbar"
 /*    
     "./checkbox",
     "./combobox",

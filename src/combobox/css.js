@@ -1,0 +1,101 @@
+define([],{
+
+	".ui-dropdown-container" : {
+		"*" : { 
+			"box-sizing": "border-box",
+			"font-size": "14px"
+		} 
+	},
+	".ui-dropdown-values" : { 
+		"position": "relative",
+		"display": "block",
+		"height": "32px",
+		"text-align": "left"
+	},
+	".ui-dropdown" : { 
+		"border": "1px solid #E0E0E0" ,
+		"padding": "0 5px 0 10px",
+		"border-radius": "2px",
+		"outline": "0",
+		"height": "32px",
+		"overflow": "hidden",
+		"float": "left",
+		"width": "100%",
+		"background-color": "white",
+		"position": "relative",
+
+		"select" : { 
+			"width": "100%",
+			"outline": "0",
+			"border": "0",
+			"height": "24px",
+			"background": "white url(data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTc5MiAxNzkyIiB2ZXJzaW9uPSIxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2UtbWl0ZXJsaW1pdD0iMSI+PHBhdGggZD0iTTE1MzkgNjE1YzAgMjEtOCA0MC0yNCA1NmwtNjE4IDYyNy02MjAtNjI3YTc3IDc3IDAgMCAxLTI0LTU2YzAtMjIgOC00MSAyNC01N3MzNS0yNCA1Ni0yNGgxMTI2YzIxIDAgNDAgOCA1NiAyNHMyNCAzNSAyNCA1N3oiIGZpbGwtcnVsZT0ibm9uemVybyIvPjwvc3ZnPg==) no-repeat 100% 50%",
+			"background-size": "14px",
+			"font-size": "14px",
+			"float": "left",
+			"cursor": "pointer",
+			"padding": "0",
+			"margin": "3px 0 0 -4px",
+			"color": "black",
+			"appearance": "none"
+		}
+	},
+	".ui-dropdown:after" : { 
+		"border-left": "1px solid #E0E0E0",
+		"width": "1px",
+		"position": "absolute",
+		"height": "30px",
+		"content": "' '",
+		"margin-left": "-23px"
+	},
+	".ui-dropdown-label" : { 
+		"margin-bottom": "5px",
+		"font-size": "12px",
+		".fa" : { 
+			"width": "14px" 
+		}
+	},
+	".ui-dropdown-required" : {
+		".ui-dropdown-label" : { 
+			"font-weight": "bold"
+		},
+		".ui-dropdown-label:before" : { 
+			"color": "red",
+			"content": "'***'",
+			"margin-right": "5px"
+		},
+		".ui-dropdown" : { 
+			"border-color": "#D0D0D0"
+		},
+		".ui-dropdown:after" : { 
+			"border-left-color": "#D0D0D0"
+		}
+	}, 
+	".ui-dropdown-invalid" : {
+		".ui-dropdown" : { 
+			"border-color": "#E1A1A1 !important",
+			"background-color": "#FFF3F3 !important"
+		},
+		"select" :{ 
+			"background-color": "#FFF3F3 !important"
+		},
+		".ui-dropdown:after" : { 
+			"border-left-color": "#E1A1A1 !important"
+		}
+	},
+	".ui-disabled" : {
+		"select" : { 
+			"background-color": "#F0F0F0",
+			"cursor": "not-allowed",
+			"color": "#A0A0A0"
+		},
+		".ui-dropdown" : { 
+			"background-color": "#F0F0F0",
+			"cursor": "not-allowed",
+			".fa" : {
+				"color": "#A0A0A0" 
+			}
+		}
+    }		
+});
+

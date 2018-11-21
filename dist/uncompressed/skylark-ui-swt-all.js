@@ -1,5 +1,5 @@
 /**
- * skylark-ui-swt - A version of ui-swt that ported to running on skylarkjs
+ * skylark-ui-swt - The skylark widget framework and standard widgets
  * @author Hudaokeji, Inc.
  * @version v0.9.0
  * @link https://github.com/skylarkui/skylark-ui-swt/
@@ -56,7 +56,7 @@
                 args.push(require(dep));
             })
 
-            module.exports = module.factory.apply(window, args);
+            module.exports = module.factory.apply(globals, args);
         }
         return module.exports;
     };
@@ -72,7 +72,7 @@
     var skylarkjs = require("skylark-langx/skylark");
 
     if (isCmd) {
-      exports = skylarkjs;
+      module.exports = skylarkjs;
     } else {
       globals.skylarkjs  = skylarkjs;
     }
@@ -84,10 +84,6 @@ define('skylark-langx/skylark',[], function() {
     var skylark = {
 
     };
-    return skylark;
-});
-
-define('skylark-utils/skylark',["skylark-langx/skylark"], function(skylark) {
     return skylark;
 });
 
@@ -227,156 +223,6 @@ define('skylark-langx/types',[
         type: type
     };
 
-});
-define('skylark-langx/arrays',[
-	"./types"
-],function(types){
-	var filter = Array.prototype.filter,
-		isArrayLike = types.isArrayLike;
-
-    function compact(array) {
-        return filter.call(array, function(item) {
-            return item != null;
-        });
-    }
-
-    function each(obj, callback) {
-        var length, key, i, undef, value;
-
-        if (obj) {
-            length = obj.length;
-
-            if (length === undef) {
-                // Loop object items
-                for (key in obj) {
-                    if (obj.hasOwnProperty(key)) {
-                        value = obj[key];
-                        if (callback.call(value, key, value) === false) {
-                            break;
-                        }
-                    }
-                }
-            } else {
-                // Loop array items
-                for (i = 0; i < length; i++) {
-                    value = obj[i];
-                    if (callback.call(value, i, value) === false) {
-                        break;
-                    }
-                }
-            }
-        }
-
-        return this;
-    }
-
-    function flatten(array) {
-        if (isArrayLike(array)) {
-            var result = [];
-            for (var i = 0; i < array.length; i++) {
-                var item = array[i];
-                if (isArrayLike(item)) {
-                    for (var j = 0; j < item.length; j++) {
-                        result.push(item[j]);
-                    }
-                } else {
-                    result.push(item);
-                }
-            }
-            return result;
-        } else {
-            return array;
-        }
-        //return array.length > 0 ? concat.apply([], array) : array;
-    }
-
-    function grep(array, callback) {
-        var out = [];
-
-        each(array, function(i, item) {
-            if (callback(item, i)) {
-                out.push(item);
-            }
-        });
-
-        return out;
-    }
-
-    function inArray(item, array) {
-        if (!array) {
-            return -1;
-        }
-        var i;
-
-        if (array.indexOf) {
-            return array.indexOf(item);
-        }
-
-        i = array.length;
-        while (i--) {
-            if (array[i] === item) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    function makeArray(obj, offset, startWith) {
-       if (isArrayLike(obj) ) {
-        return (startWith || []).concat(Array.prototype.slice.call(obj, offset || 0));
-      }
-
-      // array of single index
-      return [ obj ];             
-    }
-
-    function map(elements, callback) {
-        var value, values = [],
-            i, key
-        if (isArrayLike(elements))
-            for (i = 0; i < elements.length; i++) {
-                value = callback.call(elements[i], elements[i], i);
-                if (value != null) values.push(value)
-            }
-        else
-            for (key in elements) {
-                value = callback.call(elements[key], elements[key], key);
-                if (value != null) values.push(value)
-            }
-        return flatten(values)
-    }
-
-    function uniq(array) {
-        return filter.call(array, function(item, idx) {
-            return array.indexOf(item) == idx;
-        })
-    }
-
-    return {
-        compact: compact,
-
-        first : function(items,n) {
-            if (n) {
-                return items.slice(0,n);
-            } else {
-                return items[0];
-            }
-        },
-
-	    each: each,
-
-        flatten: flatten,
-
-        inArray: inArray,
-
-        makeArray: makeArray,
-
-        map : map,
-        
-        uniq : uniq
-
-    }
 });
 define('skylark-langx/objects',[
 	"./types"
@@ -521,6 +367,52 @@ define('skylark-langx/objects',[
         var keys = [];
         for (var key in obj) keys.push(key);
         return keys;
+    }
+
+    function each(obj, callback) {
+        var length, key, i, undef, value;
+
+        if (obj) {
+            length = obj.length;
+
+            if (length === undef) {
+                // Loop object items
+                for (key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        value = obj[key];
+                        if (callback.call(value, key, value) === false) {
+                            break;
+                        }
+                    }
+                }
+            } else {
+                // Loop array items
+                for (i = 0; i < length; i++) {
+                    value = obj[i];
+                    if (callback.call(value, i, value) === false) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return this;
+    }
+
+    function extend(target) {
+        var deep, args = slice.call(arguments, 1);
+        if (typeof target == 'boolean') {
+            deep = target
+            target = args.shift()
+        }
+        if (args.length == 0) {
+            args = [target];
+            target = this;
+        }
+        args.forEach(function(arg) {
+            mixin(target, arg, deep);
+        });
+        return target;
     }
 
     // Retrieve the names of an object's own properties.
@@ -702,6 +594,10 @@ define('skylark-langx/objects',[
 
         defaults : createAssigner(allKeys, true),
 
+        each : each,
+
+        extend : extend,
+
         has: has,
 
         isEqual: isEqual,
@@ -722,6 +618,127 @@ define('skylark-langx/objects',[
     };
 
 });
+define('skylark-langx/arrays',[
+	"./types",
+    "./objects"
+],function(types,objects){
+	var filter = Array.prototype.filter,
+		isArrayLike = types.isArrayLike;
+
+    function compact(array) {
+        return filter.call(array, function(item) {
+            return item != null;
+        });
+    }
+
+    function flatten(array) {
+        if (isArrayLike(array)) {
+            var result = [];
+            for (var i = 0; i < array.length; i++) {
+                var item = array[i];
+                if (isArrayLike(item)) {
+                    for (var j = 0; j < item.length; j++) {
+                        result.push(item[j]);
+                    }
+                } else {
+                    result.push(item);
+                }
+            }
+            return result;
+        } else {
+            return array;
+        }
+        //return array.length > 0 ? concat.apply([], array) : array;
+    }
+
+    function grep(array, callback) {
+        var out = [];
+
+        each(array, function(i, item) {
+            if (callback(item, i)) {
+                out.push(item);
+            }
+        });
+
+        return out;
+    }
+
+    function inArray(item, array) {
+        if (!array) {
+            return -1;
+        }
+        var i;
+
+        if (array.indexOf) {
+            return array.indexOf(item);
+        }
+
+        i = array.length;
+        while (i--) {
+            if (array[i] === item) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    function makeArray(obj, offset, startWith) {
+       if (isArrayLike(obj) ) {
+        return (startWith || []).concat(Array.prototype.slice.call(obj, offset || 0));
+      }
+
+      // array of single index
+      return [ obj ];             
+    }
+
+    function map(elements, callback) {
+        var value, values = [],
+            i, key
+        if (isArrayLike(elements))
+            for (i = 0; i < elements.length; i++) {
+                value = callback.call(elements[i], elements[i], i);
+                if (value != null) values.push(value)
+            }
+        else
+            for (key in elements) {
+                value = callback.call(elements[key], elements[key], key);
+                if (value != null) values.push(value)
+            }
+        return flatten(values)
+    }
+
+    function uniq(array) {
+        return filter.call(array, function(item, idx) {
+            return array.indexOf(item) == idx;
+        })
+    }
+
+    return {
+        compact: compact,
+
+        first : function(items,n) {
+            if (n) {
+                return items.slice(0,n);
+            } else {
+                return items[0];
+            }
+        },
+
+	    each: objects.each,
+
+        flatten: flatten,
+
+        inArray: inArray,
+
+        makeArray: makeArray,
+
+        map : map,
+        
+        uniq : uniq
+
+    }
+});
 define('skylark-langx/klass',[
     "./arrays",
     "./objects",
@@ -739,7 +756,6 @@ define('skylark-langx/klass',[
 
         ctor.prototype = new f();
     }
-
 
     var f1 = function() {
         function extendClass(ctor, props, options) {
@@ -842,6 +858,14 @@ define('skylark-langx/klass',[
             return newCtor;
         }
 
+        function _constructor ()  {
+            if (this._construct) {
+                return this._construct.apply(this, arguments);
+            } else  if (this.init) {
+                return this.init.apply(this, arguments);
+            }
+        }
+
         return function createClass(props, parent, mixins,options) {
             if (isArray(parent)) {
                 options = mixins;
@@ -865,16 +889,6 @@ define('skylark-langx/klass',[
                 innerParent = mergeMixins(innerParent,mixins);
             }
 
-
-            var _constructor = props.constructor;
-            if (_constructor === Object) {
-                _constructor = function() {
-                    if (this.init) {
-                        return this.init.apply(this, arguments);
-                    }
-                };
-            };
-
             var klassName = props.klassName || "",
                 ctor = new Function(
                     "return function " + klassName + "() {" +
@@ -888,7 +902,6 @@ define('skylark-langx/klass',[
                 )();
 
 
-            ctor._constructor = _constructor;
             // Populate our constructed prototype object
             ctor.prototype = Object.create(innerParent.prototype);
 
@@ -898,6 +911,11 @@ define('skylark-langx/klass',[
 
             // And make this class extendable
             ctor.__proto__ = innerParent;
+
+
+            if (!ctor._constructor) {
+                ctor._constructor = _constructor;
+            } 
 
             if (mixins) {
                 ctor.__mixins__ = mixins;
@@ -2890,14 +2908,12 @@ define('skylark-langx/langx',[
 
     return skylark.langx = langx;
 });
-define('skylark-utils/langx',[
-    "skylark-langx/langx"
-], function(langx) {
-    return langx;
-});
-
 define('skylark-utils-dom/skylark',["skylark-langx/skylark"], function(skylark) {
     return skylark;
+});
+
+define('skylark-utils-dom/dom',["./skylark"], function(skylark) {
+	return skylark.dom = {};
 });
 
 define('skylark-utils-dom/langx',[
@@ -2907,12 +2923,22 @@ define('skylark-utils-dom/langx',[
 });
 
 define('skylark-utils-dom/browser',[
-    "./skylark",
+    "./dom",
     "./langx"
-], function(skylark,langx) {
+], function(dom,langx) {
+    "use strict";
+ 
     var checkedCssProperties = {
-        "transitionproperty": "TransitionProperty",
-    };
+            "transitionproperty": "TransitionProperty",
+        },
+        transEndEventNames = {
+          WebkitTransition : 'webkitTransitionEnd',
+          MozTransition    : 'transitionend',
+          OTransition      : 'oTransitionEnd otransitionend',
+          transition       : 'transitionend'
+        },
+        transEndEventName = null;
+
 
     var css3PropPrefix = "",
         css3StylePrefix = "",
@@ -2961,9 +2987,17 @@ define('skylark-utils-dom/browser',[
             var cssPropName = langx.dasherize(matched[2]);
             cssProps[cssPropName] = css3PropPrefix + cssPropName;
 
+            if (transEndEventNames[name]) {
+              transEndEventName = transEndEventNames[name];
+            }
         }
     }
 
+    if (!transEndEventName) {
+        if (testStyle["transition"] !== undefined) {
+            transEndEventName = transEndEventNames["transition"];
+        }
+    }
 
     function normalizeCssEvent(name) {
         return css3EventPrefix ? css3EventPrefix + name : name.toLowerCase();
@@ -3008,21 +3042,21 @@ define('skylark-utils-dom/browser',[
 
     });
 
+    if  (transEndEventName) {
+        browser.support.transition = {
+            end : transEndEventName
+        };
+    }
+
     testEl = null;
 
-    return skylark.browser = browser;
-});
-
-define('skylark-utils/browser',[
-    "skylark-utils-dom/browser"
-], function(browser) {
-    return browser;
+    return dom.browser = browser;
 });
 
 define('skylark-utils-dom/styler',[
-    "./skylark",
+    "./dom",
     "./langx"
-], function(skylark, langx) {
+], function(dom, langx) {
     var every = Array.prototype.every,
         forEach = Array.prototype.forEach,
         camelCase = langx.camelCase,
@@ -3268,14 +3302,14 @@ define('skylark-utils-dom/styler',[
         toggleClass: toggleClass
     });
 
-    return skylark.styler = styler;
+    return dom.styler = styler;
 });
 define('skylark-utils-dom/noder',[
-    "./skylark",
+    "./dom",
     "./langx",
     "./browser",
     "./styler"
-], function(skylark, langx, browser, styler) {
+], function(dom, langx, browser, styler) {
     var isIE = !!navigator.userAgent.match(/Trident/g) || !!navigator.userAgent.match(/MSIE/g),
         fragmentRE = /^\s*<(\w+|!)[^>]*>/,
         singleTagRE = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
@@ -3314,6 +3348,36 @@ define('skylark-utils-dom/noder',[
             return name === chkName.toLowerCase();
         }
         return name;
+    };
+
+
+    function activeElement(doc) {
+        doc = doc || document;
+        var el;
+
+        // Support: IE 9 only
+        // IE9 throws an "Unspecified error" accessing document.activeElement from an <iframe>
+        try {
+            el = doc.activeElement;
+        } catch ( error ) {
+            el = doc.body;
+        }
+
+        // Support: IE 9 - 11 only
+        // IE may return null instead of an element
+        // Interestingly, this only seems to occur when NOT in an iframe
+        if ( !el ) {
+            el = doc.body;
+        }
+
+        // Support: IE 11 only
+        // IE11 returns a seemingly empty object in some cases when accessing
+        // document.activeElement from an <iframe>
+        if ( !el.nodeName ) {
+            el = doc.body;
+        }
+
+        return el;
     };
 
     function after(node, placing, copyByClone) {
@@ -3492,6 +3556,46 @@ define('skylark-utils-dom/noder',[
         }
     }
 
+
+    // Selectors
+    function focusable( element, hasTabindex ) {
+        var map, mapName, img, focusableIfVisible, fieldset,
+            nodeName = element.nodeName.toLowerCase();
+
+        if ( "area" === nodeName ) {
+            map = element.parentNode;
+            mapName = map.name;
+            if ( !element.href || !mapName || map.nodeName.toLowerCase() !== "map" ) {
+                return false;
+            }
+            img = $( "img[usemap='#" + mapName + "']" );
+            return img.length > 0 && img.is( ":visible" );
+        }
+
+        if ( /^(input|select|textarea|button|object)$/.test( nodeName ) ) {
+            focusableIfVisible = !element.disabled;
+
+            if ( focusableIfVisible ) {
+
+                // Form controls within a disabled fieldset are disabled.
+                // However, controls within the fieldset's legend do not get disabled.
+                // Since controls generally aren't placed inside legends, we skip
+                // this portion of the check.
+                fieldset = $( element ).closest( "fieldset" )[ 0 ];
+                if ( fieldset ) {
+                    focusableIfVisible = !fieldset.disabled;
+                }
+            }
+        } else if ( "a" === nodeName ) {
+            focusableIfVisible = element.href || hasTabindex;
+        } else {
+            focusableIfVisible = hasTabindex;
+        }
+
+        return focusableIfVisible && $( element ).is( ":visible" ) && visible( $( element ) );
+    };
+
+
    var rxhtmlTag = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\w:]+)[^>]*)\/>/gi;
  
     /*   
@@ -3658,7 +3762,26 @@ define('skylark-utils-dom/noder',[
 
         return this;
     }
-    /*   
+
+    function scrollParent( elm, includeHidden ) {
+        var position = styler.css(elm,"position" ),
+            excludeStaticParent = position === "absolute",
+            overflowRegex = includeHidden ? /(auto|scroll|hidden)/ : /(auto|scroll)/,
+            scrollParent = this.parents().filter( function() {
+                var parent = $( this );
+                if ( excludeStaticParent && parent.css( "position" ) === "static" ) {
+                    return false;
+                }
+                return overflowRegex.test( parent.css( "overflow" ) + parent.css( "overflow-y" ) +
+                    parent.css( "overflow-x" ) );
+            } ).eq( 0 );
+
+        return position === "fixed" || !scrollParent.length ?
+            $( this[ 0 ].ownerDocument || document ) :
+            scrollParent;
+    };
+
+        /*   
      * Replace an old node with the specified node.
      * @param {Node} node
      * @param {Node} oldNode
@@ -3723,6 +3846,7 @@ define('skylark-utils-dom/noder',[
             update: update
         };
     }
+
 
     /*   
      * traverse the specified node and its descendants, perform the callback function on each
@@ -3795,6 +3919,12 @@ define('skylark-utils-dom/noder',[
     }
 
     langx.mixin(noder, {
+        active  : activeElement,
+
+        blur : function(el) {
+            el.blur();
+        },
+
         body: function() {
             return document.body;
         },
@@ -3815,6 +3945,8 @@ define('skylark-utils-dom/noder',[
         empty: empty,
 
         fullScreen: fullScreen,
+
+        focusable: focusable,
 
         html: html,
 
@@ -3857,14 +3989,14 @@ define('skylark-utils-dom/noder',[
         unwrap: unwrap
     });
 
-    return skylark.noder = noder;
+    return dom.noder = noder;
 });
 define('skylark-utils-dom/finder',[
-    "./skylark",
+    "./dom",
     "./langx",
     "./browser",
     "./noder"
-], function(skylark, langx, browser, noder, velm) {
+], function(dom, langx, browser, noder, velm) {
     var local = {},
         filter = Array.prototype.filter,
         slice = Array.prototype.slice,
@@ -4144,6 +4276,10 @@ define('skylark-utils-dom/finder',[
             return document.activeElement === elm && (elm.href || elm.type || elm.tabindex);
         },
 
+        'focusable': function( elm ) {
+            return noder.focusable(elm, elm.tabindex != null );
+        },
+
         'first': function(elm, idx) {
             return (idx === 0);
         },
@@ -4195,6 +4331,12 @@ define('skylark-utils-dom/finder',[
 
         'selected': function(elm) {
             return !!elm.selected;
+        },
+
+        'tabbable': function(elm) {
+            var tabIndex = elm.tabindex,
+                hasTabindex = tabIndex != null;
+            return ( !hasTabindex || tabIndex >= 0 ) && noder.focusable( element, hasTabindex );
         },
 
         'text': function(elm) {
@@ -4955,13 +5097,13 @@ define('skylark-utils-dom/finder',[
         siblings: siblings
     });
 
-    return skylark.finder = finder;
+    return dom.finder = finder;
 });
 define('skylark-utils-dom/datax',[
-    "./skylark",
+    "./dom",
     "./langx",
     "./finder"
-], function(skylark, langx, finder) {
+], function(dom, langx, finder) {
     var map = Array.prototype.map,
         filter = Array.prototype.filter,
         camelCase = langx.camelCase,
@@ -5213,6 +5355,12 @@ define('skylark-utils-dom/datax',[
         }
     }
 
+
+    finder.pseudos.data = function( elem, i, match,dataName ) {
+        return !!data( elem, dataName || match[3]);
+    };
+   
+
     function datax() {
         return datax;
     }
@@ -5241,16 +5389,16 @@ define('skylark-utils-dom/datax',[
         val: val
     });
 
-    return skylark.datax = datax;
+    return dom.datax = datax;
 });
 define('skylark-utils-dom/eventer',[
-    "./skylark",
+    "./dom",
     "./langx",
     "./browser",
     "./finder",
     "./noder",
     "./datax"
-], function(skylark, langx, browser, finder, noder, datax) {
+], function(dom, langx, browser, finder, noder, datax) {
     var mixin = langx.mixin,
         each = langx.each,
         slice = Array.prototype.slice,
@@ -5885,6 +6033,16 @@ define('skylark-utils-dom/eventer',[
 
     }
 
+    if (browser.support.transition) {
+        specialEvents.transitionEnd = {
+//          handle: function (e) {
+//            if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+//          },
+          bindType: browser.support.transition.end,
+          delegateType: browser.support.transition.end
+        }        
+    }
+
     function eventer() {
         return eventer;
     }
@@ -5914,26 +6072,14 @@ define('skylark-utils-dom/eventer',[
 
     });
 
-    return skylark.eventer = eventer;
+    return dom.eventer = eventer;
 });
-define('skylark-utils/eventer',[
-    "skylark-utils-dom/eventer"
-], function(eventer) {
-    return eventer;
-});
-
-define('skylark-utils/noder',[
-    "skylark-utils-dom/noder"
-], function(noder) {
-    return noder;
-});
-
 define('skylark-utils-dom/geom',[
-    "./skylark",
+    "./dom",
     "./langx",
     "./noder",
     "./styler"
-], function(skylark, langx, noder, styler) {
+], function(dom, langx, noder, styler) {
     var rootNodeRE = /^(?:body|html)$/i,
         px = langx.toPixel,
         offsetParent = noder.offsetParent,
@@ -5970,7 +6116,14 @@ define('skylark-utils-dom/geom',[
      * @param {HTMLElement} elm
      */
     function borderExtents(elm) {
-        var s = getComputedStyle(elm);
+        if (noder.isWindow(elm)) {
+            return {
+                left : 0,
+                top : 0,
+                right : 0,
+                bottom : 0
+            }
+        }        var s = getComputedStyle(elm);
         return {
             left: px(s.borderLeftWidth, elm),
             top: px(s.borderTopWidth, elm),
@@ -6162,6 +6315,14 @@ define('skylark-utils-dom/geom',[
      * @param {HTMLElement} elm
      */
     function marginExtents(elm) {
+        if (noder.isWindow(elm)) {
+            return {
+                left : 0,
+                top : 0,
+                right : 0,
+                bottom : 0
+            }
+        }
         var s = getComputedStyle(elm);
         return {
             left: px(s.marginLeft),
@@ -6173,8 +6334,8 @@ define('skylark-utils-dom/geom',[
 
 
     function marginRect(elm) {
-        var obj = this.relativeRect(elm),
-            me = this.marginExtents(elm);
+        var obj = relativeRect(elm),
+            me = marginExtents(elm);
 
         return {
             left: obj.left,
@@ -6186,8 +6347,8 @@ define('skylark-utils-dom/geom',[
 
 
     function marginSize(elm) {
-        var obj = this.size(elm),
-            me = this.marginExtents(elm);
+        var obj = size(elm),
+            me = marginExtents(elm);
 
         return {
             width: obj.width + me.left + me.right,
@@ -6200,6 +6361,14 @@ define('skylark-utils-dom/geom',[
      * @param {HTMLElement} elm
      */
     function paddingExtents(elm) {
+        if (noder.isWindow(elm)) {
+            return {
+                left : 0,
+                top : 0,
+                right : 0,
+                bottom : 0
+            }
+        }
         var s = getComputedStyle(elm);
         return {
             left: px(s.paddingLeft),
@@ -6460,309 +6629,6 @@ define('skylark-utils-dom/geom',[
             return this;
         }
     }
-    
-// in development start
-    function _place(/*DomNode*/ node, choices, layoutNode, aroundNodeCoords){
-        // summary:
-        //      Given a list of spots to put node, put it at the first spot where it fits,
-        //      of if it doesn't fit anywhere then the place with the least overflow
-        // choices: Array
-        //      Array of elements like: {corner: 'TL', pos: {x: 10, y: 20} }
-        //      Above example says to put the top-left corner of the node at (10,20)
-        // layoutNode: Function(node, aroundNodeCorner, nodeCorner, size)
-        //      for things like tooltip, they are displayed differently (and have different dimensions)
-        //      based on their orientation relative to the parent.   This adjusts the popup based on orientation.
-        //      It also passes in the available size for the popup, which is useful for tooltips to
-        //      tell them that their width is limited to a certain amount.   layoutNode() may return a value expressing
-        //      how much the popup had to be modified to fit into the available space.   This is used to determine
-        //      what the best placement is.
-        // aroundNodeCoords: Object
-        //      Size of aroundNode, ex: {w: 200, h: 50}
-
-        // get {x: 10, y: 10, w: 100, h:100} type obj representing position of
-        // viewport over document
-
-        var doc = noder.ownerDoc(node),
-            win = noder.ownerWindow(doc),
-            view = geom.size(win);
-
-        view.left = 0;
-        view.top = 0;
-
-        if(!node.parentNode || String(node.parentNode.tagName).toLowerCase() != "body"){
-            doc.body.appendChild(node);
-        }
-
-        var best = null;
-
-        some.apply(choices, function(choice){
-            var corner = choice.corner;
-            var pos = choice.pos;
-            var overflow = 0;
-
-            // calculate amount of space available given specified position of node
-            var spaceAvailable = {
-                w: {
-                    'L': view.left + view.width - pos.x,
-                    'R': pos.x - view.left,
-                    'M': view.width
-                }[corner.charAt(1)],
-
-                h: {
-                    'T': view.top + view.height - pos.y,
-                    'B': pos.y - view.top,
-                    'M': view.height
-                }[corner.charAt(0)]
-            };
-
-            if(layoutNode){
-                var res = layoutNode(node, choice.aroundCorner, corner, spaceAvailable, aroundNodeCoords);
-                overflow = typeof res == "undefined" ? 0 : res;
-            }
-
-            var bb = geom.size(node);
-
-            // coordinates and size of node with specified corner placed at pos,
-            // and clipped by viewport
-            var
-                startXpos = {
-                    'L': pos.x,
-                    'R': pos.x - bb.width,
-                    'M': Math.max(view.left, Math.min(view.left + view.width, pos.x + (bb.width >> 1)) - bb.width) // M orientation is more flexible
-                }[corner.charAt(1)],
-
-                startYpos = {
-                    'T': pos.y,
-                    'B': pos.y - bb.height,
-                    'M': Math.max(view.top, Math.min(view.top + view.height, pos.y + (bb.height >> 1)) - bb.height)
-                }[corner.charAt(0)],
-
-                startX = Math.max(view.left, startXpos),
-                startY = Math.max(view.top, startYpos),
-                endX = Math.min(view.left + view.width, startXpos + bb.width),
-                endY = Math.min(view.top + view.height, startYpos + bb.height),
-                width = endX - startX,
-                height = endY - startY;
-
-            overflow += (bb.width - width) + (bb.height - height);
-
-            if(best == null || overflow < best.overflow){
-                best = {
-                    corner: corner,
-                    aroundCorner: choice.aroundCorner,
-                    left: startX,
-                    top: startY,
-                    width: width,
-                    height: height,
-                    overflow: overflow,
-                    spaceAvailable: spaceAvailable
-                };
-            }
-
-            return !overflow;
-        });
-
-        // In case the best position is not the last one we checked, need to call
-        // layoutNode() again.
-        if(best.overflow && layoutNode){
-            layoutNode(node, best.aroundCorner, best.corner, best.spaceAvailable, aroundNodeCoords);
-        }
-
-
-        geom.boundingPosition(node,best);
-
-        return best;
-    }
-
-    function at(node, pos, corners, padding, layoutNode){
-        var choices = map.apply(corners, function(corner){
-            var c = {
-                corner: corner,
-                aroundCorner: reverse[corner],  // so TooltipDialog.orient() gets aroundCorner argument set
-                pos: {x: pos.x,y: pos.y}
-            };
-            if(padding){
-                c.pos.x += corner.charAt(1) == 'L' ? padding.x : -padding.x;
-                c.pos.y += corner.charAt(0) == 'T' ? padding.y : -padding.y;
-            }
-            return c;
-        });
-
-        return _place(node, choices, layoutNode);
-    }
-
-    function around(
-        /*DomNode*/     node,
-        /*DomNode|__Rectangle*/ anchor,
-        /*String[]*/    positions,
-        /*Boolean*/     leftToRight,
-        /*Function?*/   layoutNode){
-
-        // summary:
-        //      Position node adjacent or kitty-corner to anchor
-        //      such that it's fully visible in viewport.
-        // description:
-        //      Place node such that corner of node touches a corner of
-        //      aroundNode, and that node is fully visible.
-        // anchor:
-        //      Either a DOMNode or a rectangle (object with x, y, width, height).
-        // positions:
-        //      Ordered list of positions to try matching up.
-        //
-        //      - before: places drop down to the left of the anchor node/widget, or to the right in the case
-        //          of RTL scripts like Hebrew and Arabic; aligns either the top of the drop down
-        //          with the top of the anchor, or the bottom of the drop down with bottom of the anchor.
-        //      - after: places drop down to the right of the anchor node/widget, or to the left in the case
-        //          of RTL scripts like Hebrew and Arabic; aligns either the top of the drop down
-        //          with the top of the anchor, or the bottom of the drop down with bottom of the anchor.
-        //      - before-centered: centers drop down to the left of the anchor node/widget, or to the right
-        //          in the case of RTL scripts like Hebrew and Arabic
-        //      - after-centered: centers drop down to the right of the anchor node/widget, or to the left
-        //          in the case of RTL scripts like Hebrew and Arabic
-        //      - above-centered: drop down is centered above anchor node
-        //      - above: drop down goes above anchor node, left sides aligned
-        //      - above-alt: drop down goes above anchor node, right sides aligned
-        //      - below-centered: drop down is centered above anchor node
-        //      - below: drop down goes below anchor node
-        //      - below-alt: drop down goes below anchor node, right sides aligned
-        // layoutNode: Function(node, aroundNodeCorner, nodeCorner)
-        //      For things like tooltip, they are displayed differently (and have different dimensions)
-        //      based on their orientation relative to the parent.   This adjusts the popup based on orientation.
-        // leftToRight:
-        //      True if widget is LTR, false if widget is RTL.   Affects the behavior of "above" and "below"
-        //      positions slightly.
-        // example:
-        //  |   placeAroundNode(node, aroundNode, {'BL':'TL', 'TR':'BR'});
-        //      This will try to position node such that node's top-left corner is at the same position
-        //      as the bottom left corner of the aroundNode (ie, put node below
-        //      aroundNode, with left edges aligned).   If that fails it will try to put
-        //      the bottom-right corner of node where the top right corner of aroundNode is
-        //      (ie, put node above aroundNode, with right edges aligned)
-        //
-
-        // If around is a DOMNode (or DOMNode id), convert to coordinates.
-        var aroundNodePos;
-        if(typeof anchor == "string" || "offsetWidth" in anchor || "ownerSVGElement" in anchor){
-            aroundNodePos = domGeometry.position(anchor, true);
-
-            // For above and below dropdowns, subtract width of border so that popup and aroundNode borders
-            // overlap, preventing a double-border effect.  Unfortunately, difficult to measure the border
-            // width of either anchor or popup because in both cases the border may be on an inner node.
-            if(/^(above|below)/.test(positions[0])){
-                var anchorBorder = domGeometry.getBorderExtents(anchor),
-                    anchorChildBorder = anchor.firstChild ? domGeometry.getBorderExtents(anchor.firstChild) : {t:0,l:0,b:0,r:0},
-                    nodeBorder =  domGeometry.getBorderExtents(node),
-                    nodeChildBorder = node.firstChild ? domGeometry.getBorderExtents(node.firstChild) : {t:0,l:0,b:0,r:0};
-                aroundNodePos.y += Math.min(anchorBorder.t + anchorChildBorder.t, nodeBorder.t + nodeChildBorder.t);
-                aroundNodePos.h -=  Math.min(anchorBorder.t + anchorChildBorder.t, nodeBorder.t+ nodeChildBorder.t) +
-                    Math.min(anchorBorder.b + anchorChildBorder.b, nodeBorder.b + nodeChildBorder.b);
-            }
-        }else{
-            aroundNodePos = anchor;
-        }
-
-        // Compute position and size of visible part of anchor (it may be partially hidden by ancestor nodes w/scrollbars)
-        if(anchor.parentNode){
-            // ignore nodes between position:relative and position:absolute
-            var sawPosAbsolute = domStyle.getComputedStyle(anchor).position == "absolute";
-            var parent = anchor.parentNode;
-            while(parent && parent.nodeType == 1 && parent.nodeName != "BODY"){  //ignoring the body will help performance
-                var parentPos = domGeometry.position(parent, true),
-                    pcs = domStyle.getComputedStyle(parent);
-                if(/relative|absolute/.test(pcs.position)){
-                    sawPosAbsolute = false;
-                }
-                if(!sawPosAbsolute && /hidden|auto|scroll/.test(pcs.overflow)){
-                    var bottomYCoord = Math.min(aroundNodePos.y + aroundNodePos.h, parentPos.y + parentPos.h);
-                    var rightXCoord = Math.min(aroundNodePos.x + aroundNodePos.w, parentPos.x + parentPos.w);
-                    aroundNodePos.x = Math.max(aroundNodePos.x, parentPos.x);
-                    aroundNodePos.y = Math.max(aroundNodePos.y, parentPos.y);
-                    aroundNodePos.h = bottomYCoord - aroundNodePos.y;
-                    aroundNodePos.w = rightXCoord - aroundNodePos.x;
-                }
-                if(pcs.position == "absolute"){
-                    sawPosAbsolute = true;
-                }
-                parent = parent.parentNode;
-            }
-        }           
-
-        var x = aroundNodePos.x,
-            y = aroundNodePos.y,
-            width = "w" in aroundNodePos ? aroundNodePos.w : (aroundNodePos.w = aroundNodePos.width),
-            height = "h" in aroundNodePos ? aroundNodePos.h : (kernel.deprecated("place.around: dijit/place.__Rectangle: { x:"+x+", y:"+y+", height:"+aroundNodePos.height+", width:"+width+" } has been deprecated.  Please use { x:"+x+", y:"+y+", h:"+aroundNodePos.height+", w:"+width+" }", "", "2.0"), aroundNodePos.h = aroundNodePos.height);
-
-        // Convert positions arguments into choices argument for _place()
-        var choices = [];
-        function push(aroundCorner, corner){
-            choices.push({
-                aroundCorner: aroundCorner,
-                corner: corner,
-                pos: {
-                    x: {
-                        'L': x,
-                        'R': x + width,
-                        'M': x + (width >> 1)
-                    }[aroundCorner.charAt(1)],
-                    y: {
-                        'T': y,
-                        'B': y + height,
-                        'M': y + (height >> 1)
-                    }[aroundCorner.charAt(0)]
-                }
-            })
-        }
-        array.forEach(positions, function(pos){
-            var ltr =  leftToRight;
-            switch(pos){
-                case "above-centered":
-                    push("TM", "BM");
-                    break;
-                case "below-centered":
-                    push("BM", "TM");
-                    break;
-                case "after-centered":
-                    ltr = !ltr;
-                    // fall through
-                case "before-centered":
-                    push(ltr ? "ML" : "MR", ltr ? "MR" : "ML");
-                    break;
-                case "after":
-                    ltr = !ltr;
-                    // fall through
-                case "before":
-                    push(ltr ? "TL" : "TR", ltr ? "TR" : "TL");
-                    push(ltr ? "BL" : "BR", ltr ? "BR" : "BL");
-                    break;
-                case "below-alt":
-                    ltr = !ltr;
-                    // fall through
-                case "below":
-                    // first try to align left borders, next try to align right borders (or reverse for RTL mode)
-                    push(ltr ? "BL" : "BR", ltr ? "TL" : "TR");
-                    push(ltr ? "BR" : "BL", ltr ? "TR" : "TL");
-                    break;
-                case "above-alt":
-                    ltr = !ltr;
-                    // fall through
-                case "above":
-                    // first try to align left borders, next try to align right borders (or reverse for RTL mode)
-                    push(ltr ? "TL" : "TR", ltr ? "BL" : "BR");
-                    push(ltr ? "TR" : "TL", ltr ? "BR" : "BL");
-                    break;
-                default:
-                    // To assist dijit/_base/place, accept arguments of type {aroundCorner: "BL", corner: "TL"}.
-                    // Not meant to be used directly.  Remove for 2.0.
-                    push(pos.aroundCorner, pos.corner);
-            }
-        });
-
-        var position = _place(node, choices, layoutNode, {w: width, h: height});
-        position.aroundNodePos = aroundNodePos;
-
-        return position;
-    }
-// in development end
 
     function geom() {
         return geom;
@@ -6820,22 +6686,458 @@ define('skylark-utils-dom/geom',[
         width: width
     });
 
-    return skylark.geom = geom;
-});
-define('skylark-utils/geom',[
-    "skylark-utils-dom/geom"
-], function(geom) {
-    return geom;
-});
+    ( function() {
+        var max = Math.max,
+            abs = Math.abs,
+            rhorizontal = /left|center|right/,
+            rvertical = /top|center|bottom/,
+            roffset = /[\+\-]\d+(\.[\d]+)?%?/,
+            rposition = /^\w+/,
+            rpercent = /%$/;
 
+        function getOffsets( offsets, width, height ) {
+            return [
+                parseFloat( offsets[ 0 ] ) * ( rpercent.test( offsets[ 0 ] ) ? width / 100 : 1 ),
+                parseFloat( offsets[ 1 ] ) * ( rpercent.test( offsets[ 1 ] ) ? height / 100 : 1 )
+            ];
+        }
+
+        function parseCss( element, property ) {
+            return parseInt( styler.css( element, property ), 10 ) || 0;
+        }
+
+        function getDimensions( raw ) {
+            if ( raw.nodeType === 9 ) {
+                return {
+                    size: size(raw),
+                    offset: { top: 0, left: 0 }
+                };
+            }
+            if ( noder.isWindow( raw ) ) {
+                return {
+                    size: size(raw),
+                    offset: { 
+                        top: scrollTop(raw), 
+                        left: scrollLeft(raw) 
+                    }
+                };
+            }
+            if ( raw.preventDefault ) {
+                return {
+                    size : {
+                        width: 0,
+                        height: 0
+                    },
+                    offset: { 
+                        top: raw.pageY, 
+                        left: raw.pageX 
+                    }
+                };
+            }
+            return {
+                size: size(raw),
+                offset: pagePosition(raw)
+            };
+        }
+
+        function getScrollInfo( within ) {
+            var overflowX = within.isWindow || within.isDocument ? "" :
+                    styler.css(within.element,"overflow-x" ),
+                overflowY = within.isWindow || within.isDocument ? "" :
+                    styler.css(within.element,"overflow-y" ),
+                hasOverflowX = overflowX === "scroll" ||
+                    ( overflowX === "auto" && within.width < scrollWidth(within.element) ),
+                hasOverflowY = overflowY === "scroll" ||
+                    ( overflowY === "auto" && within.height < scrollHeight(within.element));
+            return {
+                width: hasOverflowY ? scrollbarWidth() : 0,
+                height: hasOverflowX ? scrollbarWidth() : 0
+            };
+        }
+
+        function getWithinInfo( element ) {
+            var withinElement = element || window,
+                isWindow = noder.isWindow( withinElement),
+                isDocument = !!withinElement && withinElement.nodeType === 9,
+                hasOffset = !isWindow && !isDocument,
+                msize = marginSize(withinElement);
+            return {
+                element: withinElement,
+                isWindow: isWindow,
+                isDocument: isDocument,
+                offset: hasOffset ? pagePosition(element) : { left: 0, top: 0 },
+                scrollLeft: scrollLeft(withinElement),
+                scrollTop: scrollTop(withinElement),
+                width: msize.width,
+                height: msize.height
+            };
+        }
+
+        function posit(elm,options ) {
+            // Make a copy, we don't want to modify arguments
+            options = langx.extend( {}, options );
+
+            var atOffset, targetWidth, targetHeight, targetOffset, basePosition, dimensions,
+                target = options.of,
+                within = getWithinInfo( options.within ),
+                scrollInfo = getScrollInfo( within ),
+                collision = ( options.collision || "flip" ).split( " " ),
+                offsets = {};
+
+            dimensions = getDimensions( target );
+            if ( target.preventDefault ) {
+
+                // Force left top to allow flipping
+                options.at = "left top";
+            }
+            targetWidth = dimensions.size.width;
+            targetHeight = dimensions.size.height;
+            targetOffset = dimensions.offset;
+
+            // Clone to reuse original targetOffset later
+            basePosition = langx.extend( {}, targetOffset );
+
+            // Force my and at to have valid horizontal and vertical positions
+            // if a value is missing or invalid, it will be converted to center
+            langx.each( [ "my", "at" ], function() {
+                var pos = ( options[ this ] || "" ).split( " " ),
+                    horizontalOffset,
+                    verticalOffset;
+
+                if ( pos.length === 1 ) {
+                    pos = rhorizontal.test( pos[ 0 ] ) ?
+                        pos.concat( [ "center" ] ) :
+                        rvertical.test( pos[ 0 ] ) ?
+                            [ "center" ].concat( pos ) :
+                            [ "center", "center" ];
+                }
+                pos[ 0 ] = rhorizontal.test( pos[ 0 ] ) ? pos[ 0 ] : "center";
+                pos[ 1 ] = rvertical.test( pos[ 1 ] ) ? pos[ 1 ] : "center";
+
+                // Calculate offsets
+                horizontalOffset = roffset.exec( pos[ 0 ] );
+                verticalOffset = roffset.exec( pos[ 1 ] );
+                offsets[ this ] = [
+                    horizontalOffset ? horizontalOffset[ 0 ] : 0,
+                    verticalOffset ? verticalOffset[ 0 ] : 0
+                ];
+
+                // Reduce to just the positions without the offsets
+                options[ this ] = [
+                    rposition.exec( pos[ 0 ] )[ 0 ],
+                    rposition.exec( pos[ 1 ] )[ 0 ]
+                ];
+            } );
+
+            // Normalize collision option
+            if ( collision.length === 1 ) {
+                collision[ 1 ] = collision[ 0 ];
+            }
+
+            if ( options.at[ 0 ] === "right" ) {
+                basePosition.left += targetWidth;
+            } else if ( options.at[ 0 ] === "center" ) {
+                basePosition.left += targetWidth / 2;
+            }
+
+            if ( options.at[ 1 ] === "bottom" ) {
+                basePosition.top += targetHeight;
+            } else if ( options.at[ 1 ] === "center" ) {
+                basePosition.top += targetHeight / 2;
+            }
+
+            atOffset = getOffsets( offsets.at, targetWidth, targetHeight );
+            basePosition.left += atOffset[ 0 ];
+            basePosition.top += atOffset[ 1 ];
+
+            return ( function(elem) {
+                var collisionPosition, using,
+                    msize = marginSize(elem),
+                    elemWidth = msize.width,
+                    elemHeight = msize.height,
+                    marginLeft = parseCss( elem, "marginLeft" ),
+                    marginTop = parseCss( elem, "marginTop" ),
+                    collisionWidth = elemWidth + marginLeft + parseCss( elem, "marginRight" ) +
+                        scrollInfo.width,
+                    collisionHeight = elemHeight + marginTop + parseCss( elem, "marginBottom" ) +
+                        scrollInfo.height,
+                    position = langx.extend( {}, basePosition ),
+                    myOffset = getOffsets( offsets.my, msize.width, msize.height);
+
+                if ( options.my[ 0 ] === "right" ) {
+                    position.left -= elemWidth;
+                } else if ( options.my[ 0 ] === "center" ) {
+                    position.left -= elemWidth / 2;
+                }
+
+                if ( options.my[ 1 ] === "bottom" ) {
+                    position.top -= elemHeight;
+                } else if ( options.my[ 1 ] === "center" ) {
+                    position.top -= elemHeight / 2;
+                }
+
+                position.left += myOffset[ 0 ];
+                position.top += myOffset[ 1 ];
+
+                collisionPosition = {
+                    marginLeft: marginLeft,
+                    marginTop: marginTop
+                };
+
+                langx.each( [ "left", "top" ], function( i, dir ) {
+                    if ( positions[ collision[ i ] ] ) {
+                        positions[ collision[ i ] ][ dir ]( position, {
+                            targetWidth: targetWidth,
+                            targetHeight: targetHeight,
+                            elemWidth: elemWidth,
+                            elemHeight: elemHeight,
+                            collisionPosition: collisionPosition,
+                            collisionWidth: collisionWidth,
+                            collisionHeight: collisionHeight,
+                            offset: [ atOffset[ 0 ] + myOffset[ 0 ], atOffset [ 1 ] + myOffset[ 1 ] ],
+                            my: options.my,
+                            at: options.at,
+                            within: within,
+                            elem: elem
+                        } );
+                    }
+                } );
+
+                if ( options.using ) {
+
+                    // Adds feedback as second argument to using callback, if present
+                    using = function( props ) {
+                        var left = targetOffset.left - position.left,
+                            right = left + targetWidth - elemWidth,
+                            top = targetOffset.top - position.top,
+                            bottom = top + targetHeight - elemHeight,
+                            feedback = {
+                                target: {
+                                    element: target,
+                                    left: targetOffset.left,
+                                    top: targetOffset.top,
+                                    width: targetWidth,
+                                    height: targetHeight
+                                },
+                                element: {
+                                    element: elem,
+                                    left: position.left,
+                                    top: position.top,
+                                    width: elemWidth,
+                                    height: elemHeight
+                                },
+                                horizontal: right < 0 ? "left" : left > 0 ? "right" : "center",
+                                vertical: bottom < 0 ? "top" : top > 0 ? "bottom" : "middle"
+                            };
+                        if ( targetWidth < elemWidth && abs( left + right ) < targetWidth ) {
+                            feedback.horizontal = "center";
+                        }
+                        if ( targetHeight < elemHeight && abs( top + bottom ) < targetHeight ) {
+                            feedback.vertical = "middle";
+                        }
+                        if ( max( abs( left ), abs( right ) ) > max( abs( top ), abs( bottom ) ) ) {
+                            feedback.important = "horizontal";
+                        } else {
+                            feedback.important = "vertical";
+                        }
+                        options.using.call( this, props, feedback );
+                    };
+                }
+
+                pagePosition(elem, langx.extend( position, { using: using } ));
+            })(elm);
+        }
+
+        var positions = {
+            fit: {
+                left: function( position, data ) {
+                    var within = data.within,
+                        withinOffset = within.isWindow ? within.scrollLeft : within.offset.left,
+                        outerWidth = within.width,
+                        collisionPosLeft = position.left - data.collisionPosition.marginLeft,
+                        overLeft = withinOffset - collisionPosLeft,
+                        overRight = collisionPosLeft + data.collisionWidth - outerWidth - withinOffset,
+                        newOverRight;
+
+                    // Element is wider than within
+                    if ( data.collisionWidth > outerWidth ) {
+
+                        // Element is initially over the left side of within
+                        if ( overLeft > 0 && overRight <= 0 ) {
+                            newOverRight = position.left + overLeft + data.collisionWidth - outerWidth -
+                                withinOffset;
+                            position.left += overLeft - newOverRight;
+
+                        // Element is initially over right side of within
+                        } else if ( overRight > 0 && overLeft <= 0 ) {
+                            position.left = withinOffset;
+
+                        // Element is initially over both left and right sides of within
+                        } else {
+                            if ( overLeft > overRight ) {
+                                position.left = withinOffset + outerWidth - data.collisionWidth;
+                            } else {
+                                position.left = withinOffset;
+                            }
+                        }
+
+                    // Too far left -> align with left edge
+                    } else if ( overLeft > 0 ) {
+                        position.left += overLeft;
+
+                    // Too far right -> align with right edge
+                    } else if ( overRight > 0 ) {
+                        position.left -= overRight;
+
+                    // Adjust based on position and margin
+                    } else {
+                        position.left = max( position.left - collisionPosLeft, position.left );
+                    }
+                },
+                top: function( position, data ) {
+                    var within = data.within,
+                        withinOffset = within.isWindow ? within.scrollTop : within.offset.top,
+                        outerHeight = data.within.height,
+                        collisionPosTop = position.top - data.collisionPosition.marginTop,
+                        overTop = withinOffset - collisionPosTop,
+                        overBottom = collisionPosTop + data.collisionHeight - outerHeight - withinOffset,
+                        newOverBottom;
+
+                    // Element is taller than within
+                    if ( data.collisionHeight > outerHeight ) {
+
+                        // Element is initially over the top of within
+                        if ( overTop > 0 && overBottom <= 0 ) {
+                            newOverBottom = position.top + overTop + data.collisionHeight - outerHeight -
+                                withinOffset;
+                            position.top += overTop - newOverBottom;
+
+                        // Element is initially over bottom of within
+                        } else if ( overBottom > 0 && overTop <= 0 ) {
+                            position.top = withinOffset;
+
+                        // Element is initially over both top and bottom of within
+                        } else {
+                            if ( overTop > overBottom ) {
+                                position.top = withinOffset + outerHeight - data.collisionHeight;
+                            } else {
+                                position.top = withinOffset;
+                            }
+                        }
+
+                    // Too far up -> align with top
+                    } else if ( overTop > 0 ) {
+                        position.top += overTop;
+
+                    // Too far down -> align with bottom edge
+                    } else if ( overBottom > 0 ) {
+                        position.top -= overBottom;
+
+                    // Adjust based on position and margin
+                    } else {
+                        position.top = max( position.top - collisionPosTop, position.top );
+                    }
+                }
+            },
+            flip: {
+                left: function( position, data ) {
+                    var within = data.within,
+                        withinOffset = within.offset.left + within.scrollLeft,
+                        outerWidth = within.width,
+                        offsetLeft = within.isWindow ? within.scrollLeft : within.offset.left,
+                        collisionPosLeft = position.left - data.collisionPosition.marginLeft,
+                        overLeft = collisionPosLeft - offsetLeft,
+                        overRight = collisionPosLeft + data.collisionWidth - outerWidth - offsetLeft,
+                        myOffset = data.my[ 0 ] === "left" ?
+                            -data.elemWidth :
+                            data.my[ 0 ] === "right" ?
+                                data.elemWidth :
+                                0,
+                        atOffset = data.at[ 0 ] === "left" ?
+                            data.targetWidth :
+                            data.at[ 0 ] === "right" ?
+                                -data.targetWidth :
+                                0,
+                        offset = -2 * data.offset[ 0 ],
+                        newOverRight,
+                        newOverLeft;
+
+                    if ( overLeft < 0 ) {
+                        newOverRight = position.left + myOffset + atOffset + offset + data.collisionWidth -
+                            outerWidth - withinOffset;
+                        if ( newOverRight < 0 || newOverRight < abs( overLeft ) ) {
+                            position.left += myOffset + atOffset + offset;
+                        }
+                    } else if ( overRight > 0 ) {
+                        newOverLeft = position.left - data.collisionPosition.marginLeft + myOffset +
+                            atOffset + offset - offsetLeft;
+                        if ( newOverLeft > 0 || abs( newOverLeft ) < overRight ) {
+                            position.left += myOffset + atOffset + offset;
+                        }
+                    }
+                },
+                top: function( position, data ) {
+                    var within = data.within,
+                        withinOffset = within.offset.top + within.scrollTop,
+                        outerHeight = within.height,
+                        offsetTop = within.isWindow ? within.scrollTop : within.offset.top,
+                        collisionPosTop = position.top - data.collisionPosition.marginTop,
+                        overTop = collisionPosTop - offsetTop,
+                        overBottom = collisionPosTop + data.collisionHeight - outerHeight - offsetTop,
+                        top = data.my[ 1 ] === "top",
+                        myOffset = top ?
+                            -data.elemHeight :
+                            data.my[ 1 ] === "bottom" ?
+                                data.elemHeight :
+                                0,
+                        atOffset = data.at[ 1 ] === "top" ?
+                            data.targetHeight :
+                            data.at[ 1 ] === "bottom" ?
+                                -data.targetHeight :
+                                0,
+                        offset = -2 * data.offset[ 1 ],
+                        newOverTop,
+                        newOverBottom;
+                    if ( overTop < 0 ) {
+                        newOverBottom = position.top + myOffset + atOffset + offset + data.collisionHeight -
+                            outerHeight - withinOffset;
+                        if ( newOverBottom < 0 || newOverBottom < abs( overTop ) ) {
+                            position.top += myOffset + atOffset + offset;
+                        }
+                    } else if ( overBottom > 0 ) {
+                        newOverTop = position.top - data.collisionPosition.marginTop + myOffset + atOffset +
+                            offset - offsetTop;
+                        if ( newOverTop > 0 || abs( newOverTop ) < overBottom ) {
+                            position.top += myOffset + atOffset + offset;
+                        }
+                    }
+                }
+            },
+            flipfit: {
+                left: function() {
+                    positions.flip.left.apply( this, arguments );
+                    positions.fit.left.apply( this, arguments );
+                },
+                top: function() {
+                    positions.flip.top.apply( this, arguments );
+                    positions.fit.top.apply( this, arguments );
+                }
+            }
+        };
+
+        geom.posit = posit;
+    })();
+
+    return dom.geom = geom;
+});
 define('skylark-utils-dom/fx',[
-    "./skylark",
+    "./dom",
     "./langx",
     "./browser",
     "./geom",
     "./styler",
     "./eventer"
-], function(skylark, langx, browser, geom, styler, eventer) {
+], function(dom, langx, browser, geom, styler, eventer) {
     var animationName,
         animationDuration,
         animationTiming,
@@ -7356,10 +7658,10 @@ define('skylark-utils-dom/fx',[
         toggle: toggle
     });
 
-    return skylark.fx = fx;
+    return dom.fx = fx;
 });
 define('skylark-utils-dom/query',[
-    "./skylark",
+    "./dom",
     "./langx",
     "./noder",
     "./datax",
@@ -7368,7 +7670,7 @@ define('skylark-utils-dom/query',[
     "./geom",
     "./styler",
     "./fx"
-], function(skylark, langx, noder, datax, eventer, finder, geom, styler, fx) {
+], function(dom, langx, noder, datax, eventer, finder, geom, styler, fx) {
     var some = Array.prototype.some,
         push = Array.prototype.push,
         every = Array.prototype.every,
@@ -7413,10 +7715,10 @@ define('skylark-utils-dom/query',[
         return function() {
             var self = this,
                 params = slice.call(arguments);
-            var result = $.map(self, function(elem, idx) {
+            var result = langx.map(self, function(elem, idx) {
                 return func.apply(context, [elem].concat(params));
             });
-            return $(uniq(result));
+            return query(uniq(result));
         }
     }
 
@@ -7933,12 +8235,23 @@ define('skylark-utils-dom/query',[
 
             scrollLeft: wrapper_value(geom.scrollLeft, geom),
 
-            position: function() {
+            position: function(options) {
                 if (!this.length) return
 
-                var elem = this[0];
+                if (options) {
+                    if (options.of && options.of.length) {
+                        options = langx.clone(options);
+                        options.of = options.of[0];
+                    }
+                    return this.each( function() {
+                        geom.posit(this,options);
+                    });
+                } else {
+                    var elem = this[0];
 
-                return geom.relativePosition(elem);
+                    return geom.relativePosition(elem);
+
+                }             
             },
 
             offsetParent: wrapper_map(geom.offsetParent, geom)
@@ -8012,7 +8325,6 @@ define('skylark-utils-dom/query',[
         $.fn.innerWidth = wrapper_value(geom.clientWidth, geom, geom.clientWidth);
 
         $.fn.innerHeight = wrapper_value(geom.clientHeight, geom, geom.clientHeight);
-
 
         var traverseNode = noder.traverse;
 
@@ -8106,17 +8418,15 @@ define('skylark-utils-dom/query',[
 
         $.fn.trigger = wrapper_every_act(eventer.trigger, eventer);
 
-
         ('focusin focusout focus blur load resize scroll unload click dblclick ' +
             'mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave ' +
-            'change select keydown keypress keyup error').split(' ').forEach(function(event) {
+            'change select keydown keypress keyup error transitionEnd').split(' ').forEach(function(event) {
             $.fn[event] = function(data, callback) {
                 return (0 in arguments) ?
                     this.on(event, data, callback) :
                     this.trigger(event)
             }
         });
-
 
         $.fn.one = function(event, selector, data, callback) {
             if (!langx.isString(selector) && !langx.isFunction(callback)) {
@@ -8146,6 +8456,24 @@ define('skylark-utils-dom/query',[
         $.fn.slideDown = wrapper_every_act(fx.slideDown, fx);
         $.fn.slideToggle = wrapper_every_act(fx.slideToggle, fx);
         $.fn.slideUp = wrapper_every_act(fx.slideUp, fx);
+
+        $.fn.scrollParent = function( includeHidden ) {
+            var position = this.css( "position" ),
+                excludeStaticParent = position === "absolute",
+                overflowRegex = includeHidden ? /(auto|scroll|hidden)/ : /(auto|scroll)/,
+                scrollParent = this.parents().filter( function() {
+                    var parent = $( this );
+                    if ( excludeStaticParent && parent.css( "position" ) === "static" ) {
+                        return false;
+                    }
+                    return overflowRegex.test( parent.css( "overflow" ) + parent.css( "overflow-y" ) +
+                        parent.css( "overflow-x" ) );
+                } ).eq( 0 );
+
+            return position === "fixed" || !scrollParent.length ?
+                $( this[ 0 ].ownerDocument || document ) :
+                scrollParent;
+        };
     })(query);
 
 
@@ -8246,26 +8574,53 @@ define('skylark-utils-dom/query',[
             return this;
         };
 
+        $.fn.replaceClass = function(newClass, oldClass) {
+            this.removeClass(oldClass);
+            this.addClass(newClass);
+            return this;
+        };
+
+        $.fn.disableSelection = ( function() {
+            var eventType = "onselectstart" in document.createElement( "div" ) ?
+                "selectstart" :
+                "mousedown";
+
+            return function() {
+                return this.on( eventType + ".ui-disableSelection", function( event ) {
+                    event.preventDefault();
+                } );
+            };
+        } )();
+
+        $.fn.enableSelection = function() {
+            return this.off( ".ui-disableSelection" );
+        };
+       
+
     })(query);
 
+    query.fn.plugin = function(name,options) {
+        var args = slice.call( arguments, 1 ),
+            self = this,
+            returnValue = this;
 
-    return skylark.query = query;
+        this.each(function(){
+            returnValue = plugins.instantiate.apply(self,[this,name].concat(args));
+        });
+        return returnValue;
+    };
+
+    return dom.query = query;
 
 });
-define('skylark-utils/query',[
-    "skylark-utils-dom/query"
-], function(query) {
-    return query;
-});
-
 define('skylark-ui-swt/ui',[
-  "skylark-utils/skylark",
-  "skylark-utils/langx",
-  "skylark-utils/browser",
-  "skylark-utils/eventer",
-  "skylark-utils/noder",
-  "skylark-utils/geom",
-  "skylark-utils/query"
+  "skylark-langx/skylark",
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query"
 ],function(skylark,langx,browser,eventer,noder,geom,$){
 	var ui = skylark.ui = skylark.ui || {};
 		sbswt = ui.sbswt = {};
@@ -8323,265 +8678,8 @@ define('skylark-ui-swt/ui',[
 
 });
 
-define('skylark-utils/datax',[
-    "skylark-utils-dom/datax"
-], function(datax) {
-    return datax;
-});
-
-define('skylark-utils/styler',[
-    "./skylark",
-    "./langx"
-], function(skylark, langx) {
-    var every = Array.prototype.every,
-        forEach = Array.prototype.forEach,
-        camelCase = langx.camelCase,
-        dasherize = langx.dasherize;
-
-    function maybeAddPx(name, value) {
-        return (typeof value == "number" && !cssNumber[dasherize(name)]) ? value + "px" : value
-    }
-
-    var cssNumber = {
-            'column-count': 1,
-            'columns': 1,
-            'font-weight': 1,
-            'line-height': 1,
-            'opacity': 1,
-            'z-index': 1,
-            'zoom': 1
-        },
-        classReCache = {
-
-        };
-
-    function classRE(name) {
-        return name in classReCache ?
-            classReCache[name] : (classReCache[name] = new RegExp('(^|\\s)' + name + '(\\s|$)'));
-    }
-
-    // access className property while respecting SVGAnimatedString
-    /*
-     * Adds the specified class(es) to each element in the set of matched elements.
-     * @param {HTMLElement} node
-     * @param {String} value
-     */
-    function className(node, value) {
-        var klass = node.className || '',
-            svg = klass && klass.baseVal !== undefined
-
-        if (value === undefined) return svg ? klass.baseVal : klass
-        svg ? (klass.baseVal = value) : (node.className = value)
-    }
-
-    function disabled(elm, value ) {
-        if (arguments.length < 2) {
-            return !!this.dom.disabled;
-        }
-
-        elm.disabled = value;
-
-        return this;
-    }
-
-    var elementDisplay = {};
-
-    function defaultDisplay(nodeName) {
-        var element, display
-        if (!elementDisplay[nodeName]) {
-            element = document.createElement(nodeName)
-            document.body.appendChild(element)
-            display = getComputedStyle(element, '').getPropertyValue("display")
-            element.parentNode.removeChild(element)
-            display == "none" && (display = "block")
-            elementDisplay[nodeName] = display
-        }
-        return elementDisplay[nodeName]
-    }
-    /*
-     * Display the matched elements.
-     * @param {HTMLElement} elm
-     */
-    function show(elm) {
-        styler.css(elm, "display", "");
-        if (styler.css(elm, "display") == "none") {
-            styler.css(elm, "display", defaultDisplay(elm.nodeName));
-        }
-        return this;
-    }
-
-    function isInvisible(elm) {
-        return styler.css(elm, "display") == "none" || styler.css(elm, "opacity") == 0;
-    }
-
-    /*
-     * Hide the matched elements.
-     * @param {HTMLElement} elm
-     */
-    function hide(elm) {
-        styler.css(elm, "display", "none");
-        return this;
-    }
-
-    /*
-     * Adds the specified class(es) to each element in the set of matched elements.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     */
-    function addClass(elm, name) {
-        if (!name) return this
-        var cls = className(elm),
-            names;
-        if (langx.isString(name)) {
-            names = name.split(/\s+/g);
-        } else {
-            names = name;
-        }
-        names.forEach(function(klass) {
-            var re = classRE(klass);
-            if (!cls.match(re)) {
-                cls += (cls ? " " : "") + klass;
-            }
-        });
-
-        className(elm, cls);
-
-        return this;
-    }
-    /*
-     * Get the value of a computed style property for the first element in the set of matched elements or set one or more CSS properties for every matched element.
-     * @param {HTMLElement} elm
-     * @param {String} property
-     * @param {Any} value
-     */
-    function css(elm, property, value) {
-        if (arguments.length < 3) {
-            var computedStyle,
-                computedStyle = getComputedStyle(elm, '')
-            if (langx.isString(property)) {
-                return elm.style[camelCase(property)] || computedStyle.getPropertyValue(dasherize(property))
-            } else if (langx.isArrayLike(property)) {
-                var props = {}
-                forEach.call(property, function(prop) {
-                    props[prop] = (elm.style[camelCase(prop)] || computedStyle.getPropertyValue(dasherize(prop)))
-                })
-                return props
-            }
-        }
-
-        var css = '';
-        if (typeof(property) == 'string') {
-            if (!value && value !== 0) {
-                elm.style.removeProperty(dasherize(property));
-            } else {
-                css = dasherize(property) + ":" + maybeAddPx(property, value)
-            }
-        } else {
-            for (key in property) {
-                if (property[key] === undefined) {
-                    continue;
-                }
-                if (!property[key] && property[key] !== 0) {
-                    elm.style.removeProperty(dasherize(key));
-                } else {
-                    css += dasherize(key) + ':' + maybeAddPx(key, property[key]) + ';'
-                }
-            }
-        }
-
-        elm.style.cssText += ';' + css;
-        return this;
-    }
-
-    /*
-     * Determine whether any of the matched elements are assigned the given class.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     */
-    function hasClass(elm, name) {
-        var re = classRE(name);
-        return elm.className && elm.className.match(re);
-    }
-
-    /*
-     * Remove a single class, multiple classes, or all classes from each element in the set of matched elements.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     */
-    function removeClass(elm, name) {
-        if (name) {
-            var cls = className(elm),
-                names;
-
-            if (langx.isString(name)) {
-                names = name.split(/\s+/g);
-            } else {
-                names = name;
-            }
-
-            names.forEach(function(klass) {
-                var re = classRE(klass);
-                if (cls.match(re)) {
-                    cls = cls.replace(re, " ");
-                }
-            });
-
-            className(elm, cls.trim());
-        } else {
-            className(elm, "");
-        }
-
-        return this;
-    }
-
-    /*
-     * Add or remove one or more classes from the specified element.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     * @param {} when
-     */
-    function toggleClass(elm, name, when) {
-        var self = this;
-        name.split(/\s+/g).forEach(function(klass) {
-            if (when === undefined) {
-                when = !self.hasClass(elm, klass);
-            }
-            if (when) {
-                self.addClass(elm, klass);
-            } else {
-                self.removeClass(elm, klass)
-            }
-        });
-
-        return self;
-    }
-
-    var styler = function() {
-        return styler;
-    };
-
-    langx.mixin(styler, {
-        autocssfix: false,
-        cssHooks: {
-
-        },
-
-        addClass: addClass,
-        className: className,
-        css: css,
-        disabled : disabled,        
-        hasClass: hasClass,
-        hide: hide,
-        isInvisible: isInvisible,
-        removeClass: removeClass,
-        show: show,
-        toggleClass: toggleClass
-    });
-
-    return skylark.styler = styler;
-});
-define('skylark-utils-dom/velm',[
-    "./skylark",
+define('skylark-utils-dom/elmx',[
+    "./dom",
     "./langx",
     "./datax",
     "./eventer",
@@ -8589,12 +8687,14 @@ define('skylark-utils-dom/velm',[
     "./fx",
     "./geom",
     "./noder",
-    "./styler"
-], function(skylark, langx, datax, eventer, finder, fx, geom, noder, styler) {
+    "./styler",
+    "./query"
+], function(dom, langx, datax, eventer, finder, fx, geom, noder, styler,$) {
     var map = Array.prototype.map,
         slice = Array.prototype.slice;
     /*
-     * VisualElement is a skylark class type wrapping a visule dom node,provides a number of prototype methods and supports chain calls.
+     * VisualElement is a skylark class type wrapping a visule dom node,
+     * provides a number of prototype methods and supports chain calls.
      */
     var VisualElement = langx.klass({
         klassName: "VisualElement",
@@ -8606,11 +8706,16 @@ define('skylark-utils-dom/velm',[
             this.domNode = node;
         }
     });
+
+    VisualElement.prototype.$ = VisualElement.prototype.query = function(selector) {
+        return $(selector,this.domNode);
+    };
+
     /*
      * the VisualElement object wrapping document.body
      */
     var root = new VisualElement(document.body),
-        velm = function(node) {
+        elmx = function(node) {
             if (node) {
                 return new VisualElement(node);
             } else {
@@ -8637,7 +8742,7 @@ define('skylark-utils-dom/velm',[
                     } else if (langx.isArrayLike(ret)) {
                         ret = map.call(ret, function(el) {
                             if (el instanceof HTMLElement) {
-                                return new VisualElement(ret);
+                                return new VisualElement(el);
                             } else {
                                 return el;
                             }
@@ -8649,10 +8754,10 @@ define('skylark-utils-dom/velm',[
         };
     }
 
-    langx.mixin(velm, {
+    langx.mixin(elmx, {
         batch: function(nodes, action, args) {
             nodes.forEach(function(node) {
-                var elm = (node instanceof VisualElement) ? node : velm(node);
+                var elm = (node instanceof VisualElement) ? node : elmx(node);
                 elm[action].apply(elm, args);
             });
 
@@ -8683,7 +8788,7 @@ define('skylark-utils-dom/velm',[
     });
 
     // from ./datax
-    velm.delegate([
+    elmx.delegate([
         "attr",
         "data",
         "prop",
@@ -8693,15 +8798,8 @@ define('skylark-utils-dom/velm',[
         "val"
     ], datax);
 
-    // from ./dnd
-    velm.delegate([
-        "draggable",
-        "droppable"
-    ], dnd);
-
-
     // from ./eventer
-    velm.delegate([
+    elmx.delegate([
         "off",
         "on",
         "one",
@@ -8710,7 +8808,7 @@ define('skylark-utils-dom/velm',[
     ], eventer);
 
     // from ./finder
-    velm.delegate([
+    elmx.delegate([
         "ancestor",
         "ancestors",
         "children",
@@ -8732,7 +8830,7 @@ define('skylark-utils-dom/velm',[
      * find a dom element matched by the specified selector.
      * @param {String} selector
      */
-    velm.find = function(selector) {
+    elmx.find = function(selector) {
         if (selector === "body") {
             return this.root;
         } else {
@@ -8741,7 +8839,7 @@ define('skylark-utils-dom/velm',[
     };
 
     // from ./fx
-    velm.delegate([
+    elmx.delegate([
         "animate",
         "fadeIn",
         "fadeOut",
@@ -8755,7 +8853,7 @@ define('skylark-utils-dom/velm',[
 
 
     // from ./geom
-    velm.delegate([
+    elmx.delegate([
         "borderExtents",
         "boundingPosition",
         "boundingRect",
@@ -8779,7 +8877,7 @@ define('skylark-utils-dom/velm',[
     ], geom);
 
     // from ./noder
-    velm.delegate([
+    elmx.delegate([
         "after",
         "append",
         "before",
@@ -8803,7 +8901,7 @@ define('skylark-utils-dom/velm',[
     ], noder);
 
     // from ./styler
-    velm.delegate([
+    elmx.delegate([
         "addClass",
         "className",
         "css",
@@ -8851,311 +8949,3298 @@ define('skylark-utils-dom/velm',[
 
     });
 
-    return skylark.velm = velm;
-});
-define('skylark-utils/velm',[
-    "skylark-utils-dom/velm"
-], function(velm) {
-    return velm;
-});
 
-define('skylark-utils/widgets',[
-    "./skylark",
+    return dom.elmx = elmx;
+});
+define('skylark-utils-dom/plugins',[
+    "./dom",
     "./langx",
     "./noder",
     "./datax",
-    "./styler",
-    "./geom",
     "./eventer",
+    "./finder",
+    "./geom",
+    "./styler",
+    "./fx",
     "./query",
-    "./velm"
-], function(skylark,langx,noder, datax, styler, geom, eventer,query,velm) {
-	// Cached regex to split keys for `delegate`.
-	var delegateEventSplitter = /^(\S+)\s*(.*)$/,
-		slice = Array.prototype.slice;
+    "./elmx"
+], function(dom, langx, noder, datax, eventer, finder, geom, styler, fx, $, elmx) {
+    "use strict";
+
+    var slice = Array.prototype.slice,
+        concat = Array.prototype.concat,
+        pluginKlasses = {};
 
 
-	function bridge( name, object ) {
-		var fullName = object.prototype.widgetFullName || name,
-			fn = {};
+    /*
+     * Register a plugin type
+     */
+    function register( pluginKlass,shortcut) {
+        var name = pluginKlass.prototype.pluginName;
+        
+        pluginKlasses[name] = pluginKlass;
 
-		function _delegate (isQuery) {
+        if (shortcut) {
+            elmx.partial(shortcut,$.fn[shortcut] = function(options) {
+                var args = slice.call(arguments,0);
+                args.unshift(name);
+                return this.plugin.apply(this,args);
+            });
+        }
+    }
 
-		}
+    /*
+     * Create or get a plugin instance assocated with the element,
+     * also you can execute the plugin method directory;
+     */
+    function instantiate(elm,pluginName,options) {
 
-		fn[name] = function( options ) {
-			var isMethodCall = typeof options === "string";
-			var args = slice.call( arguments, 1 );
-			var returnValue = this;
+        var pluginInstance = datax.data( elm, pluginName );
 
-			if ( isMethodCall ) {
+        if (options === "instance") {
+            return pluginInstance;
+        }
 
-				// If this is an empty collection, we need to have the instance method
-				// return undefined instead of the jQuery instance
-				if ( !this.length && options === "instance" ) {
-					returnValue = undefined;
-				} else {
-					this.each( function() {
-						var methodValue;
-						var instance = datax.data( this, fullName );
+        var isMethodCall = typeof options === "string",
+            args = slice.call( arguments, 2 ),
+            returnValue = this;
 
-						if ( options === "instance" ) {
-							returnValue = instance;
-							return false;
-						}
+        if ( isMethodCall ) {
+            var methodName = options;
 
-						if ( !instance ) {
-							return $.error( "cannot call methods on " + name +
-								" prior to initialization; " +
-								"attempted to call method '" + options + "'" );
-						}
+            if ( !pluginInstance ) {
+                return langx.error( "cannot call methods on " + pluginName +
+                    " prior to initialization; " +
+                    "attempted to call method '" + methodName + "'" );
+            }
 
-						if ( !langx.isFunction( instance[ options ] ) || options.charAt( 0 ) === "_" ) {
-							return $.error( "no such method '" + options + "' for " + name +
-								" widget instance" );
-						}
+            if ( !langx.isFunction( pluginInstance[ methodName ] ) || methodName.charAt( 0 ) === "_" ) {
+                return langx.error( "no such method '" + methodName + "' for " + pluginName +
+                    " plugin instance" );
+            }
 
-						methodValue = instance[ options ].apply( instance, args );
+            return pluginInstance[ methodName ].apply( pluginInstance, args );
 
-						if ( methodValue !== instance && methodValue !== undefined ) {
-							returnValue = methodValue && methodValue.jquery ?
-								returnValue.pushStack( methodValue.get() ) :
-								methodValue;
-							return false;
-						}
-					} );
-				}
-			} else {
+        } else {
+            // Allow multiple hashes to be passed on init
+            if ( args.length ) {
+                options = langx.mixin.apply( langx, [{},options ].concat( args ) );
+            }
 
-				// Allow multiple hashes to be passed on init
-				if ( args.length ) {
-					options = $.widget.extend.apply( null, [ options ].concat( args ) );
-				}
+            if ( pluginInstance ) {
+                pluginInstance.option( options || {} );
+            } else {
+                var pluginKlass = pluginKlasses[pluginName]; 
+                datax.data( elm, pluginName, new pluginKlass(elm,options));
+            }
+        }
 
-				this.each( function() {
-					var instance = datax.data( this, fullName );
-					if ( instance ) {
-						instance.option( options || {} );
-						if ( instance._init ) {
-							instance._init();
-						}
-					} else {
-						datax.data( this, fullName, new object( options, this ) );
-					}
-				} );
-			}
+        return returnValue;
+    }
 
-			return returnValue;
-		};
-	};
+    var Plugin =   langx.Evented.inherit({
+        klassName: "Plugin",
 
-	function widgets() {
-	    return widgets;
-	}
+        _construct : function(elm,options) {
+           this._elm = elm;
+           this._initOptions(options);
+        },
 
-	var Widget = langx.Evented.inherit({
-	    init :function(el,options) {
-	    	//for supporting init(options,el)
-	        if (langx.isHtmlNode(options)) {
-	        	var _t = el,
-	        		options = el;
-	            el = options;
-	        }
-	        if (langx.isHtmlNode(el)) { 
-	        	this.el = el;
-	    	} else {
-	    		this.el = null;
-	    	}
-	        if (options) {
-	            langx.mixin(this,options);
-	        }
-	        if (!this.cid) {
-	            this.cid = langx.uniqueId('w');
-	        }
-	        this._ensureElement();
-	    },
+        _initOptions : function(options) {
+          var ctor = this.constructor,
+              cache = ctor.cache = ctor.cache || {},
+              defaults = cache.defaults;
+          if (!defaults) {
+            var  ctors = [];
+            do {
+              ctors.unshift(ctor);
+              if (ctor === Plugin) {
+                break;
+              }
+              ctor = ctor.superclass;
+            } while (ctor);
 
-	    // The default `tagName` of a View's element is `"div"`.
-	    tagName: 'div',
-
-	    // query delegate for element lookup, scoped to DOM elements within the
-	    // current view. This should be preferred to global lookups where possible.
-	    $: function(selector) {
-	      return this.$el.find(selector);
-	    },
-
-	    // **render** is the core function that your view should override, in order
-	    // to populate its element (`this.el`), with the appropriate HTML. The
-	    // convention is for **render** to always return `this`.
-	    render: function() {
-	      return this;
-	    },
-
-	    // Remove this view by taking the element out of the DOM, and removing any
-	    // applicable Backbone.Events listeners.
-	    remove: function() {
-	      this._removeElement();
-	      this.unlistenTo();
-	      return this;
-	    },
-
-	    // Remove this view's element from the document and all event listeners
-	    // attached to it. Exposed for subclasses using an alternative DOM
-	    // manipulation API.
-	    _removeElement: function() {
-	      this.$el.remove();
-	    },
-
-	    // Change the view's element (`this.el` property) and re-delegate the
-	    // view's events on the new element.
-	    setElement: function(element) {
-	      this.undelegateEvents();
-	      this._setElement(element);
-	      this.delegateEvents();
-	      return this;
-	    },
-
-	    // Creates the `this.el` and `this.$el` references for this view using the
-	    // given `el`. `el` can be a CSS selector or an HTML string, a jQuery
-	    // context or an element. Subclasses can override this to utilize an
-	    // alternative DOM manipulation API and are only required to set the
-	    // `this.el` property.
-	    _setElement: function(el) {
-	      this.$el = widgets.$(el);
-	      this.el = this.$el[0];
-	    },
-
-	    // Set callbacks, where `this.events` is a hash of
-	    //
-	    // *{"event selector": "callback"}*
-	    //
-	    //     {
-	    //       'mousedown .title':  'edit',
-	    //       'click .button':     'save',
-	    //       'click .open':       function(e) { ... }
-	    //     }
-	    //
-	    // pairs. Callbacks will be bound to the view, with `this` set properly.
-	    // Uses event delegation for efficiency.
-	    // Omitting the selector binds the event to `this.el`.
-	    delegateEvents: function(events) {
-	      events || (events = langx.result(this, 'events'));
-	      if (!events) return this;
-	      this.undelegateEvents();
-	      for (var key in events) {
-	        var method = events[key];
-	        if (!langx.isFunction(method)) method = this[method];
-	        if (!method) continue;
-	        var match = key.match(delegateEventSplitter);
-	        this.delegate(match[1], match[2], langx.proxy(method, this));
-	      }
-	      return this;
-	    },
-
-	    // Add a single event listener to the view's element (or a child element
-	    // using `selector`). This only works for delegate-able events: not `focus`,
-	    // `blur`, and not `change`, `submit`, and `reset` in Internet Explorer.
-	    delegate: function(eventName, selector, listener) {
-	      this.$el.on(eventName + '.delegateEvents' + this.uid, selector, listener);
-	      return this;
-	    },
-
-	    // Clears all callbacks previously bound to the view by `delegateEvents`.
-	    // You usually don't need to use this, but may wish to if you have multiple
-	    // Backbone views attached to the same DOM element.
-	    undelegateEvents: function() {
-	      if (this.$el) this.$el.off('.delegateEvents' + this.uid);
-	      return this;
-	    },
-
-	    // A finer-grained `undelegateEvents` for removing a single delegated event.
-	    // `selector` and `listener` are both optional.
-	    undelegate: function(eventName, selector, listener) {
-	      this.$el.off(eventName + '.delegateEvents' + this.uid, selector, listener);
-	      return this;
-	    },
-
-	    // Produces a DOM element to be assigned to your view. Exposed for
-	    // subclasses using an alternative DOM manipulation API.
-	    _createElement: function(tagName,attrs) {
-	      return noder.createElement(tagName,attrs);
-	    },
-
-	    // Ensure that the View has a DOM element to render into.
-	    // If `this.el` is a string, pass it through `$()`, take the first
-	    // matching element, and re-assign it to `el`. Otherwise, create
-	    // an element from the `id`, `className` and `tagName` properties.
-	    _ensureElement: function() {
-	      if (!this.el) {
-	        var attrs = langx.mixin({}, langx.result(this, 'attributes'));
-	        if (this.id) attrs.id = langx.result(this, 'id');
-	        if (this.className) attrs['class'] = langx.result(this, 'className');
-	        this.setElement(this._createElement(langx.result(this, 'tagName'),attrs));
-	        this._setAttributes(attrs);
-	      } else {
-	        this.setElement(langx.result(this, 'el'));
-	      }
-	    },
-
-	    // Set attributes from a hash on this view's element.  Exposed for
-	    // subclasses using an alternative DOM manipulation API.
-	    _setAttributes: function(attributes) {
-	      this.$el.attr(attributes);
-	    },
-
-	    // Translation function, gets the message key to be translated
-	    // and an object with context specific data as arguments:
-	    i18n: function (message, context) {
-	        message = (this.messages && this.messages[message]) || message.toString();
-	        if (context) {
-	            langx.each(context, function (key, value) {
-	                message = message.replace('{' + key + '}', value);
-	            });
-	        }
-	        return message;
-	    },
-
-		});
-
-	function defineWidgetClass(name,base,prototype) {
-
-	};
-
-	langx.mixin(widgets, {
-		$ : query,
-
-		define : defineWidgetClass,
-		Widget : Widget
-	});
+            defaults = cache.defaults = {};
+            for (var i=0;i<ctors.length;i++) {
+              ctor = ctors[i];
+              if (ctor.prototype.hasOwnProperty("options")) {
+                langx.mixin(defaults,ctor.prototype.options);
+              }
+            }
+          }
+          return this.options = langx.mixin({},defaults,options);
+        },
 
 
-	return skylark.widgets = widgets;
+        destroy: function() {
+            var that = this;
+
+            this._destroy();
+            // We can probably remove the unbind calls in 2.0
+            // all event bindings should go through this._on()
+            datax.removeData(this._elm,this.pluginName );
+        },
+
+        _destroy: langx.noop,
+
+        _delay: function( handler, delay ) {
+            function handlerProxy() {
+                return ( typeof handler === "string" ? instance[ handler ] : handler )
+                    .apply( instance, arguments );
+            }
+            var instance = this;
+            return setTimeout( handlerProxy, delay || 0 );
+        },
+
+        option: function( key, value ) {
+            var options = key;
+            var parts;
+            var curOption;
+            var i;
+
+            if ( arguments.length === 0 ) {
+
+                // Don't return a reference to the internal hash
+                return langx.mixin( {}, this.options );
+            }
+
+            if ( typeof key === "string" ) {
+
+                // Handle nested keys, e.g., "foo.bar" => { foo: { bar: ___ } }
+                options = {};
+                parts = key.split( "." );
+                key = parts.shift();
+                if ( parts.length ) {
+                    curOption = options[ key ] = langx.mixin( {}, this.options[ key ] );
+                    for ( i = 0; i < parts.length - 1; i++ ) {
+                        curOption[ parts[ i ] ] = curOption[ parts[ i ] ] || {};
+                        curOption = curOption[ parts[ i ] ];
+                    }
+                    key = parts.pop();
+                    if ( arguments.length === 1 ) {
+                        return curOption[ key ] === undefined ? null : curOption[ key ];
+                    }
+                    curOption[ key ] = value;
+                } else {
+                    if ( arguments.length === 1 ) {
+                        return this.options[ key ] === undefined ? null : this.options[ key ];
+                    }
+                    options[ key ] = value;
+                }
+            }
+
+            this._setOptions( options );
+
+            return this;
+        },
+
+        _setOptions: function( options ) {
+            var key;
+
+            for ( key in options ) {
+                this._setOption( key, options[ key ] );
+            }
+
+            return this;
+        },
+
+        _setOption: function( key, value ) {
+
+            this.options[ key ] = value;
+
+            return this;
+        }
+
+    });
+
+    $.fn.plugin = function(name,options) {
+        var args = slice.call( arguments, 1 ),
+            self = this,
+            returnValue = this;
+
+        this.each(function(){
+            returnValue = instantiate.apply(self,[this,name].concat(args));
+        });
+        return returnValue;
+    };
+
+    elmx.partial("plugin",function(name,options) {
+        var args = slice.call( arguments, 1 );
+        return instantiate.apply(this,[this.domNode,name].concat(args));
+    }); 
+
+
+    function plugins() {
+        return plugins;
+    }
+     
+    langx.mixin(plugins, {
+        instantiate : instantiate,
+        
+        Plugin : Plugin,
+
+        register : register
+
+    });
+
+    return plugins;
+});
+define('skylark-utils-collection/collections',[
+	"skylark-langx/skylark"
+],function(skylark){
+	return skylark.collections = {};
+});
+define('skylark-utils-collection/Collection',[
+    "skylark-langx/Evented",
+    "./collections"
+], function(Evented, collections) {
+
+    var Collection = collections.Collection = Evented.inherit({
+
+        "klassName": "Collection",
+
+        _clear: function() {
+            throw new Error('Unimplemented API');
+        },
+
+        "clear": function() {
+            //desc: "Removes all items from the Collection",
+            //result: {
+            //    type: Collection,
+            //    desc: "this instance for chain call"
+            //},
+            //params: [],
+            this._clear();
+            this.trigger("changed:clear");
+            return this;
+        },
+
+        /*
+         *@method count
+         *@return {Number}
+         */
+        count : /*Number*/function () {
+            var c = 0,
+                it = this.iterator();
+            while(!it.hasNext()){
+                c++;
+            }
+            return c;
+        },
+
+        "forEach": function( /*Function*/ func, /*Object?*/ thisArg) {
+            //desc: "Executes a provided callback function once per collection item.",
+            //result: {
+            //    type: Number,
+            //    desc: "the number of items"
+            //},
+            //params: [{
+            //    name: "func",
+            //    type: Function,
+            //    desc: "Function to execute for each element."
+            //}, {
+            //    name: "thisArg",
+            //    type: Object,
+            //    desc: "Value to use as this when executing callback."
+            //}],
+            var it = this.iterator();
+            while(!it.hasNext()){
+                var item = it.next();
+                func.call(thisArg || item,item);
+            }
+            return this;
+
+        },
+
+        "iterator" : function() {
+            throw new Error('Unimplemented API');
+        },
+
+        "toArray": function() {
+            //desc: "Returns an array containing all of the items in this collection in proper sequence (from first to last item).",
+            //result: {
+            //    type: Array,
+            //    desc: "an array containing all of the elements in this collection in proper sequence"
+            //},
+            //params: [],
+            var items = [],
+                it = this.iterator();
+            while(!it.hasNext()){
+                items.push(it.next());
+            }
+            return items;
+        }
+    });
+
+    return Collection;
+
+});
+
+
+define('skylark-utils-collection/Map',[
+    "./collections",
+    "./Collection"
+], function( collections, Collection) {
+
+    var Map = collections.Map = Collection.inherit({
+
+        "klassName": "Map",
+
+        _getInnerItems : function() {
+            return this._items;
+        },
+
+        _clear : function() {
+            this._items = [];
+        },
+
+        _findKeyByRegExp: function(regExp, callback) {
+            var items = this._getInnerItems();
+            return items.filter(function(key) {
+                if (key.match(regExp)) {
+                    if (callback) callback(key);
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+        },
+
+        "get":  function(strKey, silent) {
+            //desc: "Returns the item at the specified key in the Hashtable.",
+            //result: {
+            //    type: Object,
+            //    desc: "The item at the specified key."
+            //},
+            //params: [{
+            //    name: "strKey",
+            //    type: String,
+            //    desc: "The key of the item to return."
+            //}, {
+            //    name: "silent",
+            //    type: Boolean,
+            //    desc: "the silent flag.",
+            //    optional: true
+            //}],
+            if (typeof(strKey) != "string") {
+                throw "hash key is not string!";
+            }
+            if (!silent && !this.contains(strKey)) {
+                throw "hash key is not  existed";
+            }
+
+            var items = this._getInnerItems();
+            return items[strKey];
+        },
+
+        "iterator" : function() {
+            var i =0;
+            return {
+                hasNext : function() {
+                    return i < this._items.length;
+                },
+                next : function() {
+                    var key =  this._items[i++];
+                    return [this._items[key],key];
+                }
+            }
+        },
+
+        "set": function( /*String*/ strKey, /*Object*/ value) {
+            //desc: "Replaces the item at the specified key in the Hashtable with the specified item.",
+            //result: {
+            //    type: Map,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "strKey",
+            //    type: String,
+            //    desc: "key of the item to replace."
+            //}, {
+            //    name: "value",
+            //    type: Object,
+            //    desc: "item to be stored at the specified position."
+            //}],
+            if (typeof(strKey) != "string") {
+                throw "hash key is not string!";
+            }
+
+            if (!this.contains(strKey)) {
+                throw "hash key is not existed";
+            }
+
+            var items = this._getInnerItems();
+            if (items.indexOf(strKey) == -1) {
+                items.push(strKey);
+            }
+            var oldValue = items[key];
+            if (oldValue !== value) {
+                items[key] = value;
+                this.trigger("changed:" + strKey,{
+                    data : {
+                        name : strKey,
+                        value : value,
+                        oldValue : oldValue
+                    }
+                });
+            }
+            return this;
+        },
+
+
+        "remove": function( /*String*/ strKey) {
+            //desc: "Removes the first occurrence of a specific item from the Hashtable",
+            //result: {
+            //    type: Map,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "strKey",
+            //    type: String,
+            //    desc: "The key for The item to remove from the Hashtable."
+            //}],
+            if (typeof(strKey) != "string") {
+                throw "hash key is not string!";
+            }
+            var items = this._getInnerItems();
+            var idx = items.indexOf(strKey);
+            if (idx >= 0) {
+                delete items[strKey];
+                delete items[idx];
+            }
+        },
+
+        findByRegExp: function( /*String*/ regExp, callback) {
+            //desc: "find regExp items",
+            //result: {
+            //    type: Map,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "regExp",
+            //    type: String,
+            //    desc: "The key for The item to remove from the Hashtable."
+            //}, {
+            //    name: "callback",
+            //    type: Function,
+            //    desc: "the callback method"
+            //}],
+            var items = [],
+                self = this;
+            this._findKeyByRegExp(regExp, function(key) {
+                var item = self.get(key);
+                if (callback) callback(item);
+                items.push(item);
+            });
+            return items;
+        },
+
+        removeByRegExp: function( /*String*/ regExp) {
+            //desc: "Removes regExp items",
+            //result: {
+            //    type: Map,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "regExp",
+            //    type: String,
+            //    desc: "The key for The item to remove from the Hashtable."
+            //}],
+            var self = this;
+            this._findKeyByRegExp(regExp, function(key) {
+                self.remove(key);
+            });
+        },
+
+        "toPlain": function() {
+            //desc: "Returns a plain object containing all of the items in this Hashable.",
+            //result: {
+            //    type: Object,
+            //    desc: "a plain object containing all of the items in this Hashtable."
+            //},
+            //params: [],
+            var items = this._getInnerItems(); 
+
+            for (var i = 0; i < items.length; i++) {
+                var key = items[i];
+                plain[key] = items[key];
+            }
+            return plain;
+        },
+
+        "toString": function( /*String?*/ delim) {
+            //desc: "implementation of toString, follows [].toString().",
+            //result: {
+            //    type: String,
+            //   desc: "The string."
+            //},
+            //params: [{
+            //    name: "delim",
+            //    type: String,
+            //    desc: "The delim ",
+            //    optional: true
+            //}],
+            var items = this._getInnerItems();
+
+            return items.join((delim || ","));
+        },
+
+        "init": function( /*Object*/ data) {
+            var items = this._items = [];
+            for (var name in data) {
+                items.push(name);
+                items[name]= data[name];
+            }
+        }
+       
+    });
+    return Map;
 });
 
 define('skylark-ui-swt/Widget',[
-  "skylark-utils/skylark",
-  "skylark-utils/langx",
-  "skylark-utils/browser",
-  "skylark-utils/eventer",
-  "skylark-utils/noder",
-  "skylark-utils/geom",
-  "skylark-utils/query",
-  "skylark-utils/widgets",
+  "skylark-langx/skylark",
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/elmx",
+  "skylark-utils-dom/query",
+  "skylark-utils-dom/plugins",
+  "skylark-utils-collection/Map",
   "./ui"
-],function(skylark,langx,browser,eventer,noder,geom,$,widgets,ui){
+],function(skylark,langx,browser,eventer,noder,geom,elmx,$,plugins,Map,ui){
 
 /*---------------------------------------------------------------------------------*/
 
-	var Widget = widgets.Widget.inherit({
-        klassName: "Widget"
-    });
+	var Widget = plugins.Plugin.inherit({
+    klassName: "Widget",
+
+    _construct : function(elm,options) {
+        if (langx.isHtmlNode(elm)) {
+          options = this._setting(elm,options);
+        } else {
+          options = elm;
+          elm = null;
+        }
+        this.overrided(elm,options);
+
+        if (!elm) {
+          this._elm = this._create();
+        }
+        this._velm = elmx(this._elm);
+        this.state = this.options.state || new Map();
+        this._init();
+      },
+
+    _setting : function(elm,options) {
+      options = options || {};
+      // TODO : parse options from element
+      return options;
+    },
+
+
+    _create : function() {
+     
+    },
+
+    _init : function() {
+
+    },
+
+    _render : function() {
+      state.on("changed",function() {
+        self._sync();
+      });
+
+    },
+
+    _refresh : function(updates) {
+      var _ = this._,
+          model = _.model,
+          dom = _.dom,
+          props = {
+
+          };
+      updates = updates || {};
+      for (var attrName in updates){
+          var v = updates[attrName].value;
+          if (v && v.toCss) {
+              v.toCss(props);
+              updates[attrName].processed = true;
+          }
+
+      };
+
+      this.css(props);
+
+      if (updates["disabled"]) {
+          var v = updates["disabled"].value;
+          dom.aria('disabled', v);
+          self.classes.toggle('disabled', v);
+      }
+    },                
+
+
+    _build : function(el,options) {
+
+    },
+
+
+    mapping : {
+      "events" : {
+  //       'mousedown .title':  'edit',
+  //       'click .button':     'save',
+  //       'click .open':       function(e) { ... }            
+      },
+
+      "attributs" : {
+
+      },
+
+      "properties" : {
+
+      },
+
+      "styles" : {
+
+      }
+    },
+
+    /**
+     * Returns a html element representing the widget.
+     *
+     * @method html
+     * @return {HtmlElement} HTML element representing the widget.
+     */
+    html: function() {
+      return this._elm;
+    },
+
+
+    /**
+     * Returns a parent widget  enclosing this widgets, or null if not exist.
+     *
+     * @method getEnclosing
+     * @return {Widget} The enclosing parent widget, or null if not exist.
+     */
+    getEnclosing : function(selector) {
+      return null;
+    },
+
+    /**
+     * Returns a widget collection with all enclosed child widgets.
+     *
+     * @method getEnclosed
+     * @return {List} Collection with all enclosed child widgets..
+     */
+    getEnclosed : function() {
+      var self = this;
+          children = new ArrayList();
+      return children;
+    },
+
+    /**
+     * Sets the visible state to true.
+     *
+     * @method show
+     * @return {Widget} Current widget instance.
+     */
+
+    show : function() {
+
+    },
+
+    /**
+     * Sets the visible state to false.
+     *
+     * @method hide
+     * @return {Widget} Current widget instance.
+     */
+    hide : function() {
+
+    },
+
+    /**
+     * Focuses the current control.
+     *
+     * @method focus
+     * @return {tinymce.ui.Control} Current control instance.
+     */
+    focus :function() {
+      try {
+        this._velm.focus();
+      } catch (ex) {
+        // Ignore IE error
+      }
+
+      return this;
+    },
+
+    /**
+     * Blurs the current control.
+     *
+     * @method blur
+     * @return {tinymce.ui.Control} Current control instance.
+     */
+    blur : function() {
+      this._velm.blur();
+
+      return this;
+    },
+
+    enable: function () {
+      this.state.set('disabled',false);
+      return this;
+    },
+
+    disable: function () {
+      this.state.set('disabled',true);
+      return this;
+    },
+
+    /**
+     * Sets the specified aria property.
+     *
+     * @method aria
+     * @param {String} name Name of the aria property to set.
+     * @param {String} value Value of the aria property.
+     * @return {tinymce.ui.Control} Current control instance.
+     */
+    aria : function(name, value) {
+      const self = this, elm = self.getEl(self.ariaTarget);
+
+      if (typeof value === 'undefined') {
+        return self._aria[name];
+      }
+
+      self._aria[name] = value;
+
+      if (self.state.get('rendered')) {
+        elm.setAttribute(name === 'role' ? name : 'aria-' + name, value);
+      }
+
+      return self;
+    },
+
+    attr: function (name,value) {
+        var velm = this._velm,
+            ret = velm.attr(name,value);
+        return ret == velm ? this : ret;
+    },
+
+    css: function (name, value) {
+        var velm = this._velm,
+            ret = velm.css(name, value);
+        return ret == velm ? this : ret;
+    },
+
+    data: function (name, value) {
+        var velm = this._velm,
+            ret = velm.data(name,value);
+        return ret == velm ? this : ret;
+    },
+
+    prop: function (name,value) {
+        var velm = this._velm,
+            ret = velm.prop(name,value);
+        return ret == velm ? this : ret;
+    },
+
+    remove : function() {
+      this._velm.remove();
+    }
+  });
+
+  Widget.inherit = function(meta) {
+    var ctor = plugins.Plugin.inherit.apply(this,arguments);
+
+    if (meta.pluginName) {
+      plugins.register(ctor,meta.pluginName);
+    }
+    return ctor;
+  };
 
 	return ui.Widget = Widget;
 });
 
+define('skylark-bootstrap3/bs3',[
+  "skylark-utils-dom/skylark",
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query"
+],function(skylark,langx,browser,eventer,noder,geom,$){
+	var ui = skylark.ui = skylark.ui || {}, 
+		bs3 = ui.bs3 = {};
+
+/*---------------------------------------------------------------------------------*/
+	/*
+	 * Fuel UX utilities.js
+	 * https://github.com/ExactTarget/fuelux
+	 *
+	 * Copyright (c) 2014 ExactTarget
+	 * Licensed under the BSD New license.
+	 */
+	var CONST = {
+		BACKSPACE_KEYCODE: 8,
+		COMMA_KEYCODE: 188, // `,` & `<`
+		DELETE_KEYCODE: 46,
+		DOWN_ARROW_KEYCODE: 40,
+		ENTER_KEYCODE: 13,
+		TAB_KEYCODE: 9,
+		UP_ARROW_KEYCODE: 38
+	};
+
+	var isShiftHeld = function isShiftHeld (e) { return e.shiftKey === true; };
+
+	var isKey = function isKey (keyCode) {
+		return function compareKeycodes (e) {
+			return e.keyCode === keyCode;
+		};
+	};
+
+	var isBackspaceKey = isKey(CONST.BACKSPACE_KEYCODE);
+	var isDeleteKey = isKey(CONST.DELETE_KEYCODE);
+	var isTabKey = isKey(CONST.TAB_KEYCODE);
+	var isUpArrow = isKey(CONST.UP_ARROW_KEYCODE);
+	var isDownArrow = isKey(CONST.DOWN_ARROW_KEYCODE);
+
+	var ENCODED_REGEX = /&[^\s]*;/;
+	/*
+	 * to prevent double encoding decodes content in loop until content is encoding free
+	 */
+	var cleanInput = function cleanInput (questionableMarkup) {
+		// check for encoding and decode
+		while (ENCODED_REGEX.test(questionableMarkup)) {
+			questionableMarkup = $('<i>').html(questionableMarkup).text();
+		}
+
+		// string completely decoded now encode it
+		return $('<i>').text(questionableMarkup).html();
+	};
+
+
+
+
+	langx.mixin(bs3, {
+		CONST: CONST,
+		cleanInput: cleanInput,
+		isBackspaceKey: isBackspaceKey,
+		isDeleteKey: isDeleteKey,
+		isShiftHeld: isShiftHeld,
+		isTabKey: isTabKey,
+		isUpArrow: isUpArrow,
+		isDownArrow: isDownArrow
+	});
+
+/*---------------------------------------------------------------------------------*/
+
+	var WidgetBase = langx.Evented.inherit({
+        klassName: "WidgetBase",
+    });
+
+
+	langx.mixin(bs3, {
+		WidgetBase : WidgetBase
+	});
+
+	return bs3;
+});
+
+define('skylark-bootstrap3/transition',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./bs3"
+],function(langx,browser,eventer,noder,geom,$,bs3){
+
+/* ========================================================================
+ * Bootstrap: transition.js v3.3.7
+ * http://getbootstrap.com/javascript/#transitions
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+  'use strict';
+
+  // http://blog.alexmaccaw.com/css-transitions
+  $.fn.emulateTransitionEnd = function (duration) {
+    var called = false
+    var $el = this
+    $(this).one('transitionEnd', function () { called = true })
+    var callback = function () { if (!called) $($el).trigger(browser.support.transition.end) }
+    setTimeout(callback, duration)
+    return this
+  } 
+
+  eventer.special.bsTransitionEnd = eventer.special.transitionEnd;
+});
+
+define('skylark-bootstrap3/collapse',[
+    "skylark-langx/langx",
+    "skylark-utils-dom/browser",
+    "skylark-utils-dom/eventer",
+    "skylark-utils-dom/noder",
+    "skylark-utils-dom/geom",
+    "skylark-utils-dom/query",
+    "skylark-utils-dom/plugins",
+    "./bs3",
+    "./transition"
+], function(langx, browser, eventer, noder, geom, $, plugins, bs3) {
+
+
+/* ========================================================================
+ * Bootstrap: collapse.js v3.3.7
+ * http://getbootstrap.com/javascript/#collapse
+ * ========================================================================
+ * Copyright 2011-2016 Twitter, Inc.
+ * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * ======================================================================== */
+
+/* jshint latedef: false */
+
+  'use strict';
+
+  // COLLAPSE PUBLIC CLASS DEFINITION
+  // ================================
+
+  var Collapse = bs3.Collapse = plugins.Plugin.inherit({
+    klassName: "Collapse",
+
+    pluginName : "bs3.collapse",
+
+    options : {
+      toggle: true
+    },
+
+    _construct : function(element,options) {
+      //this.options       = langx.mixin({}, Collapse.DEFAULTS, options)
+      this.overrided(element,options);
+
+      this.$element      = $(element)
+      this.$trigger      = $('[data-toggle="collapse"][href="#' + element.id + '"],' +
+                             '[data-toggle="collapse"][data-target="#' + element.id + '"]')
+      this.transitioning = null
+
+      if (this.options.parent) {
+        this.$parent = this.getParent()
+      } else {
+        this.addAriaAndCollapsedClass(this.$element, this.$trigger)
+      }
+
+      if (this.options.toggle) {
+        this.toggle();
+      }
+    },
+
+    dimension : function () {
+      var hasWidth = this.$element.hasClass('width')
+      return hasWidth ? 'width' : 'height'
+    },
+
+    show : function () {
+      if (this.transitioning || this.$element.hasClass('in')) return
+
+      var activesData
+      var actives = this.$parent && this.$parent.children('.panel').children('.in, .collapsing')
+
+      if (actives && actives.length) {
+        activesData = actives.data('bs.collapse')
+        if (activesData && activesData.transitioning) return
+      }
+
+      var startEvent = eventer.create('show.bs.collapse')
+      this.$element.trigger(startEvent)
+      if (startEvent.isDefaultPrevented()) return
+
+      if (actives && actives.length) {
+        //Plugin.call(actives, 'hide')
+        actives.collapse().hide();
+        activesData || actives.data('bs.collapse', null)
+      }
+
+      var dimension = this.dimension()
+
+      this.$element
+        .removeClass('collapse')
+        .addClass('collapsing')[dimension](0)
+        .attr('aria-expanded', true)
+
+      this.$trigger
+        .removeClass('collapsed')
+        .attr('aria-expanded', true)
+
+      this.transitioning = 1
+
+      var complete = function () {
+        this.$element
+          .removeClass('collapsing')
+          .addClass('collapse in')[dimension]('')
+        this.transitioning = 0
+        this.$element
+          .trigger('shown.bs.collapse')
+      }
+
+      if (!browser.support.transition) return complete.call(this)
+
+      var scrollSize = langx.camelCase(['scroll', dimension].join('-'))
+
+      this.$element
+        .one('transitionEnd', langx.proxy(complete, this))
+        .emulateTransitionEnd(Collapse.TRANSITION_DURATION)[dimension](this.$element[0][scrollSize])
+    },
+
+    hide : function () {
+      if (this.transitioning || !this.$element.hasClass('in')) return
+
+      var startEvent = eventer.create('hide.bs.collapse')
+      this.$element.trigger(startEvent)
+      if (startEvent.isDefaultPrevented()) return
+
+      var dimension = this.dimension()
+
+      this.$element[dimension](this.$element[dimension]())[0].offsetHeight
+
+      this.$element
+        .addClass('collapsing')
+        .removeClass('collapse in')
+        .attr('aria-expanded', false)
+
+      this.$trigger
+        .addClass('collapsed')
+        .attr('aria-expanded', false)
+
+      this.transitioning = 1
+
+      var complete = function () {
+        this.transitioning = 0
+        this.$element
+          .removeClass('collapsing')
+          .addClass('collapse')
+          .trigger('hidden.bs.collapse')
+      }
+
+      if (!browser.support.transition) return complete.call(this)
+
+      this.$element
+        [dimension](0)
+        .one('transitionEnd', langx.proxy(complete, this))
+        .emulateTransitionEnd(Collapse.TRANSITION_DURATION)
+    },
+
+    toggle : function () {
+      this[this.$element.hasClass('in') ? 'hide' : 'show']()
+    },
+
+    getParent : function () {
+      return $(this.options.parent)
+        .find('[data-toggle="collapse"][data-parent="' + this.options.parent + '"]')
+        .each(langx.proxy(function (i, element) {
+          var $element = $(element)
+          this.addAriaAndCollapsedClass(getTargetFromTrigger($element), $element)
+        }, this))
+        .end()
+    },
+
+    addAriaAndCollapsedClass : function ($element, $trigger) {
+      var isOpen = $element.hasClass('in')
+
+      $element.attr('aria-expanded', isOpen)
+      $trigger
+        .toggleClass('collapsed', !isOpen)
+        .attr('aria-expanded', isOpen)
+    }
+
+  });
+
+  Collapse.VERSION  = '3.3.7'
+
+  Collapse.TRANSITION_DURATION = 350
+
+  Collapse.DEFAULTS = {
+    toggle: true
+  }
+
+
+  function getTargetFromTrigger($trigger) {
+    var href
+    var target = $trigger.attr('data-target')
+      || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+
+    return $(target)
+  }
+
+
+  // COLLAPSE PLUGIN DEFINITION
+  // ==========================
+
+  /*
+  function Plugin(option) {
+    return this.each(function () {
+      var $this   = $(this)
+      var data    = $this.data('bs.collapse')
+      var options = langx.mixin({}, Collapse.DEFAULTS, $this.data(), typeof option == 'object' && option)
+
+      if (!data && options.toggle && /show|hide/.test(option)) options.toggle = false
+      if (!data) $this.data('bs.collapse', (data = new Collapse(this, options)))
+      if (typeof option == 'string') data[option]()
+    })
+  }
+
+  var old = $.fn.collapse
+
+  $.fn.collapse             = Plugin;
+  $.fn.collapse.Constructor = Collapse;
+
+  // COLLAPSE NO CONFLICT
+  // ====================
+
+  $.fn.collapse.noConflict = function () {
+    $.fn.collapse = old
+    return this
+  }
+  */
+
+  plugins.register(Collapse,"collapse");
+
+  return Collapse;
+
+});
+
+define('skylark-ui-swt/Panel',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "skylark-bootstrap3/collapse",
+  "./ui",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,collapse,ui,Widget){
+
+  function getTargetFromTrigger($trigger) {
+    var href
+    var target = $trigger.attr('data-target')
+      || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
+
+    return $(target)
+  }
+
+  var Panel = Widget.inherit({
+    klassName : "Panel",
+
+    pluginName : "lark.panel",
+
+    _init : function() {
+      this._velm.on('click.bs.collapse.data-api', '[data-toggle="collapse"]', function (e) {
+        var $this   = $(this)
+
+        if (!$this.attr('data-target')) e.preventDefault()
+
+        var $target = getTargetFromTrigger($this)
+        var collpasePlugin    = $target.collapse('instance');
+        if (collpasePlugin) {
+          collpasePlugin.toggle();
+        } else {
+          $target.collapse($this.data());
+        }
+
+      });
+
+    },
+
+    expand : function() {
+      // expand this panel
+      $(this._elm).collapse("show");
+    },
+
+    collapse : function() {
+      // collapse this panel
+      this._velm.collapse("hide");
+    },
+
+    toogle : function() {
+      // toogle this panel
+     this._velm.collapse("toogle");
+    },
+
+    full : function() {
+
+    },
+
+    unfull : function() {
+
+    },
+
+    toogleFull : function() {
+
+    },
+    
+    close: function () {
+      var panel_dom = this.dom(id);
+      this.minimize(id, true).promise().then(function () {
+        panel_dom.fadeOut();
+      });
+    }
+
+
+  });
+
+
+  return Panel;
+
+});
+define('skylark-ui-swt/Accordion',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "skylark-bootstrap3/collapse",
+  "./ui",
+  "./Widget",
+  "./Panel"
+],function(langx,browser,eventer,noder,geom,$,collapse,ui,Widget, Panel){
+
+  var Accordion = Widget.inherit({
+    klassName : "Accordion",
+
+    pluginName : "lark.accordion",
+
+    options : {
+      panel: {
+        selector : "> .panel",
+        template : null,
+      }
+    },
+    _parse : function() {
+      //
+    },
+
+    _init : function() {
+      var panels = [];
+      this._velm.$(this.options.panel.selector).forEach(function(panelEl){
+        var panel = new Accordion.Panel(panelEl,{
+
+        });
+        panels.push(panel);
+      });
+      this._panels = panels;
+    },
+
+    _sync : function() {
+      // handle internal events
+    },
+
+    _refresh : function(updates) {
+    },
+
+    panels : {
+      get : function() {
+
+      }
+    },
+
+
+    addPanel : function() {
+      var $newPanel = $template.clone();
+      $newPanel.find(".collapse").removeClass("in");
+      $newPanel.find(".accordion-toggle").attr("href",  "#" + (++hash))
+               .text("Dynamic panel #" + hash);
+      $newPanel.find(".panel-collapse").attr("id", hash).addClass("collapse").removeClass("in");
+      $("#accordion").append($newPanel.fadeIn());
+
+    },
+
+    removePanel : function() {
+
+    },
+
+    expandPanel : function() {
+      // expand a panel
+
+    },
+
+    expandAllPanel : function() {
+      // expand a panel
+
+    },
+
+    collapsePanel : function() {
+
+    },
+
+    collapseAllPanel : function() {
+
+    }
+
+
+  });
+
+
+
+  Accordion.Panel = Panel.inherit({
+    klassName : "AccordionPanel",
+
+    _init : function() {
+      //this._velm.collapse();
+      this.overrided();
+    },
+
+    expand : function() {
+      // expand this panel
+      $(this._elm).collapse("show");
+    },
+
+    collapse : function() {
+      // collapse this panel
+      this._velm.collapse("hide");
+    },
+
+    toogle : function() {
+      // toogle this panel
+     this._velm.collapse("toogle");
+    },
+
+    remove : function() {
+      this.overided();
+    }
+  });
+
+  return Accordion;
+
+});
+
+define('skylark-ui-swt/Button',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+
+	var Button = Widget.inherit({
+		klassName : "Button",
+
+    pluginName : "lark.button",
+
+		options : {
+			btnSize : "lg",
+      btnType : "default",
+      leftIcon : null,
+      rightIcon : null,
+      topIcon : null,
+      bottomIcon : null
+		},
+
+    init: function () {
+      var $el = jQuery(this.element.$);
+
+      if ($el.hasClass("btn-link")) {
+        this.data.btntype = "btn-link";
+      } else if ($el.hasClass("btn-default")) {
+        this.data.btntype = "btn-default";
+      } else if ($el.hasClass("btn-primary")) {
+        this.data.btntype = "btn-primary";
+      } else if ($el.hasClass("btn-info")) {
+        this.data.btntype = "btn-info";
+      } else if ($el.hasClass("btn-success")) {
+        this.data.btntype = "btn-success";
+      } else if ($el.hasClass("btn-warning")) {
+        this.data.btntype = "btn-warning";
+      } else if ($el.hasClass("btn-danger")) {
+        this.data.btntype = "btn-danger";
+      }
+
+      if ($el.hasClass("btn-xs")) {
+        this.data.btnsize = "btn-xs";
+      } else if ($el.hasClass("btn-sm")) {
+        this.data.btnsize = "btn-sm";
+      } else if ($el.hasClass("btn-lg")) {
+        this.data.btnsize = "btn-lg";
+      }
+
+      this.data.href = $el.attr('href');
+
+      this.data.target = $el.attr('target');
+
+      this.data.text = jQuery('.text', $el).text();
+
+      var bs_icon_left = jQuery('.bs-icon-left', $el);
+      var bs_icon_right = jQuery('.bs-icon-right', $el);
+      var fa_icon_left = jQuery('.fa-icon-left', $el);
+      var fa_icon_right = jQuery('.fa-icon-right', $el);
+
+      if (bs_icon_left.length > 0) {
+        bs_icon_left.removeClass('bs-icon-left').removeClass('glyphicon');
+        this.data.bsiconleft = bs_icon_left.attr('class');
+        bs_icon_left.addClass('bs-icon-left').addClass('glyphicon');
+      }
+
+      if (bs_icon_right.length > 0) {
+        bs_icon_right.removeClass('bs-icon-right').removeClass('glyphicon');
+        this.data.bsiconright = bs_icon_right.attr('class');
+        bs_icon_right.addClass('bs-icon-right').addClass('glyphicon');
+      }
+
+      if (fa_icon_left.length > 0) {
+        fa_icon_left.removeClass('fa-icon-left').removeClass('fa');
+        this.data.faiconleft = fa_icon_left.attr('class');
+        fa_icon_left.addClass('fa-icon-left').addClass('fa');
+      }
+
+      if (fa_icon_right.length > 0) {
+        fa_icon_right.removeClass('fa-icon-right').removeClass('fa');
+        this.data.faiconright = fa_icon_right.attr('class');
+        fa_icon_right.addClass('fa-icon-right').addClass('fa');
+      }
+    },
+
+    _refresh: function (updates) {
+      var $el = this.$el;
+
+      if (updates.btntype) {
+          $el.removeClass('btn-link btn-default btn-primary btn-info btn-success btn-warning btn-danger').addClass("btn-" + updates.btntype.value);
+      }
+
+      $el.removeClass('btn-xs btn-sm btn-lg');
+			if (updates.btnsize) {
+                $el.addClass("btn-" + updates.btnsize.value);
+      }
+
+      if (updates.text) {
+          $('.text', $el).text(updates.text.value);
+      }
+
+
+      if (updates.iconleft) {
+          $('.fa-icon-left', $el).remove();
+          if (updates.iconleft) {
+              $el.prepend('<i style="word-spacing: -1em;" class="fa fa-icon-left fa-' + updates.iconleft.value + '">&nbsp;</i>\n');
+          }
+      }
+
+      if (updates.iconright) {
+          $('.fa-icon-right', $el).remove();
+          if (updates.iconright.value) {
+              $el.append('<i style="word-spacing: -1em;" class="fa fa-icon-right fa-' + updates.iconright.value + '">&nbsp;</i>\n');
+          }
+      }
+    }
+  });
+
+  return Button;
+
+});
+
+
+
+
+define('skylark-bootstrap3/carousel',[
+    "skylark-langx/langx",
+    "skylark-utils-dom/browser",
+    "skylark-utils-dom/eventer",
+    "skylark-utils-dom/noder",
+    "skylark-utils-dom/geom",
+    "skylark-utils-dom/query",
+    "skylark-utils-dom/plugins",
+    "./bs3"
+], function(langx, browser, eventer, noder, geom, $, plugins, bs3) {
+
+    /* ========================================================================
+     * Bootstrap: carousel.js v3.3.7
+     * http://getbootstrap.com/javascript/#carousel
+     * ========================================================================
+     * Copyright 2011-2016 Twitter, Inc.
+     * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+     * ======================================================================== */
+
+    'use strict';
+
+    // CAROUSEL CLASS DEFINITION
+    // =========================
+
+    var Carousel = bs3.Carousel = plugins.Plugin.inherit({
+        klassName: "Carousel",
+
+        pluginName: "bs3.carousel",
+
+        options : {
+            interval: 5000,
+            pause: 'hover',
+            wrap: true,
+            keyboard: true
+
+        },
+
+        _construct: function(element, options) {
+            //this.options = options
+            this.overrided(element,options);
+
+            this.$element = $(element)
+            this.$indicators = this.$element.find('.carousel-indicators')
+            this.paused = null
+            this.sliding = null
+            this.interval = null
+            this.$active = null
+            this.$items = null
+
+            this.options.keyboard && this.$element.on('keydown.bs.carousel', langx.proxy(this.keydown, this))
+
+            this.options.pause == 'hover' && !('ontouchstart' in document.documentElement) && this.$element
+                .on('mouseenter.bs.carousel', langx.proxy(this.pause, this))
+                .on('mouseleave.bs.carousel', langx.proxy(this.cycle, this));
+
+            this.$element.on("click.bs.carousel.data-api", "[data-slide],[data-slide-to]", function(e) {
+                var href
+                var $this = $(this)
+                var $target = $($this.attr('data-target') || (href = $this.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '')) // strip for ie7
+                if (!$target.hasClass('carousel')) return
+                var options = langx.mixin({}, $target.data(), $this.data());
+                var slideIndex = $this.attr('data-slide-to')
+                if (slideIndex) options.interval = false
+
+                Plugin.call($target, options);
+
+                if (slideIndex) {
+                    $target.data('bs.carousel').to(slideIndex);
+                }
+
+                e.preventDefault();
+
+            });
+        }
+    });
+
+    // var Carousel = function (element, options) {
+    // }
+
+    Carousel.VERSION = '3.3.7'
+
+    Carousel.TRANSITION_DURATION = 600
+
+    Carousel.DEFAULTS = {
+        interval: 5000,
+        pause: 'hover',
+        wrap: true,
+        keyboard: true
+    }
+
+    Carousel.prototype.keydown = function(e) {
+        if (/input|textarea/i.test(e.target.tagName)) return
+        switch (e.which) {
+            case 37:
+                this.prev();
+                break
+            case 39:
+                this.next();
+                break
+            default:
+                return
+        }
+
+        e.preventDefault()
+    }
+
+    Carousel.prototype.cycle = function(e) {
+        e || (this.paused = false)
+
+        this.interval && clearInterval(this.interval)
+
+        this.options.interval &&
+            !this.paused &&
+            (this.interval = setInterval(langx.proxy(this.next, this), this.options.interval))
+
+        return this
+    }
+
+    Carousel.prototype.getItemIndex = function(item) {
+        this.$items = item.parent().children('.item')
+        return this.$items.index(item || this.$active)
+    }
+
+    Carousel.prototype.getItemForDirection = function(direction, active) {
+        var activeIndex = this.getItemIndex(active)
+        var willWrap = (direction == 'prev' && activeIndex === 0) ||
+            (direction == 'next' && activeIndex == (this.$items.length - 1))
+        if (willWrap && !this.options.wrap) return active
+        var delta = direction == 'prev' ? -1 : 1
+        var itemIndex = (activeIndex + delta) % this.$items.length
+        return this.$items.eq(itemIndex)
+    }
+
+    Carousel.prototype.to = function(pos) {
+        var that = this
+        var activeIndex = this.getItemIndex(this.$active = this.$element.find('.item.active'))
+
+        if (pos > (this.$items.length - 1) || pos < 0) return
+
+        if (this.sliding) return this.$element.one('slid.bs.carousel', function() { that.to(pos) }) // yes, "slid"
+        if (activeIndex == pos) return this.pause().cycle()
+
+        return this.slide(pos > activeIndex ? 'next' : 'prev', this.$items.eq(pos))
+    }
+
+    Carousel.prototype.pause = function(e) {
+        e || (this.paused = true)
+
+        if (this.$element.find('.next, .prev').length && browser.support.transition) {
+            this.$element.trigger(browser.support.transition.end)
+            this.cycle(true)
+        }
+
+        this.interval = clearInterval(this.interval)
+
+        return this
+    }
+
+    Carousel.prototype.next = function() {
+        if (this.sliding) return
+        return this.slide('next')
+    }
+
+    Carousel.prototype.prev = function() {
+        if (this.sliding) return
+        return this.slide('prev')
+    }
+
+    Carousel.prototype.slide = function(type, next) {
+        var $active = this.$element.find('.item.active')
+        var $next = next || this.getItemForDirection(type, $active)
+        var isCycling = this.interval
+        var direction = type == 'next' ? 'left' : 'right'
+        var that = this
+
+        if ($next.hasClass('active')) return (this.sliding = false)
+
+        var relatedTarget = $next[0]
+        var slideEvent = eventer.create('slide.bs.carousel', {
+            relatedTarget: relatedTarget,
+            direction: direction
+        })
+        this.$element.trigger(slideEvent)
+        if (slideEvent.isDefaultPrevented()) return
+
+        this.sliding = true
+
+        isCycling && this.pause()
+
+        if (this.$indicators.length) {
+            this.$indicators.find('.active').removeClass('active')
+            var $nextIndicator = $(this.$indicators.children()[this.getItemIndex($next)])
+            $nextIndicator && $nextIndicator.addClass('active')
+        }
+
+        var slidEvent = eventer.create('slid.bs.carousel', { relatedTarget: relatedTarget, direction: direction }) // yes, "slid"
+        if (browser.support.transition && this.$element.hasClass('slide')) {
+            $next.addClass(type)
+            $next[0].offsetWidth // force reflow
+            $active.addClass(direction)
+            $next.addClass(direction)
+            $active
+                .one('transitionEnd', function() {
+                    $next.removeClass([type, direction].join(' ')).addClass('active')
+                    $active.removeClass(['active', direction].join(' '))
+                    that.sliding = false
+                    setTimeout(function() {
+                        that.$element.trigger(slidEvent)
+                    }, 0)
+                })
+                .emulateTransitionEnd()
+        } else {
+            $active.removeClass('active')
+            $next.addClass('active')
+            this.sliding = false
+            this.$element.trigger(slidEvent)
+        }
+
+        isCycling && this.cycle()
+
+        return this
+    }
+
+
+    // CAROUSEL PLUGIN DEFINITION
+    // ==========================
+    /*
+    function Plugin(option) {
+        return this.each(function() {
+            var $this = $(this)
+            var wgt = $this.data('bs.carousel')
+            var options = langx.mixin({}, Carousel.DEFAULTS, $this.data(), typeof option == 'object' && option)
+            var action = typeof option == 'string' ? option : options.slide
+
+            if (!wgt) {
+                $this.data('bs.carousel', (wgt = new Carousel(this, options)));
+            }
+            if (typeof option == 'number') {
+                wgt.to(option);
+            } else if (action) {
+                wgt[action]()
+            } else if (options.interval) {
+                wgt.pause().cycle();
+            }
+        })
+    }
+    */
+    plugins.register(Carousel,"carousel");
+
+    return Carousel;
+
+});
+define('skylark-ui-swt/Carousel',[
+    "skylark-langx/langx",
+    "skylark-utils-dom/browser",
+    "skylark-utils-dom/eventer",
+    "skylark-utils-dom/noder",
+    "skylark-utils-dom/geom",
+    "skylark-utils-dom/query",
+    "./ui",
+    "./Widget",
+    "skylark-bootstrap3/carousel"
+], function(langx, browser, eventer, noder, geom,  $, ui, Widget) {
+
+    var Carousel = Widget.inherit({
+        klassName : "Carousel",
+        pluginName : "lark.carousel",
+
+    });
+
+    return Carousel;
+
+});
+define('skylark-ui-swt/_Toggler',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+
+  var _Toggler = ui._Toggler = Widget.inherit({
+    klassName: "_Toggler",
+
+    toggle: function () {
+      var checked = this.isChecked();
+
+      if (checked) {
+        this.uncheck();
+      } else {
+        this.check();
+      }
+    },
+
+    check: function  () {
+      this.state.set('checked',true);
+      return this;
+    },
+
+    uncheck: function () {
+      this.state.set('checked',false);
+      return this;
+    },
+
+    /**
+     * Getter function for the checked state.
+     *
+     * @method isChecked
+     * @return {Boolean} True/false 
+     */
+    isChecked: function () {
+      return this.state.get('checked');
+    }
+  });
+
+	return _Toggler;
+});
+
+define('skylark-ui-swt/Checkbox',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./_Toggler"
+],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
+
+  var Checkbox = ui.Checkbox = _Toggler.inherit({
+    klassName: "Checkbox",
+
+    pluginName : "lark.checkbox",
+
+    _parse : function() {
+      var $chk = this.$chk;
+
+      // get current state of input
+      var checked = $chk.prop('checked');
+      var disabled = $chk.prop('disabled');
+
+      this.state.set("checked",checked);
+      this.state.set(("disabled",disabled));
+
+    },
+
+    _init : function() {
+      //this.options = langx.mixin({}, $.fn.checkbox.defaults, options);
+      var element = this.domNode;
+      var $element = $(element);
+
+      if (element.tagName.toLowerCase() !== 'label') {
+        logError('Checkbox must be initialized on the `label` that wraps the `input` element. See https://github.com/ExactTarget/fuelux/blob/master/reference/markup/checkbox.html for example of proper markup. Call `.checkbox()` on the `<label>` not the `<input>`');
+        return;
+      }
+
+      // cache elements
+      this.$label = $element;
+      this.$chk = this.$label.find('input[type="checkbox"]');
+      this.$container = $element.parent('.checkbox'); // the container div
+
+      if (!this.options.ignoreVisibilityCheck && this.$chk.css('visibility').match(/hidden|collapse/)) {
+        logError('For accessibility reasons, in order for tab and space to function on checkbox, checkbox `<input />`\'s `visibility` must not be set to `hidden` or `collapse`. See https://github.com/ExactTarget/fuelux/pull/1996 for more details.');
+      }
+
+      // determine if a toggle container is specified
+      var containerSelector = this.$chk.attr('data-toggle');
+      this.$toggleContainer = $(containerSelector);
+
+
+      // set default state
+      this.setInitialState();
+    },
+
+    _sync : function() {
+      // handle internal events
+      var self = this;
+      this.$chk.on('change', function(evt) {
+        //var $chk = $(evt.target);
+        var checked = self.$chk.prop('checked');
+        self.state.set("checked",checked);
+      });
+    },
+
+    _refresh : function(updates) {
+
+        function setCheckedState (checked) {
+          var $chk = self.$chk;
+          var $lbl = self.$label;
+          var $containerToggle = self.$toggleContainer;
+
+          if (checked) {
+            $chk.prop('checked', true);
+            $lbl.addClass('checked');
+            $containerToggle.removeClass('hide hidden');
+          } else {
+            $chk.prop('checked', false);
+            $lbl.removeClass('checked');
+            $containerToggle.addClass('hidden');
+          }
+        }
+
+        function setDisabledState (disabled) {
+          var $chk = self.$chk;
+          var $lbl = self.$label;
+
+          if (disabled) {
+            $chk.prop('disabled', true);
+            $lbl.addClass('disabled');
+          } else {
+            $chk.prop('disabled', false);
+            $lbl.removeClass('disabled');
+          }
+        }
+
+        // update visual with attribute values from control
+        this.overrided(changed);
+        var self  = this;
+
+        if (updates["checked"]) {
+          setCheckedState(updates["checked"].value);
+        }
+        if (updates["disabled"]) {
+          setDisabledState(updates["disabled"].value);
+        }
+    }
+  });
+
+	return Checkbox;
+});
+
+define('skylark-ui-swt/Menu',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+	
+	var popup = null;
+	var right_to_left ;
+
+	var Menu = ui.Menu = Widget.inherit({
+        klassName: "Menu",
+
+	    pluginName : "lark.menu",
+
+        init : function(elm,options) {
+        	if (!options) {
+        		options = elm;
+        		elm = null;
+        	}
+			var self = this,$el;
+
+			this._options = langx.mixin({
+					hide_onmouseleave	: 0,
+					icons				: true
+
+			},options);
+
+			if (!elm) {
+				$el = this.$el = $("<ul class='vakata-context'></ul>");
+			} else {
+				$el = this.$el = $(elm);
+			}
+
+			var to = false;
+			$el.on("mouseenter", "li", function (e) {
+					e.stopImmediatePropagation();
+
+					if(noder.contains(this, e.relatedTarget)) {
+						// премахнато заради delegate mouseleave по-долу
+						// $(this).find(".vakata-context-hover").removeClass("vakata-context-hover");
+						return;
+					}
+
+					if(to) { clearTimeout(to); }
+					$el.find(".vakata-context-hover").removeClass("vakata-context-hover").end();
+
+					$(this)
+						.siblings().find("ul").hide().end().end()
+						.parentsUntil(".vakata-context", "li").addBack().addClass("vakata-context-hover");
+					self._show_submenu(this);
+				})
+				// тестово - дали не натоварва?
+				.on("mouseleave", "li", function (e) {
+					if(noder.contains(this, e.relatedTarget)) { return; }
+					$(this).find(".vakata-context-hover").addBack().removeClass("vakata-context-hover");
+				})
+				.on("mouseleave", function (e) {
+					$(this).find(".vakata-context-hover").removeClass("vakata-context-hover");
+					if(self._options.hide_onmouseleave) {
+						to = setTimeout(
+							(function (t) {
+								return function () { self.hide(); };
+							}(this)), self._options.hide_onmouseleave);
+					}
+				})
+				.on("click", "a", function (e) {
+					e.preventDefault();
+				//})
+				//.on("mouseup", "a", function (e) {
+					if(!$(this).blur().parent().hasClass("vakata-context-disabled") && self._execute($(this).attr("rel")) !== false) {
+						self.hide();
+					}
+				})
+				.on('keydown', 'a', function (e) {
+						var o = null;
+						switch(e.which) {
+							case 13:
+							case 32:
+								e.type = "click";
+								e.preventDefault();
+								$(e.currentTarget).trigger(e);
+								break;
+							case 37:
+								self.$el.find(".vakata-context-hover").last().closest("li").first().find("ul").hide().find(".vakata-context-hover").removeClass("vakata-context-hover").end().end().children('a').focus();
+								e.stopImmediatePropagation();
+								e.preventDefault();
+								break;
+							case 38:
+								o = self.$el.find("ul:visible").addBack().last().children(".vakata-context-hover").removeClass("vakata-context-hover").prevAll("li:not(.vakata-context-separator)").first();
+								if(!o.length) { o = self.$el.find("ul:visible").addBack().last().children("li:not(.vakata-context-separator)").last(); }
+								o.addClass("vakata-context-hover").children('a').focus();
+								e.stopImmediatePropagation();
+								e.preventDefault();
+								break;
+							case 39:
+								self.$el.find(".vakata-context-hover").last().children("ul").show().children("li:not(.vakata-context-separator)").removeClass("vakata-context-hover").first().addClass("vakata-context-hover").children('a').focus();
+								e.stopImmediatePropagation();
+								e.preventDefault();
+								break;
+							case 40:
+								o = self.$el.find("ul:visible").addBack().last().children(".vakata-context-hover").removeClass("vakata-context-hover").nextAll("li:not(.vakata-context-separator)").first();
+								if(!o.length) { o = self.$el.find("ul:visible").addBack().last().children("li:not(.vakata-context-separator)").first(); }
+								o.addClass("vakata-context-hover").children('a').focus();
+								e.stopImmediatePropagation();
+								e.preventDefault();
+								break;
+							case 27:
+								self.hide();
+								e.preventDefault();
+								break;
+							default:
+								//console.log(e.which);
+								break;
+						}
+					})
+				.on('keydown', function (e) {
+					e.preventDefault();
+					var a = self.$el.find('.vakata-contextmenu-shortcut-' + e.which).parent();
+					if(a.parent().not('.vakata-context-disabled')) {
+						a.click();
+					}
+				});
+
+			this.render();
+        },
+
+        render : function() {
+        	var items = this._options.items;
+			if(this._parse(items)) {
+				this.$el.html(this.html);
+			}
+			this.$el.width('');
+        },
+
+		_trigger : function (event_name) {
+			$(document).trigger("context_" + event_name + ".sbswt", {
+				"reference"	: this.reference,
+				"element"	: this.$el,
+				"position"	: {
+					"x" : this.position_x,
+					"y" : this.position_y
+				}
+			});
+		},        
+
+		_execute : function (i) {
+			i = this.items[i];
+			return i && (!i._disabled || (langx.isFunction(i._disabled) && !i._disabled({ "item" : i, "reference" : this.reference, "element" : this.$el }))) && i.action ? i.action.call(null, {
+						"item"		: i,
+						"reference"	: this.reference,
+						"element"	: this.$el,
+						"position"	: {
+							"x" : this.position_x,
+							"y" : this.position_y
+						}
+					}) : false;
+		},
+		_parse : function (o, is_callback) {
+			var self = this,
+				reference = self._options.reference;
+
+			if(!o) { return false; }
+			if(!is_callback) {
+				self.html		= "";
+				self.items	= [];
+			}
+			var str = "",
+				sep = false,
+				tmp;
+
+			if(is_callback) { str += "<"+"ul>"; }
+			langx.each(o, function (i, val) {
+				if(!val) { return true; }
+				self.items.push(val);
+				if(!sep && val.separator_before) {
+					str += "<"+"li class='vakata-context-separator'><"+"a href='#' " + (self._options.icons ? '' : 'style="margin-left:0px;"') + ">&#160;<"+"/a><"+"/li>";
+				}
+				sep = false;
+				str += "<"+"li class='" + (val._class || "") + (val._disabled === true || (langx.isFunction(val._disabled) && val._disabled({ "item" : val, "reference" : reference, "element" : self.$el })) ? " vakata-contextmenu-disabled " : "") + "' "+(val.shortcut?" data-shortcut='"+val.shortcut+"' ":'')+">";
+				str += "<"+"a href='#' rel='" + (self.items.length - 1) + "' " + (val.title ? "title='" + val.title + "'" : "") + ">";
+				if(self._options.icons) {
+					str += "<"+"i ";
+					if(val.icon) {
+						if(val.icon.indexOf("/") !== -1 || val.icon.indexOf(".") !== -1) { str += " style='background:url(\"" + val.icon + "\") center center no-repeat' "; }
+						else { str += " class='" + val.icon + "' "; }
+					}
+					str += "><"+"/i><"+"span class='vakata-contextmenu-sep'>&#160;<"+"/span>";
+				}
+				str += (langx.isFunction(val.label) ? val.label({ "item" : i, "reference" : reference, "element" : self.$el }) : val.label) + (val.shortcut?' <span class="vakata-contextmenu-shortcut vakata-contextmenu-shortcut-'+val.shortcut+'">'+ (val.shortcut_label || '') +'</span>':'') + "<"+"/a>";
+				if(val.submenu) {
+					tmp = self._parse(val.submenu, true);
+					if(tmp) { str += tmp; }
+				}
+				str += "<"+"/li>";
+				if(val.separator_after) {
+					str += "<"+"li class='vakata-context-separator'><"+"a href='#' " + (self._options.icons ? '' : 'style="margin-left:0px;"') + ">&#160;<"+"/a><"+"/li>";
+					sep = true;
+				}
+			});
+			str  = str.replace(/<li class\='vakata-context-separator'\><\/li\>$/,"");
+			if(is_callback) { str += "</ul>"; }
+			/**
+			 * triggered on the document when the contextmenu is parsed (HTML is built)
+			 * @event
+			 * @plugin contextmenu
+			 * @name context_parse.vakata
+			 * @param {jQuery} reference the element that was right clicked
+			 * @param {jQuery} element the DOM element of the menu itself
+			 * @param {Object} position the x & y coordinates of the menu
+			 */
+			if(!is_callback) { self.html = str; self._trigger("parse"); }
+			return str.length > 10 ? str : false;
+		},
+		_show_submenu : function (o) {
+			o = $(o);
+			if(!o.length || !o.children("ul").length) { return; }
+			var e = o.children("ul"),
+				xl = o.offset().left,
+				x = xl + o.outerWidth(),
+				y = o.offset().top,
+				w = e.width(),
+				h = e.height(),
+				dw = $(window).width() + $(window).scrollLeft(),
+				dh = $(window).height() + $(window).scrollTop();
+			// може да се спести е една проверка - дали няма някой от класовете вече нагоре
+			if(right_to_left) {
+				o[x - (w + 10 + o.outerWidth()) < 0 ? "addClass" : "removeClass"]("vakata-context-left");
+			}
+			else {
+				o[x + w > dw  && xl > dw - x ? "addClass" : "removeClass"]("vakata-context-right");
+			}
+			if(y + h + 10 > dh) {
+				e.css("bottom","-1px");
+			}
+
+			//if does not fit - stick it to the side
+			if (o.hasClass('vakata-context-right')) {
+				if (xl < w) {
+					e.css("margin-right", xl - w);
+				}
+			} else {
+				if (dw - x < w) {
+					e.css("margin-left", dw - x - w);
+				}
+			}
+
+			e.show();
+		},
+		show : function (reference, position, data) {
+			var o, e, x, y, w, h, dw, dh, cond = true;
+			switch(cond) {
+				case (!position && !reference):
+					return false;
+				case (!!position && !!reference):
+					this.reference	= reference;
+					this.position_x	= position.x;
+					this.position_y	= position.y;
+					break;
+				case (!position && !!reference):
+					this.reference	= reference;
+					o = reference.offset();
+					this.position_x	= o.left + reference.outerHeight();
+					this.position_y	= o.top;
+					break;
+				case (!!position && !reference):
+					this.position_x	= position.x;
+					this.position_y	= position.y;
+					break;
+			}
+			if(!!reference && !data && $(reference).data('vakata_contextmenu')) {
+				data = $(reference).data('vakata_contextmenu');
+			}
+
+			if(this.items.length) {
+				this.$el.appendTo(document.body);
+				e = this.$el;
+				x = this.position_x;
+				y = this.position_y;
+				w = e.width();
+				h = e.height();
+				dw = $(window).width() + $(window).scrollLeft();
+				dh = $(window).height() + $(window).scrollTop();
+				if(right_to_left) {
+					x -= (e.outerWidth() - $(reference).outerWidth());
+					if(x < $(window).scrollLeft() + 20) {
+						x = $(window).scrollLeft() + 20;
+					}
+				}
+				if(x + w + 20 > dw) {
+					x = dw - (w + 20);
+				}
+				if(y + h + 20 > dh) {
+					y = dh - (h + 20);
+				}
+
+				this.$el
+					.css({ "left" : x, "top" : y })
+					.show()
+					.find('a').first().focus().parent().addClass("vakata-context-hover");
+				this.is_visible = true;
+
+				popup = this;
+
+				/**
+				 * triggered on the document when the contextmenu is shown
+				 * @event
+				 * @plugin contextmenu
+				 * @name context_show.vakata
+				 * @param {jQuery} reference the element that was right clicked
+				 * @param {jQuery} element the DOM element of the menu itself
+				 * @param {Object} position the x & y coordinates of the menu
+				 */
+				this._trigger("show");
+			}
+		},
+		hide : function () {
+			if(this.is_visible) {
+				this.$el.hide().find("ul").hide().end().find(':focus').blur().end().detach();
+				this.is_visible = false;
+				popup = null;
+				/**
+				 * triggered on the document when the contextmenu is hidden
+				 * @event
+				 * @plugin contextmenu
+				 * @name context_hide.vakata
+				 * @param {jQuery} reference the element that was right clicked
+				 * @param {jQuery} element the DOM element of the menu itself
+				 * @param {Object} position the x & y coordinates of the menu
+				 */
+				this._trigger("hide");
+			}
+		}
+
+    });	
+
+	$(function () {
+		right_to_left = $(document.body).css("direction") === "rtl";
+
+		$(document)
+			.on("mousedown.sbswt.popup", function (e) {
+				if(popup && popup.$el[0] !== e.target  && !noder.contains(popup.$el[0], e.target)) {
+					popup.hide();
+				}
+			})
+			.on("context_show.sbswt.popup", function (e, data) {
+				popup.$el.find("li:has(ul)").children("a").addClass("vakata-context-parent");
+				if(right_to_left) {
+					popup.$el.addClass("vakata-context-rtl").css("direction", "rtl");
+				}
+				// also apply a RTL class?
+				popup.$el.find("ul").hide().end();
+			});
+	});
+
+	Menu.popup = function (reference, position, data) {
+		var m = new Menu({
+			reference : reference,
+			items : data
+		});
+		m.show(reference,position);
+	};
+
+	Menu.hide = function() {
+		if (popup) {
+			popup.hide();
+		}
+	}
+
+	return Menu;
+
+});
+
+define('skylark-ui-swt/Pagination',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+
+
+    /* This module used the following source code
+     * !
+     * jQuery pagination plugin v1.4.2
+     * http://josecebe.github.io/twbs-pagination/
+     *
+     * Copyright 2014-2018, Eugene Simakin
+     * Released under Apache 2.0 license
+     * http://apache.org/licenses/LICENSE-2.0.html
+     */
+
+    'use strict';
+
+    var Pagination = ui.Pagination = Widget.inherit({
+        klassName : "Pagination",
+
+        pluginName : "lark.pagination",
+
+
+        options : {
+            totalPages: 1,
+            startPage: 1,
+            visiblePages: 5,
+            initiateStartPageClick: true,
+            hideOnlyOnePage: false,
+            href: false,
+            pageVariable: '{{page}}',
+            totalPagesVariable: '{{total_pages}}',
+            page: null,
+            first: 'First',
+            prev: 'Previous',
+            next: 'Next',
+            last: 'Last',
+            loop: false,
+            beforePageClick: null,
+            onPageClick: null,
+            paginationClass: 'pagination',
+            nextClass: 'page-item next',
+            prevClass: 'page-item prev',
+            lastClass: 'page-item last',
+            firstClass: 'page-item first',
+            pageClass: 'page-item',
+            activeClass: 'active',
+            disabledClass: 'disabled',
+            anchorClass: 'page-link'         
+        },
+
+
+        _create : function(element, options) {
+            this.$element = $(element);
+            this.options = $.extend({}, $.fn.twbsPagination.defaults, options);
+
+            if (this.options.startPage < 1 || this.options.startPage > this.options.totalPages) {
+                throw new Error('Start page option is incorrect');
+            }
+
+            this.options.totalPages = parseInt(this.options.totalPages);
+            if (isNaN(this.options.totalPages)) {
+                throw new Error('Total pages option is not correct!');
+            }
+
+            this.options.visiblePages = parseInt(this.options.visiblePages);
+            if (isNaN(this.options.visiblePages)) {
+                throw new Error('Visible pages option is not correct!');
+            }
+
+            if (this.options.beforePageClick instanceof Function) {
+                this.$element.first().on('beforePage', this.options.beforePageClick);
+            }
+
+            if (this.options.onPageClick instanceof Function) {
+                this.$element.first().on('page', this.options.onPageClick);
+            }
+
+            // hide if only one page exists
+            if (this.options.hideOnlyOnePage && this.options.totalPages == 1) {
+                if (this.options.initiateStartPageClick) {
+                    this.$element.trigger('page', 1);
+                }
+                return this;
+            }
+
+            if (this.options.href) {
+                this.options.startPage = this.getPageFromQueryString();
+                if (!this.options.startPage) {
+                    this.options.startPage = 1;
+                }
+            }
+
+            var tagName = (typeof this.$element.prop === 'function') ?
+                this.$element.prop('tagName') : this.$element.attr('tagName');
+
+            if (tagName === 'UL') {
+                this.$listContainer = this.$element;
+            } else {
+                var elements = this.$element;
+                var $newListContainer = $([]);
+                elements.each(function(index) {
+                    var $newElem = $("<ul></ul>");
+                    $(this).append($newElem);
+                    $newListContainer.push($newElem[0]);
+                });
+                this.$listContainer = $newListContainer;
+                this.$element = $newListContainer;
+            }
+
+            this.$listContainer.addClass(this.options.paginationClass);
+
+            if (this.options.initiateStartPageClick) {
+                this.show(this.options.startPage);
+            } else {
+                this.currentPage = this.options.startPage;
+                this.render(this.getPages(this.options.startPage));
+                this.setupEvents();
+            }
+
+            return this;
+
+        },
+
+        _destroy: function () {
+            this.$element.empty();
+            this.$element.removeData('twbs-pagination');
+            this.$element.off('page');
+
+            return this;
+        },
+
+        show: function (page) {
+            if (page < 1 || page > this.options.totalPages) {
+                throw new Error('Page is incorrect.');
+            }
+            this.currentPage = page;
+
+            this.$element.trigger('beforePage', page);
+
+            var pages = this.getPages(page);
+            this.render(pages);
+            this.setupEvents();
+
+            this.$element.trigger('page', page);
+
+            return pages;
+        },
+
+        enable: function () {
+            this.show(this.currentPage);
+        },
+
+        disable: function () {
+            var _this = this;
+            this.$listContainer.off('click').on('click', 'li', function (evt) {
+                evt.preventDefault();
+            });
+            this.$listContainer.children().each(function () {
+                var $this = $(this);
+                if (!$this.hasClass(_this.options.activeClass)) {
+                    $(this).addClass(_this.options.disabledClass);
+                }
+            });
+        },
+
+        _build: function (pages) {
+            var listItems = [];
+
+            if (this.options.first) {
+                listItems.push(this.buildItem('first', 1));
+            }
+
+            if (this.options.prev) {
+                var prev = pages.currentPage > 1 ? pages.currentPage - 1 : this.options.loop ? this.options.totalPages  : 1;
+                listItems.push(this.buildItem('prev', prev));
+            }
+
+            for (var i = 0; i < pages.numeric.length; i++) {
+                listItems.push(this.buildItem('page', pages.numeric[i]));
+            }
+
+            if (this.options.next) {
+                var next = pages.currentPage < this.options.totalPages ? pages.currentPage + 1 : this.options.loop ? 1 : this.options.totalPages;
+                listItems.push(this.buildItem('next', next));
+            }
+
+            if (this.options.last) {
+                listItems.push(this.buildItem('last', this.options.totalPages));
+            }
+
+            return listItems;
+        },
+
+        _buildItem: function (type, page) {
+            var $itemContainer = $('<li></li>'),
+                $itemContent = $('<a></a>'),
+                itemText = this.options[type] ? this.makeText(this.options[type], page) : page;
+
+            $itemContainer.addClass(this.options[type + 'Class']);
+            $itemContainer.data('page', page);
+            $itemContainer.data('page-type', type);
+            $itemContainer.append($itemContent.attr('href', this.makeHref(page)).addClass(this.options.anchorClass).html(itemText));
+
+            return $itemContainer;
+        },
+
+        getPages: function (currentPage) {
+            var pages = [];
+
+            var half = Math.floor(this.options.visiblePages / 2);
+            var start = currentPage - half + 1 - this.options.visiblePages % 2;
+            var end = currentPage + half;
+
+            var visiblePages = this.options.visiblePages;
+            if (visiblePages > this.options.totalPages) {
+                visiblePages = this.options.totalPages;
+            }
+
+            // handle boundary case
+            if (start <= 0) {
+                start = 1;
+                end = visiblePages;
+            }
+            if (end > this.options.totalPages) {
+                start = this.options.totalPages - visiblePages + 1;
+                end = this.options.totalPages;
+            }
+
+            var itPage = start;
+            while (itPage <= end) {
+                pages.push(itPage);
+                itPage++;
+            }
+
+            return {"currentPage": currentPage, "numeric": pages};
+        },
+
+        render: function (pages) {
+            var _this = this;
+            this.$listContainer.children().remove();
+            var items = this.buildListItems(pages);
+            $.each(items, function(key, item){
+                _this.$listContainer.append(item);
+            });
+
+            this.$listContainer.children().each(function () {
+                var $this = $(this),
+                    pageType = $this.data('page-type');
+
+                switch (pageType) {
+                    case 'page':
+                        if ($this.data('page') === pages.currentPage) {
+                            $this.addClass(_this.options.activeClass);
+                        }
+                        break;
+                    case 'first':
+                            $this.toggleClass(_this.options.disabledClass, pages.currentPage === 1);
+                        break;
+                    case 'last':
+                            $this.toggleClass(_this.options.disabledClass, pages.currentPage === _this.options.totalPages);
+                        break;
+                    case 'prev':
+                            $this.toggleClass(_this.options.disabledClass, !_this.options.loop && pages.currentPage === 1);
+                        break;
+                    case 'next':
+                            $this.toggleClass(_this.options.disabledClass,
+                                !_this.options.loop && pages.currentPage === _this.options.totalPages);
+                        break;
+                    default:
+                        break;
+                }
+
+            });
+        },
+
+        setupEvents: function () {
+            var _this = this;
+            this.$listContainer.off('click').on('click', 'li', function (evt) {
+                var $this = $(this);
+                if ($this.hasClass(_this.options.disabledClass) || $this.hasClass(_this.options.activeClass)) {
+                    return false;
+                }
+                // Prevent click event if href is not set.
+                !_this.options.href && evt.preventDefault();
+                _this.show(parseInt($this.data('page')));
+            });
+        },
+
+        changeTotalPages: function(totalPages, currentPage) {
+            this.options.totalPages = totalPages;
+            return this.show(currentPage);
+        },
+
+        makeHref: function (page) {
+            return this.options.href ? this.generateQueryString(page) : "#";
+        },
+
+        makeText: function (text, page) {
+            return text.replace(this.options.pageVariable, page)
+                .replace(this.options.totalPagesVariable, this.options.totalPages)
+        },
+
+        getPageFromQueryString: function (searchStr) {
+            var search = this.getSearchString(searchStr),
+                regex = new RegExp(this.options.pageVariable + '(=([^&#]*)|&|#|$)'),
+                page = regex.exec(search);
+            if (!page || !page[2]) {
+                return null;
+            }
+            page = decodeURIComponent(page[2]);
+            page = parseInt(page);
+            if (isNaN(page)) {
+                return null;
+            }
+            return page;
+        },
+
+        generateQueryString: function (pageNumber, searchStr) {
+            var search = this.getSearchString(searchStr),
+                regex = new RegExp(this.options.pageVariable + '=*[^&#]*');
+            if (!search) return '';
+            return '?' + search.replace(regex, this.options.pageVariable + '=' + pageNumber);
+        },
+
+        getSearchString: function (searchStr) {
+            var search = searchStr || window.location.search;
+            if (search === '') {
+                return null;
+            }
+            if (search.indexOf('?') === 0) search = search.substr(1);
+            return search;
+        },
+
+        getCurrentPage: function () {
+            return this.currentPage;
+        },
+
+        getTotalPages: function () {
+            return this.options.totalPages;
+        }
+
+    });
+
+    // PLUGIN DEFINITION
+
+    $.fn.twbsPagination = function (option) {
+        var args = Array.prototype.slice.call(arguments, 1);
+        var methodReturn;
+
+        var $this = $(this);
+        var data = $this.data('twbs-pagination');
+        var options = typeof option === 'object' ? option : {};
+
+        if (!data) $this.data('twbs-pagination', (data = new TwbsPagination(this, options) ));
+        if (typeof option === 'string') methodReturn = data[ option ].apply(data, args);
+
+        return ( methodReturn === undefined ) ? $this : methodReturn;
+    };
+
+    return Pagination;
+});
+define('skylark-ui-swt/Progressbar',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+
+    'use strict';
+
+    /* This module used the following source code
+     * !
+	 * bootstrap-progressbar v0.9.0 by @minddust
+	 * Copyright (c) 2012-2015 Stephan Groß
+	 *
+	 * http://www.minddust.com/project/bootstrap-progressbar/
+	 *
+	 * Licensed under the MIT license:
+	 * http://www.opensource.org/licenses/MIT
+     */    
+
+     var Progressbar = ui.Progressbar = Widget.inherit({
+     	klassName : "Progressbar",
+
+     	pluginName : "lark.progressbar",
+
+	    options : {
+	        transition_delay: 300,
+	        refresh_speed: 50,
+	        display_text: 'none',
+	        use_percentage: true,
+	        percent_format: function(percent) { return percent + '%'; },
+	        amount_format: function(amount_part, amount_max, amount_min) { return amount_part + ' / ' + amount_max; },
+	        update: $.noop,
+	        done: $.noop,
+	        fail: $.noop
+	    },
+
+     	_construt : function(element, options) {
+	        this.$element = $(element);
+	        this.options = $.extend({}, Progressbar.defaults, options);
+     	},
+
+
+	    transition : function() {
+	        var $this = this.$element;
+	        var $parent = $this.parent();
+	        var $back_text = this.$back_text;
+	        var $front_text = this.$front_text;
+	        var options = this.options;
+	        var data_transitiongoal = parseInt($this.attr('data-transitiongoal'));
+	        var aria_valuemin = parseInt($this.attr('aria-valuemin')) || 0;
+	        var aria_valuemax = parseInt($this.attr('aria-valuemax')) || 100;
+	        var is_vertical = $parent.hasClass('vertical');
+	        var update = options.update && typeof options.update === 'function' ? options.update : Progressbar.defaults.update;
+	        var done = options.done && typeof options.done === 'function' ? options.done : Progressbar.defaults.done;
+	        var fail = options.fail && typeof options.fail === 'function' ? options.fail : Progressbar.defaults.fail;
+
+	        if (isNaN(data_transitiongoal)) {
+	            fail('data-transitiongoal not set');
+	            return;
+	        }
+	        var percentage = Math.round(100 * (data_transitiongoal - aria_valuemin) / (aria_valuemax - aria_valuemin));
+
+	        if (options.display_text === 'center' && !$back_text && !$front_text) {
+	            this.$back_text = $back_text = $('<span>').addClass('progressbar-back-text').prependTo($parent);
+	            this.$front_text = $front_text = $('<span>').addClass('progressbar-front-text').prependTo($this);
+
+	            var parent_size;
+
+	            if (is_vertical) {
+	                parent_size = $parent.css('height');
+	                $back_text.css({height: parent_size, 'line-height': parent_size});
+	                $front_text.css({height: parent_size, 'line-height': parent_size});
+
+	                $(window).resize(function() {
+	                    parent_size = $parent.css('height');
+	                    $back_text.css({height: parent_size, 'line-height': parent_size});
+	                    $front_text.css({height: parent_size, 'line-height': parent_size});
+	                }); // normal resizing would brick the structure because width is in px
+	            }
+	            else {
+	                parent_size = $parent.css('width');
+	                $front_text.css({width: parent_size});
+
+	                $(window).resize(function() {
+	                    parent_size = $parent.css('width');
+	                    $front_text.css({width: parent_size});
+	                }); // normal resizing would brick the structure because width is in px
+	            }
+	        }
+
+	        setTimeout(function() {
+	            var current_percentage;
+	            var current_value;
+	            var this_size;
+	            var parent_size;
+	            var text;
+
+	            if (is_vertical) {
+	                $this.css('height', percentage + '%');
+	            }
+	            else {
+	                $this.css('width', percentage + '%');
+	            }
+
+	            var progress = setInterval(function() {
+	                if (is_vertical) {
+	                    this_size = $this.height();
+	                    parent_size = $parent.height();
+	                }
+	                else {
+	                    this_size = $this.width();
+	                    parent_size = $parent.width();
+	                }
+
+	                current_percentage = Math.round(100 * this_size / parent_size);
+	                current_value = Math.round(aria_valuemin + this_size / parent_size * (aria_valuemax - aria_valuemin));
+
+	                if (current_percentage >= percentage) {
+	                    current_percentage = percentage;
+	                    current_value = data_transitiongoal;
+	                    done($this);
+	                    clearInterval(progress);
+	                }
+
+	                if (options.display_text !== 'none') {
+	                    text = options.use_percentage ? options.percent_format(current_percentage) : options.amount_format(current_value, aria_valuemax, aria_valuemin);
+
+	                    if (options.display_text === 'fill') {
+	                        $this.text(text);
+	                    }
+	                    else if (options.display_text === 'center') {
+	                        $back_text.text(text);
+	                        $front_text.text(text);
+	                    }
+	                }
+	                $this.attr('aria-valuenow', current_value);
+
+	                update(current_percentage, $this);
+	            }, options.refresh_speed);
+	        }, options.transition_delay);
+	    }
+
+     });
+
+	return Progressbar;
+	
+ });
+define('skylark-ui-swt/Radio',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./_Toggler"
+],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
+
+  var Radio = ui.Radio = _Toggler.inherit({
+    klassName: "Radio",
+
+    pluginName : "lark.radio",
+
+    _parse : function() {
+      var $radio = this.$radio;
+
+      // get current state of input
+      var checked = $radio.prop('checked');
+      var disabled = $radio.prop('disabled');
+
+      this.state.set("checked",checked);
+      this.state.set(("disabled",disabled));
+
+    },
+
+    _init : function() {
+      //this.options = langx.mixin({}, $.fn.checkbox.defaults, options);
+      var element = this.domNode;
+      var $element = $(element);
+
+      if (element.tagName.toLowerCase() !== 'label') {
+        logError('Radio must be initialized on the `label` that wraps the `input` element. See https://github.com/ExactTarget/fuelux/blob/master/reference/markup/checkbox.html for example of proper markup. Call `.checkbox()` on the `<label>` not the `<input>`');
+        return;
+      }
+
+      // cache elements
+      this.$label = $element;
+      this.$radio = this.$label.find('input[type="checkbox"]');
+      this.$container = $element.parent('.checkbox'); // the container div
+
+      if (!this.options.ignoreVisibilityCheck && this.$radio.css('visibility').match(/hidden|collapse/)) {
+        logError('For accessibility reasons, in order for tab and space to function on checkbox, checkbox `<input />`\'s `visibility` must not be set to `hidden` or `collapse`. See https://github.com/ExactTarget/fuelux/pull/1996 for more details.');
+      }
+
+      // determine if a toggle container is specified
+      var containerSelector = this.$radio.attr('data-toggle');
+      this.$toggleContainer = $(containerSelector);
+
+
+      // set default state
+      this.setInitialState();
+    },
+
+    _sync : function() {
+      // handle internal events
+      var self = this;
+      this.$radio.on('change', function(evt) {
+        //var $radio = $(evt.target);
+        var checked = self.$radio.prop('checked');
+        self.state.set("checked",checked);
+      });
+    },
+
+    _refresh : function(updates) {
+
+        function setCheckedState (checked) {
+          var $radio = self.$radio;
+          var $lbl = self.$label;
+          var $containerToggle = self.$toggleContainer;
+
+          if (checked) {
+            // reset all items in group
+            this.resetGroup();
+
+            $radio.prop('checked', true);
+            $lbl.addClass('checked');
+            $containerToggle.removeClass('hide hidden');
+          } else {
+            $radio.prop('checked', false);
+            $lbl.removeClass('checked');
+            $containerToggle.addClass('hidden');
+          }
+        }
+
+        function setDisabledState (disabled) {
+          var $radio = self.$radio;
+          var $lbl = self.$label;
+
+          if (disabled) {
+            $radio.prop('disabled', true);
+            $lbl.addClass('disabled');
+          } else {
+            $radio.prop('disabled', false);
+            $lbl.removeClass('disabled');
+          }
+        }
+
+        // update visual with attribute values from control
+        this.overrided(changed);
+        var self  = this;
+
+        if (updates["checked"]) {
+          setCheckedState(updates["checked"].value);
+        }
+        if (updates["disabled"]) {
+          setDisabledState(updates["disabled"].value);
+        }
+    },
+
+    resetGroup: function resetGroup () {
+      var $radios = $('input[name="' + this.groupName + '"]');
+      $radios.each(function resetRadio (index, item) {
+        var $radio = $(item);
+        var $lbl = $radio.parent();
+        var containerSelector = $radio.attr('data-toggle');
+        var $containerToggle = $(containerSelector);
+
+
+        $lbl.removeClass('checked');
+        $containerToggle.addClass('hidden');
+      });
+    }
+  });
+
+  return Radio;
+});
+
+
+define('skylark-ui-swt/Textbox',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+
+
+  var SyncAttrs = [
+    'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
+    'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
+  ];
+
+	var Textbox = ui.Textbox = Widget.inherit({
+		klassName: "Textbox",
+
+    pluginName: "lark.textbox",
+
+    /*
+     * Parse options from attached dom element.
+     * @override
+     */
+    _parse : function() {
+      var  velm = this._velm;
+
+      // get multiline option
+      this.options.multiline = velm.is("textarea");
+      
+      // get current state of input
+      var value = $chk.prop('checked');
+      var disabled = $chk.prop('disabled');
+      this.state.set("value",value);
+      this.state.set(("disabled",disabled));
+
+    },
+
+    /*
+     * Create a new  dom element for this widget
+     * @override
+     */
+    _create : function() {
+      var tagName = "input",attrs = {},
+          options = this.options;
+
+      langx.each([
+        'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
+        'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
+      ], function (name) {
+        attrs[name] = options[name];
+      });
+
+      if (options.multiline) {
+        tagName = "textarea"
+      } 
+      if (options.subtype) {
+        attrs.type = options.subtype;
+      }
+      this._elm = this._dom.noder.createElement(tagName,attrs);
+    },
+
+    /*
+     * Init  this widget
+     * @override
+     */
+    _init : function() {
+    },
+
+    /*
+     * Sync dom element to widget state 
+     * @override
+     */
+    _sync : function() {
+      // handle internal events
+      var self = this;
+      this._velm.on('change', function(evt) {
+        var value = self._velm.prop('value');
+        self.state.set("value",value);
+      });
+    },
+
+    _refresh : function(updates) {
+        var self  = this;
+
+        if (updates["value"] !== undefined) {
+          if (self._velm.value() !== e.value) {
+            self._velm.value(updates.value);
+          }
+        }
+        if (updates["disabled"] !== undefined) {
+          self._velm.disable(updates["disabled"]);
+        }
+
+        // update visual with attribute values from control
+        this.overrided(changed);
+    },
+
+  });
+
+	return Textbox;
+});
+
+
+define('skylark-ui-swt/Toolbar',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+
+	var Toolbar = ui.Toolbar = Widget.inherit({
+        klassName: "Toolbar",
+
+	    pluginName : "lark.toolbar",
+
+        init : function(elm,options) {
+			var self = this;
+			this._options = langx.mixin({
+					autoredraw: true,
+					buttons: {},
+					context: {},
+					list: [],
+					show: true,
+			},options);
+
+
+			this.$container = $('<nav class="navbar"/>');
+			this.$el = $(elm).append(this.$container);
+
+			this.$container.on('mousedown.bs.dropdown.data-api', '[data-toggle="dropdown"]',function(e) {
+				$(this).dropdown();
+			}); 
+
+			this.render();
+        },
+
+
+		render : function () {
+			function createToolbarItems(items,container) {
+				langx.each(items,function(i,item)  {
+					var type = item.type;
+					if (!type) {
+						type = "button";
+					}
+					switch (type) {
+						case "buttongroup":
+							// Create an element with the HTML
+							createButtonGroup(item,container);
+							break;
+						case "button":
+							createButton(item,container)
+							break;
+						case "dropdown":
+						case "dropup":
+							createDrop(item,container)
+							break;
+						case "input":
+							createInput(item,container)
+							break;
+						default:
+							throw "Wrong widget button type";
+					}
+				});
+
+			}
+
+			function createButtonGroup(item,container) {
+				var  group = $("<div/>", { class: "btn-group", role: "group" });
+				container.append(group);
+				createToolbarItems(item.items,group);
+				return group;
+			}
+
+			function createButton(item,container) {
+				// Create button
+				var button = $('<button type="button" class="btn btn-default"/>'),
+					attrs = langx.mixin({},item);
+
+				// If has icon
+				if ("icon" in item) {
+					button.append($("<span/>", { class: item.icon }));
+					delete attrs.icon;
+				}
+				// If has text
+				if ("text" in attrs) {
+					button.append(" " + item.text);
+					delete attrs.text;
+				}
+
+				button.attr(attrs);
+
+				// Add button to the group
+				container.append(button);
+
+			}
+
+			function createDrop(item,container) {
+				// Create button
+				var dropdown_group = $('<div class="btn-group" role="group"/>');
+				var dropdown_button = $('<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"/>');
+				var dropdown_list = $('<ul class="dropdown-menu"/>');
+
+				var	attrs = langx.mixin({},item);
+
+				if(item.type === "dropup") {
+					dropdown_group.addClass("dropup");
+				}
+
+				// If has icon
+				if ("icon" in item) {
+					dropdown_button.append($("<span/>", { class: item.icon }));
+					delete attrs.icon;
+				}
+				// If has text
+				if ("text" in item) {
+					dropdown_button.append(" " + item.text);
+					delete attrs.text;
+				}
+				// Add caret
+				dropdown_button.append(' <span class="caret"/>');
+
+				// Add list of options
+				for(var i in item.list) {
+					var dropdown_option = item.list[i];
+					var dropdown_option_li = $('<li/>');
+
+					// If has icon
+					if ("icon" in dropdown_option) {
+						dropdown_option_li.append($("<span/>", { class: dropdown_option.icon }));
+					}
+
+					// If has text
+					if ("text" in dropdown_option) {
+						dropdown_option_li.append(" " + dropdown_option.text);
+					}
+					// Set attributes
+					dropdown_option_li.attr(dropdown_option);
+
+					// Add to dropdown list
+					dropdown_list.append(dropdown_option_li);
+				}
+				
+				// Set attributes
+				dropdown_group.attr(attrs);
+
+				dropdown_group.append(dropdown_button);
+				dropdown_group.append(dropdown_list);
+				container.append(dropdown_group);
+
+			}
+
+			function createInput(item,container) {
+				var input_group = $('<div class="input-group"/>');
+				var input_element = $('<input class="form-control"/>');
+				
+				var	attrs = langx.mixin({},item);
+
+				// Add prefix addon
+				if("prefix" in item) {
+					var input_prefix = $('<span class="input-group-addon"/>');
+					input_prefix.html(item.prefix);
+					input_group.append(input_prefix);
+
+					delete attrs.prefix;
+				}
+				
+				// Add input
+				input_group.append(input_element);
+
+				// Add sufix addon
+				if("sufix" in item) {
+					var input_sufix = $('<span class="input-group-addon"/>');
+					input_sufix.html(item.sufix);
+					input_group.append(input_sufix);
+
+					delete attrs.sufix;
+				}
+
+				attrs.type = attrs.inputType;
+
+				delete attrs.inputType;
+
+				// Set attributes
+				input_element.attr(attrs);
+
+				container.append(input_group);
+
+			}
+
+			var items = this._options.items;
+			if (items) {
+				createToolbarItems(items,this.$container);
+			}
+		}
+
+	});
+
+
+	$.fn.toolbar = function (options) {
+		options = options || {};
+
+		return this.each(function () {
+			return new Toolbar(this, langx.mixin({}, options,true));
+		});
+	};
+
+	return Toolbar;
+
+});
+
 define('skylark-ui-swt/main',[
     "./ui",
-    "./Widget"
+    "./Widget",
+    "./Accordion",
+    "./Button",
+    "./Carousel",
+    "./Checkbox",
+    "./Menu",
+    "./Pagination",
+    "./Progressbar",
+    "./Radio",
+    "./Textbox",
+    "./Toolbar"
 /*    
     "./checkbox",
     "./combobox",
