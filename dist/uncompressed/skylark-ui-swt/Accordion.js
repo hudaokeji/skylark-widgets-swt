@@ -87,7 +87,6 @@ define([
   });
 
 
-
   Accordion.Panel = Panel.inherit({
     klassName : "AccordionPanel",
 

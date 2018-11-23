@@ -424,50 +424,50 @@ define('skylark-ui-swt/Panel',[
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,collapse,ui,Widget){
 
-  function getTargetFromTrigger($trigger) {
-    var href
-    var target = $trigger.attr('data-target')
-      || (href = $trigger.attr('href')) && href.replace(/.*(?=#[^\s]+$)/, '') // strip for ie7
-
-    return $(target)
-  }
-
   var Panel = Widget.inherit({
     klassName : "Panel",
 
     pluginName : "lark.panel",
 
+    options : {
+      toggler : {
+        selector : ".panel-heading [data-toggle=\"collapse\"]"
+      },
+
+      body : {
+        selector : ".panel-collapse"
+      }
+    },
+
     _init : function() {
-      this._velm.on('click.bs.collapse.data-api', '[data-toggle="collapse"]', function (e) {
-        var $this   = $(this)
-
-        if (!$this.attr('data-target')) e.preventDefault()
-
-        var $target = getTargetFromTrigger($this)
-        var collpasePlugin    = $target.collapse('instance');
+      var self = this;
+      this.$toggle = this._velm.find(this.options.toggler.selector);
+      this.$body = this._velm.find(this.options.body.selector);
+      this.$toggle.on('click.lark',function (e) {
+        var $this   = $(this);
+        var collpasePlugin    = self.$body.collapse('instance');
         if (collpasePlugin) {
           collpasePlugin.toggle();
         } else {
-          $target.collapse($this.data());
+          self.$body.collapse($this.data());
         }
-
       });
 
     },
 
     expand : function() {
       // expand this panel
-      $(this._elm).collapse("show");
+      this.$body.collapse("show");
     },
 
     collapse : function() {
       // collapse this panel
-      this._velm.collapse("hide");
+      this.$body.collapse("hide");
     },
 
     toogle : function() {
       // toogle this panel
-     this._velm.collapse("toogle");
+     this.body.collapse("toogle");
     },
 
     full : function() {
@@ -583,7 +583,6 @@ define('skylark-ui-swt/Accordion',[
 
 
   });
-
 
 
   Accordion.Panel = Panel.inherit({
