@@ -22,9 +22,6 @@ define([
         template : null,
       }
     },
-    _parse : function() {
-      //
-    },
 
     _init : function() {
       var panels = [];
@@ -37,7 +34,7 @@ define([
       this._panels = panels;
     },
 
-    _sync : function() {
+    _post : function() {
       // handle internal events
     },
 
@@ -61,31 +58,58 @@ define([
 
     },
 
-    removePanel : function() {
+    /**
+     * Removes a accordion pane.
+     *
+     * @method remove
+     * @return {Accordion} The current widget.
+     */
+    remove : function() {
 
     },
 
-    expandPanel : function() {
+    /**
+     * Expands a accordion pane.
+     *
+     * @method remove
+     * @return {Accordion} The current widget.
+     */
+    expand : function() {
       // expand a panel
 
     },
 
-    expandAllPanel : function() {
+    /**
+     * Expands all accordion panes.
+     *
+     * @method expandAll
+     * @return {Accordion} The current widget.
+     */
+    expandAll : function() {
       // expand a panel
 
     },
 
-    collapsePanel : function() {
+    /**
+     * Collapse a accordion pane.
+     *
+     * @method collapse
+     * @return {Accordion} The current widget.
+     */
+    collapse : function() {
 
     },
 
-    collapseAllPanel : function() {
+    /**
+     * Collapses all accordion pane.
+     *
+     * @method collapseAll
+     * @return {Accordion} The current widget.
+     */
+    collapseAll : function() {
 
     }
-
-
   });
-
 
   Accordion.Panel = Panel.inherit({
     klassName : "AccordionPanel",
@@ -116,5 +140,4 @@ define([
   });
 
   return Accordion;
-
 });

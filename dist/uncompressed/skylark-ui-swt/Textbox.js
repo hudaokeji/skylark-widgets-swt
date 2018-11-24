@@ -63,7 +63,7 @@ define([
     },
 
     /*
-     * Init  this widget
+     * Init this widget
      * @override
      */
     _init : function() {

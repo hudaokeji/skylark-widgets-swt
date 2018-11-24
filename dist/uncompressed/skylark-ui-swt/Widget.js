@@ -2,6 +2,7 @@ define([
   "skylark-langx/skylark",
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
+  "skylark-utils-dom/datax",
   "skylark-utils-dom/eventer",
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
@@ -10,16 +11,18 @@ define([
   "skylark-utils-dom/plugins",
   "skylark-utils-collection/Map",
   "./ui"
-],function(skylark,langx,browser,eventer,noder,geom,elmx,$,plugins,Map,ui){
+],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,ui){
 
 /*---------------------------------------------------------------------------------*/
 
 	var Widget = plugins.Plugin.inherit({
     klassName: "Widget",
 
+    _elmx : elmx,
+
     _construct : function(elm,options) {
         if (langx.isHtmlNode(elm)) {
-          options = this._setting(elm,options);
+          options = this._parse(elm,options);
         } else {
           options = elm;
           elm = null;
@@ -32,31 +35,62 @@ define([
         this._velm = elmx(this._elm);
         this.state = this.options.state || new Map();
         this._init();
-      },
+     },
 
-    _setting : function(elm,options) {
+    /**
+     * Parses widget options from attached element.
+     * This is a callback method called by constructor when attached element is specified.
+     * @method _parse
+     * @return {Object} options.
+     */
+    _parse : function(elm,options) {
       options = options || {};
       // TODO : parse options from element
       return options;
     },
 
 
+    /**
+     * Create html element for this widget.
+     * This is a callback method called by constructor when attached element is not specified.
+     * @method _create
+     */
     _create : function() {
      
     },
 
+    /**
+     * Init widget.
+     * This is a callback method called by constructor.
+     * @method _init
+     */
     _init : function() {
-
-    },
-
-    _render : function() {
-      state.on("changed",function() {
-        self._sync();
+      //TODO:
+      var self = this;
+      this.state.on("changed",function(e,args) {
+        self._refresh(args.data);
       });
 
     },
 
+
+    /**
+     * Post widget.
+     * This is a callback method called when widget element is added into dom.
+     * @method _post
+     */
+    _post : function() {
+
+    },
+
+
+    /**
+     * Refresh widget.
+     * This is a callback method called when widget state is changed.
+     * @method _refresh
+     */
     _refresh : function(updates) {
+      /*
       var _ = this._,
           model = _.model,
           dom = _.dom,
@@ -80,13 +114,8 @@ define([
           dom.aria('disabled', v);
           self.classes.toggle('disabled', v);
       }
+      */
     },                
-
-
-    _build : function(el,options) {
-
-    },
-
 
     mapping : {
       "events" : {
@@ -149,7 +178,7 @@ define([
      */
 
     show : function() {
-
+      this._velm.show();
     },
 
     /**
@@ -159,14 +188,14 @@ define([
      * @return {Widget} Current widget instance.
      */
     hide : function() {
-
+      this._velm.hide();
     },
 
     /**
-     * Focuses the current control.
+     * Focuses the current widget.
      *
      * @method focus
-     * @return {tinymce.ui.Control} Current control instance.
+     * @return {Widget} Current widget instance.
      */
     focus :function() {
       try {
@@ -179,10 +208,10 @@ define([
     },
 
     /**
-     * Blurs the current control.
+     * Blurs the current widget.
      *
      * @method blur
-     * @return {tinymce.ui.Control} Current control instance.
+     * @return {Widget} Current widget instance.
      */
     blur : function() {
       this._velm.blur();
@@ -206,7 +235,7 @@ define([
      * @method aria
      * @param {String} name Name of the aria property to set.
      * @param {String} value Value of the aria property.
-     * @return {tinymce.ui.Control} Current control instance.
+     * @return {Widget} Current widget instance.
      */
     aria : function(name, value) {
       const self = this, elm = self.getEl(self.ariaTarget);
@@ -248,13 +277,32 @@ define([
         return ret == velm ? this : ret;
     },
 
-    remove : function() {
+    /**
+     *  Detach the current widget element from dom document.
+     *
+     * @method html
+     * @return {HtmlElement} HTML element representing the widget.
+     */
+    detach : function() {
       this._velm.remove();
     }
   });
 
   Widget.inherit = function(meta) {
     var ctor = plugins.Plugin.inherit.apply(this,arguments);
+
+    if (meta.state) {
+      for (var name in meta.state) {
+        ctor.prototype[name] = function(value) {
+          if (value !== undefined) {
+            this.state.set(name,value);
+            return this;
+          } else {
+            return this.state.get(name);
+          }
+        };
+      }
+    }
 
     if (meta.pluginName) {
       plugins.register(ctor,meta.pluginName);

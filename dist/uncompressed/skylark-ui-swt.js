@@ -149,6 +149,7 @@ define('skylark-ui-swt/Widget',[
   "skylark-langx/skylark",
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
+  "skylark-utils-dom/datax",
   "skylark-utils-dom/eventer",
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
@@ -157,16 +158,18 @@ define('skylark-ui-swt/Widget',[
   "skylark-utils-dom/plugins",
   "skylark-utils-collection/Map",
   "./ui"
-],function(skylark,langx,browser,eventer,noder,geom,elmx,$,plugins,Map,ui){
+],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,ui){
 
 /*---------------------------------------------------------------------------------*/
 
 	var Widget = plugins.Plugin.inherit({
     klassName: "Widget",
 
+    _elmx : elmx,
+
     _construct : function(elm,options) {
         if (langx.isHtmlNode(elm)) {
-          options = this._setting(elm,options);
+          options = this._parse(elm,options);
         } else {
           options = elm;
           elm = null;
@@ -179,31 +182,62 @@ define('skylark-ui-swt/Widget',[
         this._velm = elmx(this._elm);
         this.state = this.options.state || new Map();
         this._init();
-      },
+     },
 
-    _setting : function(elm,options) {
+    /**
+     * Parses widget options from attached element.
+     * This is a callback method called by constructor when attached element is specified.
+     * @method _parse
+     * @return {Object} options.
+     */
+    _parse : function(elm,options) {
       options = options || {};
       // TODO : parse options from element
       return options;
     },
 
 
+    /**
+     * Create html element for this widget.
+     * This is a callback method called by constructor when attached element is not specified.
+     * @method _create
+     */
     _create : function() {
      
     },
 
+    /**
+     * Init widget.
+     * This is a callback method called by constructor.
+     * @method _init
+     */
     _init : function() {
-
-    },
-
-    _render : function() {
-      state.on("changed",function() {
-        self._sync();
+      //TODO:
+      var self = this;
+      this.state.on("changed",function(e,args) {
+        self._refresh(args.data);
       });
 
     },
 
+
+    /**
+     * Post widget.
+     * This is a callback method called when widget element is added into dom.
+     * @method _post
+     */
+    _post : function() {
+
+    },
+
+
+    /**
+     * Refresh widget.
+     * This is a callback method called when widget state is changed.
+     * @method _refresh
+     */
     _refresh : function(updates) {
+      /*
       var _ = this._,
           model = _.model,
           dom = _.dom,
@@ -227,13 +261,8 @@ define('skylark-ui-swt/Widget',[
           dom.aria('disabled', v);
           self.classes.toggle('disabled', v);
       }
+      */
     },                
-
-
-    _build : function(el,options) {
-
-    },
-
 
     mapping : {
       "events" : {
@@ -296,7 +325,7 @@ define('skylark-ui-swt/Widget',[
      */
 
     show : function() {
-
+      this._velm.show();
     },
 
     /**
@@ -306,14 +335,14 @@ define('skylark-ui-swt/Widget',[
      * @return {Widget} Current widget instance.
      */
     hide : function() {
-
+      this._velm.hide();
     },
 
     /**
-     * Focuses the current control.
+     * Focuses the current widget.
      *
      * @method focus
-     * @return {tinymce.ui.Control} Current control instance.
+     * @return {Widget} Current widget instance.
      */
     focus :function() {
       try {
@@ -326,10 +355,10 @@ define('skylark-ui-swt/Widget',[
     },
 
     /**
-     * Blurs the current control.
+     * Blurs the current widget.
      *
      * @method blur
-     * @return {tinymce.ui.Control} Current control instance.
+     * @return {Widget} Current widget instance.
      */
     blur : function() {
       this._velm.blur();
@@ -353,7 +382,7 @@ define('skylark-ui-swt/Widget',[
      * @method aria
      * @param {String} name Name of the aria property to set.
      * @param {String} value Value of the aria property.
-     * @return {tinymce.ui.Control} Current control instance.
+     * @return {Widget} Current widget instance.
      */
     aria : function(name, value) {
       const self = this, elm = self.getEl(self.ariaTarget);
@@ -395,13 +424,32 @@ define('skylark-ui-swt/Widget',[
         return ret == velm ? this : ret;
     },
 
-    remove : function() {
+    /**
+     *  Detach the current widget element from dom document.
+     *
+     * @method html
+     * @return {HtmlElement} HTML element representing the widget.
+     */
+    detach : function() {
       this._velm.remove();
     }
   });
 
   Widget.inherit = function(meta) {
     var ctor = plugins.Plugin.inherit.apply(this,arguments);
+
+    if (meta.state) {
+      for (var name in meta.state) {
+        ctor.prototype[name] = function(value) {
+          if (value !== undefined) {
+            this.state.set(name,value);
+            return this;
+          } else {
+            return this.state.get(name);
+          }
+        };
+      }
+    }
 
     if (meta.pluginName) {
       plugins.register(ctor,meta.pluginName);
@@ -520,9 +568,6 @@ define('skylark-ui-swt/Accordion',[
         template : null,
       }
     },
-    _parse : function() {
-      //
-    },
 
     _init : function() {
       var panels = [];
@@ -535,7 +580,7 @@ define('skylark-ui-swt/Accordion',[
       this._panels = panels;
     },
 
-    _sync : function() {
+    _post : function() {
       // handle internal events
     },
 
@@ -559,31 +604,58 @@ define('skylark-ui-swt/Accordion',[
 
     },
 
-    removePanel : function() {
+    /**
+     * Removes a accordion pane.
+     *
+     * @method remove
+     * @return {Accordion} The current widget.
+     */
+    remove : function() {
 
     },
 
-    expandPanel : function() {
+    /**
+     * Expands a accordion pane.
+     *
+     * @method remove
+     * @return {Accordion} The current widget.
+     */
+    expand : function() {
       // expand a panel
 
     },
 
-    expandAllPanel : function() {
+    /**
+     * Expands all accordion panes.
+     *
+     * @method expandAll
+     * @return {Accordion} The current widget.
+     */
+    expandAll : function() {
       // expand a panel
 
     },
 
-    collapsePanel : function() {
+    /**
+     * Collapse a accordion pane.
+     *
+     * @method collapse
+     * @return {Accordion} The current widget.
+     */
+    collapse : function() {
 
     },
 
-    collapseAllPanel : function() {
+    /**
+     * Collapses all accordion pane.
+     *
+     * @method collapseAll
+     * @return {Accordion} The current widget.
+     */
+    collapseAll : function() {
 
     }
-
-
   });
-
 
   Accordion.Panel = Panel.inherit({
     klassName : "AccordionPanel",
@@ -614,19 +686,14 @@ define('skylark-ui-swt/Accordion',[
   });
 
   return Accordion;
-
 });
 
 define('skylark-ui-swt/Button',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
   "./ui",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,$,ui,Widget){
 
 	var Button = Widget.inherit({
 		klassName : "Button",
@@ -638,101 +705,102 @@ define('skylark-ui-swt/Button',[
       btnType : "default",
       leftIcon : null,
       rightIcon : null,
-      topIcon : null,
-      bottomIcon : null
+      topIcon : null, // TODO
+      bottomIcon : null //TODO
 		},
 
-    init: function () {
-      var $el = jQuery(this.element.$);
+    state : {
+      "text" : String
+    },
 
-      if ($el.hasClass("btn-link")) {
-        this.data.btntype = "btn-link";
-      } else if ($el.hasClass("btn-default")) {
-        this.data.btntype = "btn-default";
-      } else if ($el.hasClass("btn-primary")) {
-        this.data.btntype = "btn-primary";
-      } else if ($el.hasClass("btn-info")) {
-        this.data.btntype = "btn-info";
-      } else if ($el.hasClass("btn-success")) {
-        this.data.btntype = "btn-success";
-      } else if ($el.hasClass("btn-warning")) {
-        this.data.btntype = "btn-warning";
-      } else if ($el.hasClass("btn-danger")) {
-        this.data.btntype = "btn-danger";
+    _parse: function (elm,options) {
+      var $el = $(elm),
+          options = langx.mixin({},options);
+
+      if (!options.btnType) {
+        if ($el.hasClass("btn-link")) {
+          options.btnType = "link";
+        } else if ($el.hasClass("btn-default")) {
+          options.btnType = "default";
+        } else if ($el.hasClass("btn-primary")) {
+          options.btnType = "primary";
+        } else if ($el.hasClass("btn-info")) {
+          options.btnType = "info";
+        } else if ($el.hasClass("btn-success")) {
+          options.btnType = "success";
+        } else if ($el.hasClass("btn-warning")) {
+          options.btnType = "warning";
+        } else if ($el.hasClass("btn-danger")) {
+          options.btnType = "danger";
+        }        
       }
 
-      if ($el.hasClass("btn-xs")) {
-        this.data.btnsize = "btn-xs";
-      } else if ($el.hasClass("btn-sm")) {
-        this.data.btnsize = "btn-sm";
-      } else if ($el.hasClass("btn-lg")) {
-        this.data.btnsize = "btn-lg";
+      if (!options.btnSize) {
+        if ($el.hasClass("btn-xs")) {
+          options.btnSize = "xs";
+        } else if ($el.hasClass("btn-sm")) {
+          options.btnSize = "sm";
+        } else if ($el.hasClass("btn-lg")) {
+          options.btnSize = "lg";
+        }        
       }
 
-      this.data.href = $el.attr('href');
+      if (!options.href) {
+        options.href = $el.attr('href');
 
-      this.data.target = $el.attr('target');
-
-      this.data.text = jQuery('.text', $el).text();
-
-      var bs_icon_left = jQuery('.bs-icon-left', $el);
-      var bs_icon_right = jQuery('.bs-icon-right', $el);
-      var fa_icon_left = jQuery('.fa-icon-left', $el);
-      var fa_icon_right = jQuery('.fa-icon-right', $el);
-
-      if (bs_icon_left.length > 0) {
-        bs_icon_left.removeClass('bs-icon-left').removeClass('glyphicon');
-        this.data.bsiconleft = bs_icon_left.attr('class');
-        bs_icon_left.addClass('bs-icon-left').addClass('glyphicon');
+        options.target = $el.attr('target');
       }
 
-      if (bs_icon_right.length > 0) {
-        bs_icon_right.removeClass('bs-icon-right').removeClass('glyphicon');
-        this.data.bsiconright = bs_icon_right.attr('class');
-        bs_icon_right.addClass('bs-icon-right').addClass('glyphicon');
+      if (!options.text) {
+        options.text = $el.find('.text').text();
       }
 
-      if (fa_icon_left.length > 0) {
-        fa_icon_left.removeClass('fa-icon-left').removeClass('fa');
-        this.data.faiconleft = fa_icon_left.attr('class');
-        fa_icon_left.addClass('fa-icon-left').addClass('fa');
+      if (!options.leftIcon) {
+        var $fa_icon_left = $el.find('.fa-icon-left');
+        if ($fa_icon_left.length > 0) {
+          $fa_icon_left.removeClass('fa-icon-left').removeClass('fa');
+          options.leftIcon = $fa_icon_left.attr('class');
+          $fa_icon_left.addClass('fa-icon-left').addClass('fa');
+        }
       }
 
-      if (fa_icon_right.length > 0) {
-        fa_icon_right.removeClass('fa-icon-right').removeClass('fa');
-        this.data.faiconright = fa_icon_right.attr('class');
-        fa_icon_right.addClass('fa-icon-right').addClass('fa');
+      if (!options.rightIcon) {
+        var $fa_icon_right = $el.find('.fa-icon-right');
+
+        if ($fa_icon_right.length > 0) {
+          $fa_icon_right.removeClass('fa-icon-right').removeClass('fa');
+          options.rightIcon = $fa_icon_right.attr('class');
+          $fa_icon_right.addClass('fa-icon-right').addClass('fa');
+        }        
       }
     },
 
     _refresh: function (updates) {
-      var $el = this.$el;
+      this.overrided(updates);
 
-      if (updates.btntype) {
-          $el.removeClass('btn-link btn-default btn-primary btn-info btn-success btn-warning btn-danger').addClass("btn-" + updates.btntype.value);
+      var velm = this._velm;
+
+      if (updates.btnType) {
+          velm.removeClass('btn-link btn-default btn-primary btn-info btn-success btn-warning btn-danger').addClass("btn-" + updates.btnType.value);
       }
 
-      $el.removeClass('btn-xs btn-sm btn-lg');
-			if (updates.btnsize) {
-                $el.addClass("btn-" + updates.btnsize.value);
+      if (updates.btnSize) {
+        velm.removeClass('btn-xs btn-sm btn-lg').addClass("btn-" + updates.btnSize.value);
       }
 
       if (updates.text) {
-          $('.text', $el).text(updates.text.value);
+        velm.$('.text').text(updates.text.value);
       }
 
-
-      if (updates.iconleft) {
-          $('.fa-icon-left', $el).remove();
-          if (updates.iconleft) {
-              $el.prepend('<i style="word-spacing: -1em;" class="fa fa-icon-left fa-' + updates.iconleft.value + '">&nbsp;</i>\n');
-          }
+      if (updates.left) {
+          velm.$('.fa-icon-left').remove();
+          velm.prepend('<i style="word-spacing: -1em;" class="fa fa-icon-left fa-' + updates.iconleft.value + '">&nbsp;</i>\n');
       }
 
       if (updates.iconright) {
-          $('.fa-icon-right', $el).remove();
+          velm.$('.fa-icon-right').remove();
           if (updates.iconright.value) {
-              $el.append('<i style="word-spacing: -1em;" class="fa fa-icon-right fa-' + updates.iconright.value + '">&nbsp;</i>\n');
+              velm.append('<i style="word-spacing: -1em;" class="fa fa-icon-right fa-' + updates.iconright.value + '">&nbsp;</i>\n');
           }
       }
     }
@@ -761,6 +829,52 @@ define('skylark-ui-swt/Carousel',[
         klassName : "Carousel",
         pluginName : "lark.carousel",
 
+        _init : function() {
+          this._bs_carousel = this._velm.carousel(this.options);
+          var self = this;          
+          this._velm.on("click.lark", "[data-slide],[data-slide-to]", function(e) {
+            var $this = $(this)
+            var slideIndex = $this.attr('data-slide-to');
+            if (slideIndex) {
+                self.to(slideIndex);
+            } else {
+              var slideAction = $this.attr('data-slide');
+              if (slideAction == "prev") {
+                self.prev();
+              } else {
+                self.next();
+              }
+            }
+
+            e.preventDefault();
+
+        });
+        },
+
+        to : function(pos) {
+          return this._bs_carousel.to(pos);
+        },
+
+        pause : function(e) {
+          this._bs_carousel.pause(e);
+          return this;
+        },
+
+        cycle : function(e) {
+          return this._bs_carousel.cycle(e);
+        },
+
+        next : function() {
+          return this._bs_carousel.next();
+        },
+
+        prev : function() {
+          return this._bs_carousel.prev();
+        },
+
+        add : function() {
+            
+        }
     });
 
     return Carousel;
@@ -2021,7 +2135,7 @@ define('skylark-ui-swt/Textbox',[
     },
 
     /*
-     * Init  this widget
+     * Init this widget
      * @override
      */
     _init : function() {
