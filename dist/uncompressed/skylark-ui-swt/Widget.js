@@ -44,9 +44,12 @@ define([
      * @return {Object} options.
      */
     _parse : function(elm,options) {
-      options = options || {};
-      // TODO : parse options from element
-      return options;
+      var optionsAttr = datax.data(elm,"options");
+      if (optionsAttr) {
+         var options1 = JSON.parse("{" + optionsAttr + "}");
+         options = langx.mixin(options1,options); 
+      }
+      return options || {};
     },
 
 
@@ -56,7 +59,7 @@ define([
      * @method _create
      */
     _create : function() {
-     
+        //TODO:     
     },
 
     /**
@@ -67,6 +70,9 @@ define([
     _init : function() {
       //TODO:
       var self = this;
+      if (this.widgetClass) {
+        this._velm.addClass(this.widgetClass);
+      }
       this.state.on("changed",function(e,args) {
         self._refresh(args.data);
       });
@@ -291,8 +297,7 @@ define([
   Widget.inherit = function(meta) {
     var ctor = plugins.Plugin.inherit.apply(this,arguments);
 
-    if (meta.state) {
-      for (var name in meta.state) {
+    function addStatePropMethod(name) {
         ctor.prototype[name] = function(value) {
           if (value !== undefined) {
             this.state.set(name,value);
@@ -301,6 +306,10 @@ define([
             return this.state.get(name);
           }
         };
+    }
+    if (meta.state) {
+      for (var name in meta.state) {
+          addStatePropMethod(name);
       }
     }
 

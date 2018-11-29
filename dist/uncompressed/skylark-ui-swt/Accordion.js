@@ -139,5 +139,5 @@ define([
     }
   });
 
-  return Accordion;
+  return ui.Accordion = Accordion;
 });

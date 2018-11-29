@@ -5,10 +5,12 @@ define([
     "./Button",
     "./Carousel",
     "./Checkbox",
+    "./Combobox",
     "./Menu",
     "./Pagination",
-    "./Progressbar",
+    "./Progress",
     "./Radio",
+    "./TabStrip",
     "./Textbox",
     "./Toolbar"
 /*    

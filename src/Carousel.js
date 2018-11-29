@@ -10,7 +10,7 @@ define([
     "skylark-bootstrap3/carousel"
 ], function(langx, browser, eventer, noder, geom,  $, ui, Widget) {
 
-    var Carousel = Widget.inherit({
+    var Carousel =  Widget.inherit({
         klassName : "Carousel",
         pluginName : "lark.carousel",
 
@@ -62,6 +62,6 @@ define([
         }
     });
 
-    return Carousel;
+    return ui.Carousel = Carousel;
 
 });

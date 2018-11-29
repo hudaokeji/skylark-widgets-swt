@@ -9,17 +9,6 @@ define([
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,ui,Widget){
 
-
-    /* This module used the following source code
-     * !
-     * jQuery pagination plugin v1.4.2
-     * http://josecebe.github.io/twbs-pagination/
-     *
-     * Copyright 2014-2018, Eugene Simakin
-     * Released under Apache 2.0 license
-     * http://apache.org/licenses/LICENSE-2.0.html
-     */
-
     'use strict';
 
     var Pagination = ui.Pagination = Widget.inherit({
@@ -27,343 +16,219 @@ define([
 
         pluginName : "lark.pagination",
 
-
         options : {
-            totalPages: 1,
-            startPage: 1,
-            visiblePages: 5,
-            initiateStartPageClick: true,
-            hideOnlyOnePage: false,
-            href: false,
-            pageVariable: '{{page}}',
-            totalPagesVariable: '{{total_pages}}',
-            page: null,
-            first: 'First',
-            prev: 'Previous',
-            next: 'Next',
-            last: 'Last',
-            loop: false,
-            beforePageClick: null,
-            onPageClick: null,
-            paginationClass: 'pagination',
-            nextClass: 'page-item next',
-            prevClass: 'page-item prev',
-            lastClass: 'page-item last',
-            firstClass: 'page-item first',
-            pageClass: 'page-item',
-            activeClass: 'active',
-            disabledClass: 'disabled',
-            anchorClass: 'page-link'         
+            tagName : "ul",
+            css : "",
+            selectors : {
+                firstNavi : "li[aria-label='first']",
+                prevNavi : "li[aria-label='prev']",
+                nextNavi : "li[aria-label='next']",
+                lastNavi : "li[aria-label='last']",
+                numericNavi : "li:not([aria-label])",
+                numericTxt  : "a"
+            },
+            totalPages: 7,
+            maxButtonsVisible: 5,
+            currentPage: 1     
         },
 
+        state : {
+            totalPages : Number,
+            currentPage : Number
+        },
 
-        _create : function(element, options) {
-            this.$element = $(element);
-            this.options = $.extend({}, $.fn.twbsPagination.defaults, options);
+        _parse : function(elm,options) {
 
-            if (this.options.startPage < 1 || this.options.startPage > this.options.totalPages) {
-                throw new Error('Start page option is incorrect');
-            }
+        },
+        
+        _create : function(self) {
+        },
 
-            this.options.totalPages = parseInt(this.options.totalPages);
-            if (isNaN(this.options.totalPages)) {
-                throw new Error('Total pages option is not correct!');
-            }
+        _init : function() {
+          this.$first = this._velm.$(this.options.selectors.firstNavi);
+          this.$prev = this._velm.$(this.options.selectors.prevNavi);
+          this.$last = this._velm.$(this.options.selectors.lastNavi);
+          this.$next = this._velm.$(this.options.selectors.nextNavi);
+          this.$numeric = this._velm.$(this.options.selectors.numericNavi);
 
-            this.options.visiblePages = parseInt(this.options.visiblePages);
-            if (isNaN(this.options.visiblePages)) {
-                throw new Error('Visible pages option is not correct!');
-            }
+          var self = this;
 
-            if (this.options.beforePageClick instanceof Function) {
-                this.$element.first().on('beforePage', this.options.beforePageClick);
-            }
-
-            if (this.options.onPageClick instanceof Function) {
-                this.$element.first().on('page', this.options.onPageClick);
-            }
-
-            // hide if only one page exists
-            if (this.options.hideOnlyOnePage && this.options.totalPages == 1) {
-                if (this.options.initiateStartPageClick) {
-                    this.$element.trigger('page', 1);
-                }
-                return this;
-            }
-
-            if (this.options.href) {
-                this.options.startPage = this.getPageFromQueryString();
-                if (!this.options.startPage) {
-                    this.options.startPage = 1;
-                }
-            }
-
-            var tagName = (typeof this.$element.prop === 'function') ?
-                this.$element.prop('tagName') : this.$element.attr('tagName');
-
-            if (tagName === 'UL') {
-                this.$listContainer = this.$element;
+          function checkCanAction(elm) {
+            var $elm = $(elm);
+            if ($elm.is(".disabled,.active")) {
+              return false;
             } else {
-                var elements = this.$element;
-                var $newListContainer = $([]);
-                elements.each(function(index) {
-                    var $newElem = $("<ul></ul>");
-                    $(this).append($newElem);
-                    $newListContainer.push($newElem[0]);
-                });
-                this.$listContainer = $newListContainer;
-                this.$element = $newListContainer;
+              return $elm;
+            }
+          }
+
+          this.$first.click(function(){
+            if (!checkCanAction(this)) {
+              return;
+            }
+            self.currentPage(1);
+          });
+
+          this.$prev.click(function(){
+            if (!checkCanAction(this)) {
+              return;
+            }
+            self.currentPage(self.currentPage()-1);
+          });
+
+          this.$last.click(function(){
+            if (!checkCanAction(this)) {
+              return;
+            }
+            self.currentPage(self.totalPages());
+          });
+
+          this.$next.click(function(){
+            if (!checkCanAction(this)) {
+              return;
+            }
+            self.currentPage(self.currentPage()+1);
+          });
+
+          this.$numeric.click(function(){
+            var ret = checkCanAction(this)
+            if (!ret) {
+              return;
+            }
+            var numeric = ret.find(self.options.selectors.numericTxt).text(),
+                pageNo = parseInt(numeric);
+            self.currentPage(pageNo);
+
+          });
+
+          this.state.set("currentPage",this.options.currentPage);
+          this.state.set("totalPages",this.options.totalPages);
+
+          this.overrided();
+        },
+
+        _refresh: function (updates) {
+          this.overrided(updates);
+          var self = this;
+
+          function changePageNoBtns(currentPage,totalPages) {
+
+            // Create the numeric buttons.
+            // Variable of number control in the buttons.
+            var totalPageNoBtns = Math.min(totalPages, self.options.maxButtonsVisible);
+            var begin = 1;
+            var end = begin + totalPageNoBtns - 1;
+
+            /*
+             * Align the values in the begin and end variables if the user has the
+             * possibility that select a page that doens't appear in the paginador.
+             * e.g currentPage = 1, and user go to the 20 page.
+             */
+            while ((currentPage < begin) || (currentPage > end)) {
+              if (currentPage > end) {
+                 begin += totalPageNoBtns;
+                 end += totalPageNoBtns;
+
+                 if (end > totalPages) {
+                   begin = begin - (end - totalPages);
+                   end = totalPages;
+                 }
+               } else {
+                 begin -= totalPageNoBtns;
+                 end -= totalPageNoBtns;
+
+                 if (begin < 0) {
+                   end = end + (begin + totalPageNoBtns);
+                   begin = 1;
+                 }
+               }
+            }
+           /*
+            * Verify if the user clicks in the last page show by paginator.
+            * If yes, the paginator advances.
+            */
+            if ((currentPage === end) && (totalPages != 1)) {
+              begin = currentPage - 1;
+              end = begin + totalPageNoBtns - 1;
+
+              if (end >= totalPages) {
+                begin = begin - (end - (totalPages));
+                end = totalPages;
+              }
             }
 
-            this.$listContainer.addClass(this.options.paginationClass);
+            /*
+             * Verify it the user clicks in the first page show by paginator.
+             * If yes, the paginator retrogress
+             */
+             if ((begin === currentPage) && (totalPages != 1)) {
+               if (currentPage != 1) {
+                 end = currentPage + 1;
+                 begin = end - (totalPageNoBtns - 1);
+               }
+             }
 
-            if (this.options.initiateStartPageClick) {
-                this.show(this.options.startPage);
+             var count = self.$numeric.size(),
+                 visibles = end-begin + 1,
+                 i = 0;
+
+             self.$numeric.filter(".active").removeClass("active");
+             while (i<visibles) {
+               var pageNo = i + begin,
+                   $btn = self.$numeric.eq(i);
+               $btn.find(self.options.selectors.numericTxt).text(i+begin).show();
+               if (pageNo == currentPage) {
+                $btn.addClass("active");
+               }
+               i++;
+             }
+             while (i<count) {
+               self.$numeric.eq(i).find(self.options.selectors.numericTxt).text(i+begin).hide();
+               i++;
+             }
+
+
+          }
+
+          function changeLabeldBtns(currentPage,totalPages) {
+            if (currentPage < 1) {
+              throw('Page can\'t be less than 1');
+            } else if (currentPage > totalPages) {
+              throw('Page is bigger than total pages');
+            }
+
+            if (totalPages < 1) {
+              throw('Total Pages can\'t be less than 1');
+            }
+
+            if (currentPage == 1 ) {
+              self.$first.addClass("disabled");
+              self.$prev.addClass("disabled");
             } else {
-                this.currentPage = this.options.startPage;
-                this.render(this.getPages(this.options.startPage));
-                this.setupEvents();
+              self.$first.removeClass("disabled");
+              self.$prev.removeClass("disabled");
             }
 
-            return this;
-
-        },
-
-        _destroy: function () {
-            this.$element.empty();
-            this.$element.removeData('twbs-pagination');
-            this.$element.off('page');
-
-            return this;
-        },
-
-        show: function (page) {
-            if (page < 1 || page > this.options.totalPages) {
-                throw new Error('Page is incorrect.');
+            if (currentPage == totalPages ) {
+              self.$last.addClass("disabled");
+              self.$next.addClass("disabled");
+            } else {
+              self.$last.removeClass("disabled");
+              self.$next.removeClass("disabled");
             }
-            this.currentPage = page;
+          }
 
-            this.$element.trigger('beforePage', page);
+          if (updates.currentPage || updates.totalPages) {
+            var currentPage = self.currentPage(),
+                totalPages = self.totalPages();
 
-            var pages = this.getPages(page);
-            this.render(pages);
-            this.setupEvents();
+            changePageNoBtns(currentPage,totalPages);
+            changeLabeldBtns(currentPage,totalPages);
+          }
 
-            this.$element.trigger('page', page);
-
-            return pages;
-        },
-
-        enable: function () {
-            this.show(this.currentPage);
-        },
-
-        disable: function () {
-            var _this = this;
-            this.$listContainer.off('click').on('click', 'li', function (evt) {
-                evt.preventDefault();
-            });
-            this.$listContainer.children().each(function () {
-                var $this = $(this);
-                if (!$this.hasClass(_this.options.activeClass)) {
-                    $(this).addClass(_this.options.disabledClass);
-                }
-            });
-        },
-
-        _build: function (pages) {
-            var listItems = [];
-
-            if (this.options.first) {
-                listItems.push(this.buildItem('first', 1));
-            }
-
-            if (this.options.prev) {
-                var prev = pages.currentPage > 1 ? pages.currentPage - 1 : this.options.loop ? this.options.totalPages  : 1;
-                listItems.push(this.buildItem('prev', prev));
-            }
-
-            for (var i = 0; i < pages.numeric.length; i++) {
-                listItems.push(this.buildItem('page', pages.numeric[i]));
-            }
-
-            if (this.options.next) {
-                var next = pages.currentPage < this.options.totalPages ? pages.currentPage + 1 : this.options.loop ? 1 : this.options.totalPages;
-                listItems.push(this.buildItem('next', next));
-            }
-
-            if (this.options.last) {
-                listItems.push(this.buildItem('last', this.options.totalPages));
-            }
-
-            return listItems;
-        },
-
-        _buildItem: function (type, page) {
-            var $itemContainer = $('<li></li>'),
-                $itemContent = $('<a></a>'),
-                itemText = this.options[type] ? this.makeText(this.options[type], page) : page;
-
-            $itemContainer.addClass(this.options[type + 'Class']);
-            $itemContainer.data('page', page);
-            $itemContainer.data('page-type', type);
-            $itemContainer.append($itemContent.attr('href', this.makeHref(page)).addClass(this.options.anchorClass).html(itemText));
-
-            return $itemContainer;
-        },
-
-        getPages: function (currentPage) {
-            var pages = [];
-
-            var half = Math.floor(this.options.visiblePages / 2);
-            var start = currentPage - half + 1 - this.options.visiblePages % 2;
-            var end = currentPage + half;
-
-            var visiblePages = this.options.visiblePages;
-            if (visiblePages > this.options.totalPages) {
-                visiblePages = this.options.totalPages;
-            }
-
-            // handle boundary case
-            if (start <= 0) {
-                start = 1;
-                end = visiblePages;
-            }
-            if (end > this.options.totalPages) {
-                start = this.options.totalPages - visiblePages + 1;
-                end = this.options.totalPages;
-            }
-
-            var itPage = start;
-            while (itPage <= end) {
-                pages.push(itPage);
-                itPage++;
-            }
-
-            return {"currentPage": currentPage, "numeric": pages};
-        },
-
-        render: function (pages) {
-            var _this = this;
-            this.$listContainer.children().remove();
-            var items = this.buildListItems(pages);
-            $.each(items, function(key, item){
-                _this.$listContainer.append(item);
-            });
-
-            this.$listContainer.children().each(function () {
-                var $this = $(this),
-                    pageType = $this.data('page-type');
-
-                switch (pageType) {
-                    case 'page':
-                        if ($this.data('page') === pages.currentPage) {
-                            $this.addClass(_this.options.activeClass);
-                        }
-                        break;
-                    case 'first':
-                            $this.toggleClass(_this.options.disabledClass, pages.currentPage === 1);
-                        break;
-                    case 'last':
-                            $this.toggleClass(_this.options.disabledClass, pages.currentPage === _this.options.totalPages);
-                        break;
-                    case 'prev':
-                            $this.toggleClass(_this.options.disabledClass, !_this.options.loop && pages.currentPage === 1);
-                        break;
-                    case 'next':
-                            $this.toggleClass(_this.options.disabledClass,
-                                !_this.options.loop && pages.currentPage === _this.options.totalPages);
-                        break;
-                    default:
-                        break;
-                }
-
-            });
-        },
-
-        setupEvents: function () {
-            var _this = this;
-            this.$listContainer.off('click').on('click', 'li', function (evt) {
-                var $this = $(this);
-                if ($this.hasClass(_this.options.disabledClass) || $this.hasClass(_this.options.activeClass)) {
-                    return false;
-                }
-                // Prevent click event if href is not set.
-                !_this.options.href && evt.preventDefault();
-                _this.show(parseInt($this.data('page')));
-            });
-        },
-
-        changeTotalPages: function(totalPages, currentPage) {
-            this.options.totalPages = totalPages;
-            return this.show(currentPage);
-        },
-
-        makeHref: function (page) {
-            return this.options.href ? this.generateQueryString(page) : "#";
-        },
-
-        makeText: function (text, page) {
-            return text.replace(this.options.pageVariable, page)
-                .replace(this.options.totalPagesVariable, this.options.totalPages)
-        },
-
-        getPageFromQueryString: function (searchStr) {
-            var search = this.getSearchString(searchStr),
-                regex = new RegExp(this.options.pageVariable + '(=([^&#]*)|&|#|$)'),
-                page = regex.exec(search);
-            if (!page || !page[2]) {
-                return null;
-            }
-            page = decodeURIComponent(page[2]);
-            page = parseInt(page);
-            if (isNaN(page)) {
-                return null;
-            }
-            return page;
-        },
-
-        generateQueryString: function (pageNumber, searchStr) {
-            var search = this.getSearchString(searchStr),
-                regex = new RegExp(this.options.pageVariable + '=*[^&#]*');
-            if (!search) return '';
-            return '?' + search.replace(regex, this.options.pageVariable + '=' + pageNumber);
-        },
-
-        getSearchString: function (searchStr) {
-            var search = searchStr || window.location.search;
-            if (search === '') {
-                return null;
-            }
-            if (search.indexOf('?') === 0) search = search.substr(1);
-            return search;
-        },
-
-        getCurrentPage: function () {
-            return this.currentPage;
-        },
-
-        getTotalPages: function () {
-            return this.options.totalPages;
         }
 
     });
-
-    // PLUGIN DEFINITION
-
-    $.fn.twbsPagination = function (option) {
-        var args = Array.prototype.slice.call(arguments, 1);
-        var methodReturn;
-
-        var $this = $(this);
-        var data = $this.data('twbs-pagination');
-        var options = typeof option === 'object' ? option : {};
-
-        if (!data) $this.data('twbs-pagination', (data = new TwbsPagination(this, options) ));
-        if (typeof option === 'string') methodReturn = data[ option ].apply(data, args);
-
-        return ( methodReturn === undefined ) ? $this : methodReturn;
-    };
 
     return Pagination;
 });

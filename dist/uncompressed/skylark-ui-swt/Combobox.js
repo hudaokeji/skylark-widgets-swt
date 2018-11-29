@@ -6,17 +6,20 @@ define([
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
   "./ui",
-  "./Widget"
+  "./Widget",
+  "skylark-bootstrap3/dropdown"
 ],function(langx,browser,eventer,noder,geom,$,ui,Widget){
 
 
 
 	// COMBOBOX CONSTRUCTOR AND PROTOTYPE
 
-	var Combobox = ui.Combobox = Widget.inherit({
+	var Combobox = Widget.inherit({
 		klassName: "Combobox",
 
 		pluginName : "lark.combobox",
+
+		widgetClass : "lark-combobox",
 
 		options : {
 
@@ -50,9 +53,8 @@ define([
 			}
 		},
 
-		_init : function(element,options) {
-			this.$element = $(element);
-			this.options = langx.mixin({}, $.fn.combobox.defaults, options);
+		_init : function() {
+			this.$element = $(this._elm);
 
 			this.$dropMenu = this.$element.find('.dropdown-menu');
 			this.$input = this.$element.find('input');
@@ -323,5 +325,5 @@ define([
 
 
 
-	return Combobox;
+	return ui.Combobox = Combobox;
 });

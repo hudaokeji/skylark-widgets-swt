@@ -116,7 +116,7 @@ define([
     }
   });
 
-  return Button;
+  return ui.Button = Button;
 
 });
 

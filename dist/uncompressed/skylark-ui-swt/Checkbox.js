@@ -9,52 +9,66 @@ define([
   "./_Toggler"
 ],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
 
-  var Checkbox = ui.Checkbox = _Toggler.inherit({
+  var Checkbox =  _Toggler.inherit({
     klassName: "Checkbox",
 
     pluginName : "lark.checkbox",
 
-    _parse : function() {
-      var $chk = this.$chk;
+    options : {
+      selectors : {
+        chk : "input[type=checkbox]",
+        lbl : "checkbox-label"
+      },
+      template : undefined,
+      checked : undefined,
+      label : undefined,
+      value : undefined
+    },
 
-      // get current state of input
-      var checked = $chk.prop('checked');
-      var disabled = $chk.prop('disabled');
+    _parse : function(elm,options) {
+      options = this.overrided(elm,options);
+      var $el = $(elm),
+          chkSelector = options.selectors && options.selectors.chk,
+          lblSelector = options.selectors && options.selectors.lbl;
 
-      this.state.set("checked",checked);
-      this.state.set(("disabled",disabled));
+      if (!chkSelector) {
+        chkSelector = this.options.selectors.chk;
+      }
+      if (!lblSelector) {
+        lblSelector = this.options.selectors.lbl;
+      }
 
+      var $chk = $el.find(chkSelector),
+          $lbl = $el.find(lblSelector);
+
+      if (options.checked == undefined) {
+        options.checked = $chk.prop('checked')
+      } else {
+        $chk.prop('checked',options.checked);
+      }
+
+      if (options.disabled == undefined) {
+        options.disabled = $chk.prop('disabled')
+      } else {
+        $chk.prop('disabled',options.disabled);
+      }
+
+      return options;
+    },
+
+    _create : function() {
+      //TODO
     },
 
     _init : function() {
-      //this.options = langx.mixin({}, $.fn.checkbox.defaults, options);
-      var element = this.domNode;
-      var $element = $(element);
-
-      if (element.tagName.toLowerCase() !== 'label') {
-        logError('Checkbox must be initialized on the `label` that wraps the `input` element. See https://github.com/ExactTarget/fuelux/blob/master/reference/markup/checkbox.html for example of proper markup. Call `.checkbox()` on the `<label>` not the `<input>`');
-        return;
-      }
+      var elm = this._elm;
 
       // cache elements
-      this.$label = $element;
-      this.$chk = this.$label.find('input[type="checkbox"]');
-      this.$container = $element.parent('.checkbox'); // the container div
-
-      if (!this.options.ignoreVisibilityCheck && this.$chk.css('visibility').match(/hidden|collapse/)) {
-        logError('For accessibility reasons, in order for tab and space to function on checkbox, checkbox `<input />`\'s `visibility` must not be set to `hidden` or `collapse`. See https://github.com/ExactTarget/fuelux/pull/1996 for more details.');
-      }
-
-      // determine if a toggle container is specified
-      var containerSelector = this.$chk.attr('data-toggle');
-      this.$toggleContainer = $(containerSelector);
-
-
-      // set default state
-      this.setInitialState();
+      this.$lbl = this._velm.$(this.options.selectors.lbl);
+      this.$chk = this._velm.$(this.options.selectors.chk);
     },
 
-    _sync : function() {
+    _attach : function() {
       // handle internal events
       var self = this;
       this.$chk.on('change', function(evt) {
@@ -108,5 +122,5 @@ define([
     }
   });
 
-	return Checkbox;
+	return ui.Checkbox = Checkbox;
 });

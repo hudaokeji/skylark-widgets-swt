@@ -191,9 +191,12 @@ define('skylark-ui-swt/Widget',[
      * @return {Object} options.
      */
     _parse : function(elm,options) {
-      options = options || {};
-      // TODO : parse options from element
-      return options;
+      var optionsAttr = datax.data(elm,"options");
+      if (optionsAttr) {
+         var options1 = JSON.parse("{" + optionsAttr + "}");
+         options = langx.mixin(options1,options); 
+      }
+      return options || {};
     },
 
 
@@ -203,7 +206,7 @@ define('skylark-ui-swt/Widget',[
      * @method _create
      */
     _create : function() {
-     
+        //TODO:     
     },
 
     /**
@@ -214,6 +217,9 @@ define('skylark-ui-swt/Widget',[
     _init : function() {
       //TODO:
       var self = this;
+      if (this.widgetClass) {
+        this._velm.addClass(this.widgetClass);
+      }
       this.state.on("changed",function(e,args) {
         self._refresh(args.data);
       });
@@ -438,8 +444,7 @@ define('skylark-ui-swt/Widget',[
   Widget.inherit = function(meta) {
     var ctor = plugins.Plugin.inherit.apply(this,arguments);
 
-    if (meta.state) {
-      for (var name in meta.state) {
+    function addStatePropMethod(name) {
         ctor.prototype[name] = function(value) {
           if (value !== undefined) {
             this.state.set(name,value);
@@ -448,6 +453,10 @@ define('skylark-ui-swt/Widget',[
             return this.state.get(name);
           }
         };
+    }
+    if (meta.state) {
+      for (var name in meta.state) {
+          addStatePropMethod(name);
       }
     }
 
@@ -685,7 +694,7 @@ define('skylark-ui-swt/Accordion',[
     }
   });
 
-  return Accordion;
+  return ui.Accordion = Accordion;
 });
 
 define('skylark-ui-swt/Button',[
@@ -806,7 +815,7 @@ define('skylark-ui-swt/Button',[
     }
   });
 
-  return Button;
+  return ui.Button = Button;
 
 });
 
@@ -825,7 +834,7 @@ define('skylark-ui-swt/Carousel',[
     "skylark-bootstrap3/carousel"
 ], function(langx, browser, eventer, noder, geom,  $, ui, Widget) {
 
-    var Carousel = Widget.inherit({
+    var Carousel =  Widget.inherit({
         klassName : "Carousel",
         pluginName : "lark.carousel",
 
@@ -877,7 +886,7 @@ define('skylark-ui-swt/Carousel',[
         }
     });
 
-    return Carousel;
+    return ui.Carousel = Carousel;
 
 });
 define('skylark-ui-swt/_Toggler',[
@@ -939,52 +948,66 @@ define('skylark-ui-swt/Checkbox',[
   "./_Toggler"
 ],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
 
-  var Checkbox = ui.Checkbox = _Toggler.inherit({
+  var Checkbox =  _Toggler.inherit({
     klassName: "Checkbox",
 
     pluginName : "lark.checkbox",
 
-    _parse : function() {
-      var $chk = this.$chk;
+    options : {
+      selectors : {
+        chk : "input[type=checkbox]",
+        lbl : "checkbox-label"
+      },
+      template : undefined,
+      checked : undefined,
+      label : undefined,
+      value : undefined
+    },
 
-      // get current state of input
-      var checked = $chk.prop('checked');
-      var disabled = $chk.prop('disabled');
+    _parse : function(elm,options) {
+      options = this.overrided(elm,options);
+      var $el = $(elm),
+          chkSelector = options.selectors && options.selectors.chk,
+          lblSelector = options.selectors && options.selectors.lbl;
 
-      this.state.set("checked",checked);
-      this.state.set(("disabled",disabled));
+      if (!chkSelector) {
+        chkSelector = this.options.selectors.chk;
+      }
+      if (!lblSelector) {
+        lblSelector = this.options.selectors.lbl;
+      }
 
+      var $chk = $el.find(chkSelector),
+          $lbl = $el.find(lblSelector);
+
+      if (options.checked == undefined) {
+        options.checked = $chk.prop('checked')
+      } else {
+        $chk.prop('checked',options.checked);
+      }
+
+      if (options.disabled == undefined) {
+        options.disabled = $chk.prop('disabled')
+      } else {
+        $chk.prop('disabled',options.disabled);
+      }
+
+      return options;
+    },
+
+    _create : function() {
+      //TODO
     },
 
     _init : function() {
-      //this.options = langx.mixin({}, $.fn.checkbox.defaults, options);
-      var element = this.domNode;
-      var $element = $(element);
-
-      if (element.tagName.toLowerCase() !== 'label') {
-        logError('Checkbox must be initialized on the `label` that wraps the `input` element. See https://github.com/ExactTarget/fuelux/blob/master/reference/markup/checkbox.html for example of proper markup. Call `.checkbox()` on the `<label>` not the `<input>`');
-        return;
-      }
+      var elm = this._elm;
 
       // cache elements
-      this.$label = $element;
-      this.$chk = this.$label.find('input[type="checkbox"]');
-      this.$container = $element.parent('.checkbox'); // the container div
-
-      if (!this.options.ignoreVisibilityCheck && this.$chk.css('visibility').match(/hidden|collapse/)) {
-        logError('For accessibility reasons, in order for tab and space to function on checkbox, checkbox `<input />`\'s `visibility` must not be set to `hidden` or `collapse`. See https://github.com/ExactTarget/fuelux/pull/1996 for more details.');
-      }
-
-      // determine if a toggle container is specified
-      var containerSelector = this.$chk.attr('data-toggle');
-      this.$toggleContainer = $(containerSelector);
-
-
-      // set default state
-      this.setInitialState();
+      this.$lbl = this._velm.$(this.options.selectors.lbl);
+      this.$chk = this._velm.$(this.options.selectors.chk);
     },
 
-    _sync : function() {
+    _attach : function() {
       // handle internal events
       var self = this;
       this.$chk.on('change', function(evt) {
@@ -1038,7 +1061,337 @@ define('skylark-ui-swt/Checkbox',[
     }
   });
 
-	return Checkbox;
+	return ui.Checkbox = Checkbox;
+});
+
+define('skylark-ui-swt/Combobox',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./ui",
+  "./Widget",
+  "skylark-bootstrap3/dropdown"
+],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+
+
+
+	// COMBOBOX CONSTRUCTOR AND PROTOTYPE
+
+	var Combobox = Widget.inherit({
+		klassName: "Combobox",
+
+		pluginName : "lark.combobox",
+
+		widgetClass : "lark-combobox",
+
+		options : {
+
+			autoResizeMenu: true,
+			filterOnKeypress: false,
+			showOptionsOnKeypress: false,
+			filter: function filter (list, predicate, self) {
+				var visible = 0;
+				self.$dropMenu.find('.empty-indicator').remove();
+
+				list.each(function (i) {
+					var $li = $(this);
+					var text = $(this).text().trim();
+
+					$li.removeClass();
+
+					if (text === predicate) {
+						$li.addClass('text-success');
+						visible++;
+					} else if (text.substr(0, predicate.length) === predicate) {
+						$li.addClass('text-info');
+						visible++;
+					} else {
+						$li.addClass('hidden');
+					}
+				});
+
+				if (visible === 0) {
+					self.$dropMenu.append('<li class="empty-indicator text-muted"><em>No Matches</em></li>');
+				}
+			}
+		},
+
+		_init : function() {
+			this.$element = $(this._elm);
+
+			this.$dropMenu = this.$element.find('.dropdown-menu');
+			this.$input = this.$element.find('input');
+			this.$button = this.$element.find('.btn');
+			this.$button.dropdown();
+			this.$inputGroupBtn = this.$element.find('.input-group-btn');
+
+			this.$element.on('click.lark', 'a', langx.proxy(this.itemclicked, this));
+			this.$element.on('change.lark', 'input', langx.proxy(this.inputchanged, this));
+			this.$element.on('shown.bs.dropdown', langx.proxy(this.menuShown, this));
+			this.$input.on('keyup.lark', langx.proxy(this.keypress, this));
+
+			// set default selection
+			this.setDefaultSelection();
+
+			// if dropdown is empty, disable it
+			var items = this.$dropMenu.children('li');
+			if( items.length === 0) {
+				this.$button.addClass('disabled');
+			}
+
+			// filter on load in case the first thing they do is press navigational key to pop open the menu
+			if (this.options.filterOnKeypress) {
+				this.options.filter(this.$dropMenu.find('li'), this.$input.val(), this);
+			}
+		},
+
+		_destroy: function () {
+			this.$element.remove();
+			// remove any external bindings
+			// [none]
+
+			// set input value attrbute in markup
+			this.$element.find('input').each(function () {
+				$(this).attr('value', $(this).val());
+			});
+
+			// empty elements to return to original markup
+			// [none]
+
+			return this.$element[0].outerHTML;
+		},
+
+		doSelect: function ($item) {
+
+			if (typeof $item[0] !== 'undefined') {
+				// remove selection from old item, may result in remove and
+				// re-addition of class if item is the same
+				this.$element.find('li.selected:first').removeClass('selected');
+
+				// add selection to new item
+				this.$selectedItem = $item;
+				this.$selectedItem.addClass('selected');
+
+				// update input
+				this.$input.val(this.$selectedItem.text().trim());
+			} else {
+				// this is a custom input, not in the menu
+				this.$selectedItem = null;
+				this.$element.find('li.selected:first').removeClass('selected');
+			}
+		},
+
+		clearSelection: function () {
+			this.$selectedItem = null;
+			this.$input.val('');
+			this.$dropMenu.find('li').removeClass('selected');
+		},
+
+		menuShown: function () {
+			if (this.options.autoResizeMenu) {
+				this.resizeMenu();
+			}
+		},
+
+		resizeMenu: function () {
+			var width = this.$element.outerWidth();
+			this.$dropMenu.outerWidth(width);
+		},
+
+		selectedItem: function () {
+			var item = this.$selectedItem;
+			var data = {};
+
+			if (item) {
+				var txt = this.$selectedItem.text().trim();
+				data = langx.mixin({
+					text: txt
+				}, this.$selectedItem.data());
+			} else {
+				data = {
+					text: this.$input.val().trim(),
+					notFound: true
+				};
+			}
+
+			return data;
+		},
+
+		selectByText: function (text) {
+			var $item = $([]);
+			this.$element.find('li').each(function () {
+				if ((this.textContent || this.innerText || $(this).text() || '').trim().toLowerCase() === (text || '').trim().toLowerCase()) {
+					$item = $(this);
+					return false;
+				}
+			});
+
+			this.doSelect($item);
+		},
+
+		selectByValue: function (value) {
+			var selector = 'li[data-value="' + value + '"]';
+			this.selectBySelector(selector);
+		},
+
+		selectByIndex: function (index) {
+			// zero-based index
+			var selector = 'li:eq(' + index + ')';
+			this.selectBySelector(selector);
+		},
+
+		selectBySelector: function (selector) {
+			var $item = this.$element.find(selector);
+			this.doSelect($item);
+		},
+
+		setDefaultSelection: function () {
+			var selector = 'li[data-selected=true]:first';
+			var item = this.$element.find(selector);
+
+			if (item.length > 0) {
+				// select by data-attribute
+				this.selectBySelector(selector);
+				item.removeData('selected');
+				item.removeAttr('data-selected');
+			}
+		},
+
+		enable: function () {
+			this.$element.removeClass('disabled');
+			this.$input.removeAttr('disabled');
+			this.$button.removeClass('disabled');
+		},
+
+		disable: function () {
+			this.$element.addClass('disabled');
+			this.$input.attr('disabled', true);
+			this.$button.addClass('disabled');
+		},
+
+		itemclicked: function (e) {
+			this.$selectedItem = $(e.target).parent();
+
+			// set input text and trigger input change event marked as synthetic
+			this.$input.val(this.$selectedItem.text().trim()).trigger('change', {
+				synthetic: true
+			});
+
+			// pass object including text and any data-attributes
+			// to onchange event
+			var data = this.selectedItem();
+
+			// trigger changed event
+			this.$element.trigger('changed.lark', data);
+
+			e.preventDefault();
+
+			// return focus to control after selecting an option
+			this.$element.find('.dropdown-toggle').focus();
+		},
+
+		keypress: function (e) {
+			var ENTER = 13;
+			//var TAB = 9;
+			var ESC = 27;
+			var LEFT = 37;
+			var UP = 38;
+			var RIGHT = 39;
+			var DOWN = 40;
+
+			var IS_NAVIGATIONAL = (
+				e.which === UP ||
+				e.which === DOWN ||
+				e.which === LEFT ||
+				e.which === RIGHT
+			);
+
+			if(this.options.showOptionsOnKeypress && !this.$inputGroupBtn.hasClass('open')){
+				this.$button.dropdown('toggle');
+				this.$input.focus();
+			}
+
+			if (e.which === ENTER) {
+				e.preventDefault();
+
+				var selected = this.$dropMenu.find('li.selected').text().trim();
+				if(selected.length > 0){
+					this.selectByText(selected);
+				}else{
+					this.selectByText(this.$input.val());
+				}
+
+				this.$inputGroupBtn.removeClass('open');
+			} else if (e.which === ESC) {
+				e.preventDefault();
+				this.clearSelection();
+				this.$inputGroupBtn.removeClass('open');
+			} else if (this.options.showOptionsOnKeypress) {
+				if (e.which === DOWN || e.which === UP) {
+					e.preventDefault();
+					var $selected = this.$dropMenu.find('li.selected');
+					if ($selected.length > 0) {
+						if (e.which === DOWN) {
+							$selected = $selected.next(':not(.hidden)');
+						} else {
+							$selected = $selected.prev(':not(.hidden)');
+						}
+					}
+
+					if ($selected.length === 0){
+						if (e.which === DOWN) {
+							$selected = this.$dropMenu.find('li:not(.hidden):first');
+						} else {
+							$selected = this.$dropMenu.find('li:not(.hidden):last');
+						}
+					}
+					this.doSelect($selected);
+				}
+			}
+
+			// Avoid filtering on navigation key presses
+			if (this.options.filterOnKeypress && !IS_NAVIGATIONAL) {
+				this.options.filter(this.$dropMenu.find('li'), this.$input.val(), this);
+			}
+
+			this.previousKeyPress = e.which;
+		},
+
+		inputchanged: function (e, extra) {
+			var val = $(e.target).val();
+			// skip processing for internally-generated synthetic event
+			// to avoid double processing
+			if (extra && extra.synthetic) {
+				this.selectByText(val);
+				return;
+			}
+			this.selectByText(val);
+
+			// find match based on input
+			// if no match, pass the input value
+			var data = this.selectedItem();
+			if (data.text.length === 0) {
+				data = {
+					text: val
+				};
+			}
+
+			// trigger changed event
+			this.$element.trigger('changed.lark', data);
+		}
+
+	});
+
+
+
+	Combobox.prototype.getValue = Combobox.prototype.selectedItem;
+
+
+
+	return ui.Combobox = Combobox;
 });
 
 define('skylark-ui-swt/Menu',[
@@ -1429,17 +1782,6 @@ define('skylark-ui-swt/Pagination',[
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,ui,Widget){
 
-
-    /* This module used the following source code
-     * !
-     * jQuery pagination plugin v1.4.2
-     * http://josecebe.github.io/twbs-pagination/
-     *
-     * Copyright 2014-2018, Eugene Simakin
-     * Released under Apache 2.0 license
-     * http://apache.org/licenses/LICENSE-2.0.html
-     */
-
     'use strict';
 
     var Pagination = ui.Pagination = Widget.inherit({
@@ -1447,347 +1789,223 @@ define('skylark-ui-swt/Pagination',[
 
         pluginName : "lark.pagination",
 
-
         options : {
-            totalPages: 1,
-            startPage: 1,
-            visiblePages: 5,
-            initiateStartPageClick: true,
-            hideOnlyOnePage: false,
-            href: false,
-            pageVariable: '{{page}}',
-            totalPagesVariable: '{{total_pages}}',
-            page: null,
-            first: 'First',
-            prev: 'Previous',
-            next: 'Next',
-            last: 'Last',
-            loop: false,
-            beforePageClick: null,
-            onPageClick: null,
-            paginationClass: 'pagination',
-            nextClass: 'page-item next',
-            prevClass: 'page-item prev',
-            lastClass: 'page-item last',
-            firstClass: 'page-item first',
-            pageClass: 'page-item',
-            activeClass: 'active',
-            disabledClass: 'disabled',
-            anchorClass: 'page-link'         
+            tagName : "ul",
+            css : "",
+            selectors : {
+                firstNavi : "li[aria-label='first']",
+                prevNavi : "li[aria-label='prev']",
+                nextNavi : "li[aria-label='next']",
+                lastNavi : "li[aria-label='last']",
+                numericNavi : "li:not([aria-label])",
+                numericTxt  : "a"
+            },
+            totalPages: 7,
+            maxButtonsVisible: 5,
+            currentPage: 1     
         },
 
+        state : {
+            totalPages : Number,
+            currentPage : Number
+        },
 
-        _create : function(element, options) {
-            this.$element = $(element);
-            this.options = $.extend({}, $.fn.twbsPagination.defaults, options);
+        _parse : function(elm,options) {
 
-            if (this.options.startPage < 1 || this.options.startPage > this.options.totalPages) {
-                throw new Error('Start page option is incorrect');
-            }
+        },
+        
+        _create : function(self) {
+        },
 
-            this.options.totalPages = parseInt(this.options.totalPages);
-            if (isNaN(this.options.totalPages)) {
-                throw new Error('Total pages option is not correct!');
-            }
+        _init : function() {
+          this.$first = this._velm.$(this.options.selectors.firstNavi);
+          this.$prev = this._velm.$(this.options.selectors.prevNavi);
+          this.$last = this._velm.$(this.options.selectors.lastNavi);
+          this.$next = this._velm.$(this.options.selectors.nextNavi);
+          this.$numeric = this._velm.$(this.options.selectors.numericNavi);
 
-            this.options.visiblePages = parseInt(this.options.visiblePages);
-            if (isNaN(this.options.visiblePages)) {
-                throw new Error('Visible pages option is not correct!');
-            }
+          var self = this;
 
-            if (this.options.beforePageClick instanceof Function) {
-                this.$element.first().on('beforePage', this.options.beforePageClick);
-            }
-
-            if (this.options.onPageClick instanceof Function) {
-                this.$element.first().on('page', this.options.onPageClick);
-            }
-
-            // hide if only one page exists
-            if (this.options.hideOnlyOnePage && this.options.totalPages == 1) {
-                if (this.options.initiateStartPageClick) {
-                    this.$element.trigger('page', 1);
-                }
-                return this;
-            }
-
-            if (this.options.href) {
-                this.options.startPage = this.getPageFromQueryString();
-                if (!this.options.startPage) {
-                    this.options.startPage = 1;
-                }
-            }
-
-            var tagName = (typeof this.$element.prop === 'function') ?
-                this.$element.prop('tagName') : this.$element.attr('tagName');
-
-            if (tagName === 'UL') {
-                this.$listContainer = this.$element;
+          function checkCanAction(elm) {
+            var $elm = $(elm);
+            if ($elm.is(".disabled,.active")) {
+              return false;
             } else {
-                var elements = this.$element;
-                var $newListContainer = $([]);
-                elements.each(function(index) {
-                    var $newElem = $("<ul></ul>");
-                    $(this).append($newElem);
-                    $newListContainer.push($newElem[0]);
-                });
-                this.$listContainer = $newListContainer;
-                this.$element = $newListContainer;
+              return $elm;
+            }
+          }
+
+          this.$first.click(function(){
+            if (!checkCanAction(this)) {
+              return;
+            }
+            self.currentPage(1);
+          });
+
+          this.$prev.click(function(){
+            if (!checkCanAction(this)) {
+              return;
+            }
+            self.currentPage(self.currentPage()-1);
+          });
+
+          this.$last.click(function(){
+            if (!checkCanAction(this)) {
+              return;
+            }
+            self.currentPage(self.totalPages());
+          });
+
+          this.$next.click(function(){
+            if (!checkCanAction(this)) {
+              return;
+            }
+            self.currentPage(self.currentPage()+1);
+          });
+
+          this.$numeric.click(function(){
+            var ret = checkCanAction(this)
+            if (!ret) {
+              return;
+            }
+            var numeric = ret.find(self.options.selectors.numericTxt).text(),
+                pageNo = parseInt(numeric);
+            self.currentPage(pageNo);
+
+          });
+
+          this.state.set("currentPage",this.options.currentPage);
+          this.state.set("totalPages",this.options.totalPages);
+
+          this.overrided();
+        },
+
+        _refresh: function (updates) {
+          this.overrided(updates);
+          var self = this;
+
+          function changePageNoBtns(currentPage,totalPages) {
+
+            // Create the numeric buttons.
+            // Variable of number control in the buttons.
+            var totalPageNoBtns = Math.min(totalPages, self.options.maxButtonsVisible);
+            var begin = 1;
+            var end = begin + totalPageNoBtns - 1;
+
+            /*
+             * Align the values in the begin and end variables if the user has the
+             * possibility that select a page that doens't appear in the paginador.
+             * e.g currentPage = 1, and user go to the 20 page.
+             */
+            while ((currentPage < begin) || (currentPage > end)) {
+              if (currentPage > end) {
+                 begin += totalPageNoBtns;
+                 end += totalPageNoBtns;
+
+                 if (end > totalPages) {
+                   begin = begin - (end - totalPages);
+                   end = totalPages;
+                 }
+               } else {
+                 begin -= totalPageNoBtns;
+                 end -= totalPageNoBtns;
+
+                 if (begin < 0) {
+                   end = end + (begin + totalPageNoBtns);
+                   begin = 1;
+                 }
+               }
+            }
+           /*
+            * Verify if the user clicks in the last page show by paginator.
+            * If yes, the paginator advances.
+            */
+            if ((currentPage === end) && (totalPages != 1)) {
+              begin = currentPage - 1;
+              end = begin + totalPageNoBtns - 1;
+
+              if (end >= totalPages) {
+                begin = begin - (end - (totalPages));
+                end = totalPages;
+              }
             }
 
-            this.$listContainer.addClass(this.options.paginationClass);
+            /*
+             * Verify it the user clicks in the first page show by paginator.
+             * If yes, the paginator retrogress
+             */
+             if ((begin === currentPage) && (totalPages != 1)) {
+               if (currentPage != 1) {
+                 end = currentPage + 1;
+                 begin = end - (totalPageNoBtns - 1);
+               }
+             }
 
-            if (this.options.initiateStartPageClick) {
-                this.show(this.options.startPage);
+             var count = self.$numeric.size(),
+                 visibles = end-begin + 1,
+                 i = 0;
+
+             self.$numeric.filter(".active").removeClass("active");
+             while (i<visibles) {
+               var pageNo = i + begin,
+                   $btn = self.$numeric.eq(i);
+               $btn.find(self.options.selectors.numericTxt).text(i+begin).show();
+               if (pageNo == currentPage) {
+                $btn.addClass("active");
+               }
+               i++;
+             }
+             while (i<count) {
+               self.$numeric.eq(i).find(self.options.selectors.numericTxt).text(i+begin).hide();
+               i++;
+             }
+
+
+          }
+
+          function changeLabeldBtns(currentPage,totalPages) {
+            if (currentPage < 1) {
+              throw('Page can\'t be less than 1');
+            } else if (currentPage > totalPages) {
+              throw('Page is bigger than total pages');
+            }
+
+            if (totalPages < 1) {
+              throw('Total Pages can\'t be less than 1');
+            }
+
+            if (currentPage == 1 ) {
+              self.$first.addClass("disabled");
+              self.$prev.addClass("disabled");
             } else {
-                this.currentPage = this.options.startPage;
-                this.render(this.getPages(this.options.startPage));
-                this.setupEvents();
+              self.$first.removeClass("disabled");
+              self.$prev.removeClass("disabled");
             }
 
-            return this;
-
-        },
-
-        _destroy: function () {
-            this.$element.empty();
-            this.$element.removeData('twbs-pagination');
-            this.$element.off('page');
-
-            return this;
-        },
-
-        show: function (page) {
-            if (page < 1 || page > this.options.totalPages) {
-                throw new Error('Page is incorrect.');
+            if (currentPage == totalPages ) {
+              self.$last.addClass("disabled");
+              self.$next.addClass("disabled");
+            } else {
+              self.$last.removeClass("disabled");
+              self.$next.removeClass("disabled");
             }
-            this.currentPage = page;
+          }
 
-            this.$element.trigger('beforePage', page);
+          if (updates.currentPage || updates.totalPages) {
+            var currentPage = self.currentPage(),
+                totalPages = self.totalPages();
 
-            var pages = this.getPages(page);
-            this.render(pages);
-            this.setupEvents();
+            changePageNoBtns(currentPage,totalPages);
+            changeLabeldBtns(currentPage,totalPages);
+          }
 
-            this.$element.trigger('page', page);
-
-            return pages;
-        },
-
-        enable: function () {
-            this.show(this.currentPage);
-        },
-
-        disable: function () {
-            var _this = this;
-            this.$listContainer.off('click').on('click', 'li', function (evt) {
-                evt.preventDefault();
-            });
-            this.$listContainer.children().each(function () {
-                var $this = $(this);
-                if (!$this.hasClass(_this.options.activeClass)) {
-                    $(this).addClass(_this.options.disabledClass);
-                }
-            });
-        },
-
-        _build: function (pages) {
-            var listItems = [];
-
-            if (this.options.first) {
-                listItems.push(this.buildItem('first', 1));
-            }
-
-            if (this.options.prev) {
-                var prev = pages.currentPage > 1 ? pages.currentPage - 1 : this.options.loop ? this.options.totalPages  : 1;
-                listItems.push(this.buildItem('prev', prev));
-            }
-
-            for (var i = 0; i < pages.numeric.length; i++) {
-                listItems.push(this.buildItem('page', pages.numeric[i]));
-            }
-
-            if (this.options.next) {
-                var next = pages.currentPage < this.options.totalPages ? pages.currentPage + 1 : this.options.loop ? 1 : this.options.totalPages;
-                listItems.push(this.buildItem('next', next));
-            }
-
-            if (this.options.last) {
-                listItems.push(this.buildItem('last', this.options.totalPages));
-            }
-
-            return listItems;
-        },
-
-        _buildItem: function (type, page) {
-            var $itemContainer = $('<li></li>'),
-                $itemContent = $('<a></a>'),
-                itemText = this.options[type] ? this.makeText(this.options[type], page) : page;
-
-            $itemContainer.addClass(this.options[type + 'Class']);
-            $itemContainer.data('page', page);
-            $itemContainer.data('page-type', type);
-            $itemContainer.append($itemContent.attr('href', this.makeHref(page)).addClass(this.options.anchorClass).html(itemText));
-
-            return $itemContainer;
-        },
-
-        getPages: function (currentPage) {
-            var pages = [];
-
-            var half = Math.floor(this.options.visiblePages / 2);
-            var start = currentPage - half + 1 - this.options.visiblePages % 2;
-            var end = currentPage + half;
-
-            var visiblePages = this.options.visiblePages;
-            if (visiblePages > this.options.totalPages) {
-                visiblePages = this.options.totalPages;
-            }
-
-            // handle boundary case
-            if (start <= 0) {
-                start = 1;
-                end = visiblePages;
-            }
-            if (end > this.options.totalPages) {
-                start = this.options.totalPages - visiblePages + 1;
-                end = this.options.totalPages;
-            }
-
-            var itPage = start;
-            while (itPage <= end) {
-                pages.push(itPage);
-                itPage++;
-            }
-
-            return {"currentPage": currentPage, "numeric": pages};
-        },
-
-        render: function (pages) {
-            var _this = this;
-            this.$listContainer.children().remove();
-            var items = this.buildListItems(pages);
-            $.each(items, function(key, item){
-                _this.$listContainer.append(item);
-            });
-
-            this.$listContainer.children().each(function () {
-                var $this = $(this),
-                    pageType = $this.data('page-type');
-
-                switch (pageType) {
-                    case 'page':
-                        if ($this.data('page') === pages.currentPage) {
-                            $this.addClass(_this.options.activeClass);
-                        }
-                        break;
-                    case 'first':
-                            $this.toggleClass(_this.options.disabledClass, pages.currentPage === 1);
-                        break;
-                    case 'last':
-                            $this.toggleClass(_this.options.disabledClass, pages.currentPage === _this.options.totalPages);
-                        break;
-                    case 'prev':
-                            $this.toggleClass(_this.options.disabledClass, !_this.options.loop && pages.currentPage === 1);
-                        break;
-                    case 'next':
-                            $this.toggleClass(_this.options.disabledClass,
-                                !_this.options.loop && pages.currentPage === _this.options.totalPages);
-                        break;
-                    default:
-                        break;
-                }
-
-            });
-        },
-
-        setupEvents: function () {
-            var _this = this;
-            this.$listContainer.off('click').on('click', 'li', function (evt) {
-                var $this = $(this);
-                if ($this.hasClass(_this.options.disabledClass) || $this.hasClass(_this.options.activeClass)) {
-                    return false;
-                }
-                // Prevent click event if href is not set.
-                !_this.options.href && evt.preventDefault();
-                _this.show(parseInt($this.data('page')));
-            });
-        },
-
-        changeTotalPages: function(totalPages, currentPage) {
-            this.options.totalPages = totalPages;
-            return this.show(currentPage);
-        },
-
-        makeHref: function (page) {
-            return this.options.href ? this.generateQueryString(page) : "#";
-        },
-
-        makeText: function (text, page) {
-            return text.replace(this.options.pageVariable, page)
-                .replace(this.options.totalPagesVariable, this.options.totalPages)
-        },
-
-        getPageFromQueryString: function (searchStr) {
-            var search = this.getSearchString(searchStr),
-                regex = new RegExp(this.options.pageVariable + '(=([^&#]*)|&|#|$)'),
-                page = regex.exec(search);
-            if (!page || !page[2]) {
-                return null;
-            }
-            page = decodeURIComponent(page[2]);
-            page = parseInt(page);
-            if (isNaN(page)) {
-                return null;
-            }
-            return page;
-        },
-
-        generateQueryString: function (pageNumber, searchStr) {
-            var search = this.getSearchString(searchStr),
-                regex = new RegExp(this.options.pageVariable + '=*[^&#]*');
-            if (!search) return '';
-            return '?' + search.replace(regex, this.options.pageVariable + '=' + pageNumber);
-        },
-
-        getSearchString: function (searchStr) {
-            var search = searchStr || window.location.search;
-            if (search === '') {
-                return null;
-            }
-            if (search.indexOf('?') === 0) search = search.substr(1);
-            return search;
-        },
-
-        getCurrentPage: function () {
-            return this.currentPage;
-        },
-
-        getTotalPages: function () {
-            return this.options.totalPages;
         }
 
     });
 
-    // PLUGIN DEFINITION
-
-    $.fn.twbsPagination = function (option) {
-        var args = Array.prototype.slice.call(arguments, 1);
-        var methodReturn;
-
-        var $this = $(this);
-        var data = $this.data('twbs-pagination');
-        var options = typeof option === 'object' ? option : {};
-
-        if (!data) $this.data('twbs-pagination', (data = new TwbsPagination(this, options) ));
-        if (typeof option === 'string') methodReturn = data[ option ].apply(data, args);
-
-        return ( methodReturn === undefined ) ? $this : methodReturn;
-    };
-
     return Pagination;
 });
-define('skylark-ui-swt/Progressbar',[
+define('skylark-ui-swt/Progress',[
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
   "skylark-utils-dom/eventer",
@@ -1800,143 +2018,58 @@ define('skylark-ui-swt/Progressbar',[
 
     'use strict';
 
-    /* This module used the following source code
-     * !
-	 * bootstrap-progressbar v0.9.0 by @minddust
-	 * Copyright (c) 2012-2015 Stephan Groß
-	 *
-	 * http://www.minddust.com/project/bootstrap-progressbar/
-	 *
-	 * Licensed under the MIT license:
-	 * http://www.opensource.org/licenses/MIT
-     */    
+     var Progress = ui.Progress = Widget.inherit({
+     	klassName : "Progress",
 
-     var Progressbar = ui.Progressbar = Widget.inherit({
-     	klassName : "Progressbar",
+     	pluginName : "lark.progress",
 
-     	pluginName : "lark.progressbar",
-
-	    options : {
-	        transition_delay: 300,
-	        refresh_speed: 50,
-	        display_text: 'none',
-	        use_percentage: true,
-	        percent_format: function(percent) { return percent + '%'; },
-	        amount_format: function(amount_part, amount_max, amount_min) { return amount_part + ' / ' + amount_max; },
-	        update: $.noop,
-	        done: $.noop,
-	        fail: $.noop
-	    },
-
-     	_construt : function(element, options) {
-	        this.$element = $(element);
-	        this.options = $.extend({}, Progressbar.defaults, options);
+     	options : {
+     		selectors : {
+     			bar : "progress-bar"
+     		},
+     		min : 0,
+     		max : 100
      	},
 
+     	state : {
+     		value : Number
+     	},
 
-	    transition : function() {
-	        var $this = this.$element;
-	        var $parent = $this.parent();
-	        var $back_text = this.$back_text;
-	        var $front_text = this.$front_text;
-	        var options = this.options;
-	        var data_transitiongoal = parseInt($this.attr('data-transitiongoal'));
-	        var aria_valuemin = parseInt($this.attr('aria-valuemin')) || 0;
-	        var aria_valuemax = parseInt($this.attr('aria-valuemax')) || 100;
-	        var is_vertical = $parent.hasClass('vertical');
-	        var update = options.update && typeof options.update === 'function' ? options.update : Progressbar.defaults.update;
-	        var done = options.done && typeof options.done === 'function' ? options.done : Progressbar.defaults.done;
-	        var fail = options.fail && typeof options.fail === 'function' ? options.fail : Progressbar.defaults.fail;
+		_init : function() {
+			this._vbar = this._velm.find(this.options.selectors.bar);
+			this.value(this.options.min);
+		},
 
-	        if (isNaN(data_transitiongoal)) {
-	            fail('data-transitiongoal not set');
-	            return;
+		_refresh : function() {
+	        this.overrided(changed);
+	        var self  = this;
+
+	        if (updates["value"] !== undefined) {
+	        	var value = updates["value"],
+	        		min = this.options.min,
+	        		max = this.options.max;
+
+				this._vbar.css("width",(value-min)/(max-min)*100+"%");
 	        }
-	        var percentage = Math.round(100 * (data_transitiongoal - aria_valuemin) / (aria_valuemax - aria_valuemin));
+		},
 
-	        if (options.display_text === 'center' && !$back_text && !$front_text) {
-	            this.$back_text = $back_text = $('<span>').addClass('progressbar-back-text').prependTo($parent);
-	            this.$front_text = $front_text = $('<span>').addClass('progressbar-front-text').prependTo($this);
+		start : function(max){
+			this.value(this.options.min);
+			this._velm.slideDown();
+		},
 
-	            var parent_size;
+		increase : function(tick){
+			var value = this.value();
+			this.value(value += tick*1.0);
+		},
 
-	            if (is_vertical) {
-	                parent_size = $parent.css('height');
-	                $back_text.css({height: parent_size, 'line-height': parent_size});
-	                $front_text.css({height: parent_size, 'line-height': parent_size});
-
-	                $(window).resize(function() {
-	                    parent_size = $parent.css('height');
-	                    $back_text.css({height: parent_size, 'line-height': parent_size});
-	                    $front_text.css({height: parent_size, 'line-height': parent_size});
-	                }); // normal resizing would brick the structure because width is in px
-	            }
-	            else {
-	                parent_size = $parent.css('width');
-	                $front_text.css({width: parent_size});
-
-	                $(window).resize(function() {
-	                    parent_size = $parent.css('width');
-	                    $front_text.css({width: parent_size});
-	                }); // normal resizing would brick the structure because width is in px
-	            }
-	        }
-
-	        setTimeout(function() {
-	            var current_percentage;
-	            var current_value;
-	            var this_size;
-	            var parent_size;
-	            var text;
-
-	            if (is_vertical) {
-	                $this.css('height', percentage + '%');
-	            }
-	            else {
-	                $this.css('width', percentage + '%');
-	            }
-
-	            var progress = setInterval(function() {
-	                if (is_vertical) {
-	                    this_size = $this.height();
-	                    parent_size = $parent.height();
-	                }
-	                else {
-	                    this_size = $this.width();
-	                    parent_size = $parent.width();
-	                }
-
-	                current_percentage = Math.round(100 * this_size / parent_size);
-	                current_value = Math.round(aria_valuemin + this_size / parent_size * (aria_valuemax - aria_valuemin));
-
-	                if (current_percentage >= percentage) {
-	                    current_percentage = percentage;
-	                    current_value = data_transitiongoal;
-	                    done($this);
-	                    clearInterval(progress);
-	                }
-
-	                if (options.display_text !== 'none') {
-	                    text = options.use_percentage ? options.percent_format(current_percentage) : options.amount_format(current_value, aria_valuemax, aria_valuemin);
-
-	                    if (options.display_text === 'fill') {
-	                        $this.text(text);
-	                    }
-	                    else if (options.display_text === 'center') {
-	                        $back_text.text(text);
-	                        $front_text.text(text);
-	                    }
-	                }
-	                $this.attr('aria-valuenow', current_value);
-
-	                update(current_percentage, $this);
-	            }, options.refresh_speed);
-	        }, options.transition_delay);
-	    }
-
+		finish : function(){
+			this.value(this.options.min);
+			this._velm.slideUp();
+		}     	
      });
 
-	return Progressbar;
+	return Progress;
 	
  });
 define('skylark-ui-swt/Radio',[
@@ -2070,6 +2203,61 @@ define('skylark-ui-swt/Radio',[
 });
 
 
+define('skylark-ui-swt/TabStrip',[
+    "skylark-langx/langx",
+    "skylark-utils-dom/browser",
+    "skylark-utils-dom/eventer",
+    "skylark-utils-dom/noder",
+    "skylark-utils-dom/geom",
+    "skylark-utils-dom/query",
+    "./ui",
+    "./Widget",
+    "skylark-bootstrap3/tab",
+    "skylark-bootstrap3/dropdown"
+], function(langx, browser, eventer, noder, geom,  $, ui, Widget) {
+
+    var TabStrip = Widget.inherit({
+        klassName : "TabStrip",
+        pluginName : "lark.tabstrip",
+
+        options : {
+          selectors : {
+            header : ".nav-tabs",
+            tab : "[data-toggle=\"tab\"]",
+            content : ".tab-content",
+            tabpane : ".tab-pane"
+          }
+        },
+
+        _init : function() {
+          this.$header = this._velm.$(this.options.selectors.header); 
+          this.$tabs = this.$header.find(this.options.selectors.tab);
+          this.$content = this._velm.$(this.options.selectors.content);
+          this.$tabpanes = this.$content.find(this.options.selectors.tabpane);
+
+          this.$header.find('[data-toggle="dropdown"]').dropdown();
+
+          var self = this;
+          this.$tabs.each(function(idx,tabEl){
+            $(tabEl).tab({
+              target : self.$tabpanes[idx]
+            });
+          });
+
+        },
+
+        add : function() {
+          //TODO
+        },
+
+        remove : function(){
+          //TODO
+        }
+    });
+
+    return TabStrip;
+
+});
 define('skylark-ui-swt/Textbox',[
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
@@ -2394,10 +2582,12 @@ define('skylark-ui-swt/main',[
     "./Button",
     "./Carousel",
     "./Checkbox",
+    "./Combobox",
     "./Menu",
     "./Pagination",
-    "./Progressbar",
+    "./Progress",
     "./Radio",
+    "./TabStrip",
     "./Textbox",
     "./Toolbar"
 /*    
