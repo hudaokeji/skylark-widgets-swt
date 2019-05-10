@@ -37,11 +37,16 @@
                 deps: deps.map(function(dep){
                   return absolute(dep,id);
                 }),
+                resolved: false,
                 exports: null
             };
             require(id);
         } else {
-            map[id] = factory;
+            map[id] = {
+                factory : null,
+                resolved : true,
+                exports : factory
+            };
         }
     };
     require = globals.require = function(id) {
@@ -49,14 +54,15 @@
             throw new Error('Module ' + id + ' has not been defined');
         }
         var module = map[id];
-        if (!module.exports) {
+        if (!module.resolved) {
             var args = [];
 
             module.deps.forEach(function(dep){
                 args.push(require(dep));
             })
 
-            module.exports = module.factory.apply(globals, args);
+            module.exports = module.factory.apply(globals, args) || null;
+            module.resolved = true;
         }
         return module.exports;
     };
@@ -89,11 +95,13 @@ define('skylark-langx/skylark',[], function() {
 
 define('skylark-langx/types',[
 ],function(){
+    var toString = {}.toString;
+    
     var type = (function() {
         var class2type = {};
 
         // Populate the class2type map
-        "Boolean Number String Function Array Date RegExp Object Error".split(" ").forEach(function(name) {
+        "Boolean Number String Function Array Date RegExp Object Error Symbol".split(" ").forEach(function(name) {
             class2type["[object " + name + "]"] = name.toLowerCase();
         });
 
@@ -107,10 +115,46 @@ define('skylark-langx/types',[
         return object && object.constructor === Array;
     }
 
+
+    /**
+     * Checks if `value` is array-like. A value is considered array-like if it's
+     * not a function/string/element and has a `value.length` that's an integer greater than or
+     * equal to `0` and less than or equal to `Number.MAX_SAFE_INTEGER`.
+     *
+     * @category Lang
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
+     * @example
+     *
+     * isArrayLike([1, 2, 3])
+     * // => true
+     *
+     * isArrayLike(document.body.children)
+     * // => false
+     *
+     * isArrayLike('abc')
+     * // => true
+     *
+     * isArrayLike(Function)
+     * // => false
+     */    
     function isArrayLike(obj) {
         return !isString(obj) && !isHtmlNode(obj) && typeof obj.length == 'number' && !isFunction(obj);
     }
 
+    /**
+     * Checks if `value` is classified as a boolean primitive or object.
+     *
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is a boolean, else `false`.
+     * @example
+     *
+     * isBoolean(false)
+     * // => true
+     *
+     * isBoolean(null)
+     * // => false
+     */
     function isBoolean(obj) {
         return typeof(obj) === "boolean";
     }
@@ -133,6 +177,20 @@ define('skylark-langx/types',[
         return true;
     }
 
+
+    /**
+     * Checks if `value` is classified as a `Function` object.
+     *
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is a function, else `false`.
+     * @example
+     *
+     * isFunction(parseInt)
+     * // => true
+     *
+     * isFunction(/abc/)
+     * // => false
+     */
     function isFunction(value) {
         return type(value) == "function";
     }
@@ -158,6 +216,10 @@ define('skylark-langx/types',[
         } else {
             return (value instanceof type) || (value && value.isInstanceOf ? value.isInstanceOf(type) : false);
         }
+    }
+
+    function isNull(value) {
+      return type(value) === "null";
     }
 
     function isNumber(obj) {
@@ -190,6 +252,28 @@ define('skylark-langx/types',[
         }
     }
 
+    /**
+     * Checks if `value` is classified as a `Symbol` primitive or object.
+     *
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+     * @example
+     *
+     * _.isSymbol(Symbol.iterator);
+     * // => true
+     *
+     * _.isSymbol('abc');
+     * // => false
+     */
+    function isSymbol(value) {
+      return typeof value == 'symbol' ||
+        (isObjectLike(value) && objectToString.call(value) == symbolTag);
+    }
+
+    function isUndefined(value) {
+      return value === undefined
+    }
+
     return {
 
         isArray: isArray,
@@ -202,11 +286,15 @@ define('skylark-langx/types',[
 
         isDocument: isDocument,
 
+        isEmpty : isEmptyObject,
+
         isEmptyObject: isEmptyObject,
 
         isFunction: isFunction,
 
         isHtmlNode: isHtmlNode,
+
+        isNull: isNull,
 
         isNumber: isNumber,
 
@@ -218,22 +306,362 @@ define('skylark-langx/types',[
 
         isSameOrigin: isSameOrigin,
 
+        isSymbol : isSymbol,
+
+        isUndefined: isUndefined,
+
         isWindow: isWindow,
 
         type: type
     };
 
 });
-define('skylark-langx/objects',[
+define('skylark-langx/arrays',[
+	"./types"
+],function(types,objects){
+	var filter = Array.prototype.filter,
+		isArrayLike = types.isArrayLike;
+
+    /**
+     * The base implementation of `_.findIndex` and `_.findLastIndex` without
+     * support for iteratee shorthands.
+     *
+     * @param {Array} array The array to inspect.
+     * @param {Function} predicate The function invoked per iteration.
+     * @param {number} fromIndex The index to search from.
+     * @param {boolean} [fromRight] Specify iterating from right to left.
+     * @returns {number} Returns the index of the matched value, else `-1`.
+     */
+    function baseFindIndex(array, predicate, fromIndex, fromRight) {
+      var length = array.length,
+          index = fromIndex + (fromRight ? 1 : -1);
+
+      while ((fromRight ? index-- : ++index < length)) {
+        if (predicate(array[index], index, array)) {
+          return index;
+        }
+      }
+      return -1;
+    }
+
+    /**
+     * The base implementation of `_.indexOf` without `fromIndex` bounds checks.
+     *
+     * @param {Array} array The array to inspect.
+     * @param {*} value The value to search for.
+     * @param {number} fromIndex The index to search from.
+     * @returns {number} Returns the index of the matched value, else `-1`.
+     */
+    function baseIndexOf(array, value, fromIndex) {
+      if (value !== value) {
+        return baseFindIndex(array, baseIsNaN, fromIndex);
+      }
+      var index = fromIndex - 1,
+          length = array.length;
+
+      while (++index < length) {
+        if (array[index] === value) {
+          return index;
+        }
+      }
+      return -1;
+    }
+
+    /**
+     * The base implementation of `isNaN` without support for number objects.
+     *
+     * @private
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is `NaN`, else `false`.
+     */
+    function baseIsNaN(value) {
+      return value !== value;
+    }
+
+
+    function compact(array) {
+        return filter.call(array, function(item) {
+            return item != null;
+        });
+    }
+
+    function flatten(array) {
+        if (isArrayLike(array)) {
+            var result = [];
+            for (var i = 0; i < array.length; i++) {
+                var item = array[i];
+                if (isArrayLike(item)) {
+                    for (var j = 0; j < item.length; j++) {
+                        result.push(item[j]);
+                    }
+                } else {
+                    result.push(item);
+                }
+            }
+            return result;
+        } else {
+            return array;
+        }
+        //return array.length > 0 ? concat.apply([], array) : array;
+    }
+
+    function grep(array, callback) {
+        var out = [];
+
+        each(array, function(i, item) {
+            if (callback(item, i)) {
+                out.push(item);
+            }
+        });
+
+        return out;
+    }
+
+    function inArray(item, array) {
+        if (!array) {
+            return -1;
+        }
+        var i;
+
+        if (array.indexOf) {
+            return array.indexOf(item);
+        }
+
+        i = array.length;
+        while (i--) {
+            if (array[i] === item) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    function makeArray(obj, offset, startWith) {
+       if (isArrayLike(obj) ) {
+        return (startWith || []).concat(Array.prototype.slice.call(obj, offset || 0));
+      }
+
+      // array of single index
+      return [ obj ];             
+    }
+
+
+    function forEach (arr, fn) {
+      if (arr.forEach) return arr.forEach(fn)
+      for (var i = 0; i < arr.length; i++) fn(arr[i], i);
+    }
+
+    function map(elements, callback) {
+        var value, values = [],
+            i, key
+        if (isArrayLike(elements))
+            for (i = 0; i < elements.length; i++) {
+                value = callback.call(elements[i], elements[i], i);
+                if (value != null) values.push(value)
+            }
+        else
+            for (key in elements) {
+                value = callback.call(elements[key], elements[key], key);
+                if (value != null) values.push(value)
+            }
+        return flatten(values)
+    }
+
+    function uniq(array) {
+        return filter.call(array, function(item, idx) {
+            return array.indexOf(item) == idx;
+        })
+    }
+
+    return {
+        baseFindIndex: baseFindIndex,
+
+        baseIndexOf : baseIndexOf,
+        
+        compact: compact,
+
+        first : function(items,n) {
+            if (n) {
+                return items.slice(0,n);
+            } else {
+                return items[0];
+            }
+        },
+
+        flatten: flatten,
+
+        inArray: inArray,
+
+        makeArray: makeArray,
+
+        forEach : forEach,
+
+        map : map,
+        
+        uniq : uniq
+
+    }
+});
+define('skylark-langx/numbers',[
 	"./types"
 ],function(types){
+	var isObject = types.isObject,
+		isSymbol = types.isSymbol;
+
+	var INFINITY = 1 / 0,
+	    MAX_SAFE_INTEGER = 9007199254740991,
+	    MAX_INTEGER = 1.7976931348623157e+308,
+	    NAN = 0 / 0;
+
+	/** Used to match leading and trailing whitespace. */
+	var reTrim = /^\s+|\s+$/g;
+
+	/** Used to detect bad signed hexadecimal string values. */
+	var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+
+	/** Used to detect binary string values. */
+	var reIsBinary = /^0b[01]+$/i;
+
+	/** Used to detect octal string values. */
+	var reIsOctal = /^0o[0-7]+$/i;
+
+	/** Used to detect unsigned integer values. */
+	var reIsUint = /^(?:0|[1-9]\d*)$/;
+
+	/** Built-in method references without a dependency on `root`. */
+	var freeParseInt = parseInt;
+
+	/**
+	 * Converts `value` to a finite number.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.12.0
+	 * @category Lang
+	 * @param {*} value The value to convert.
+	 * @returns {number} Returns the converted number.
+	 * @example
+	 *
+	 * _.toFinite(3.2);
+	 * // => 3.2
+	 *
+	 * _.toFinite(Number.MIN_VALUE);
+	 * // => 5e-324
+	 *
+	 * _.toFinite(Infinity);
+	 * // => 1.7976931348623157e+308
+	 *
+	 * _.toFinite('3.2');
+	 * // => 3.2
+	 */
+	function toFinite(value) {
+	  if (!value) {
+	    return value === 0 ? value : 0;
+	  }
+	  value = toNumber(value);
+	  if (value === INFINITY || value === -INFINITY) {
+	    var sign = (value < 0 ? -1 : 1);
+	    return sign * MAX_INTEGER;
+	  }
+	  return value === value ? value : 0;
+	}
+
+	/**
+	 * Converts `value` to an integer.
+	 *
+	 * **Note:** This method is loosely based on
+	 * [`ToInteger`](http://www.ecma-international.org/ecma-262/7.0/#sec-tointeger).
+	 *
+	 * @static
+	 * @memberOf _
+	 * @param {*} value The value to convert.
+	 * @returns {number} Returns the converted integer.
+	 * @example
+	 *
+	 * _.toInteger(3.2);
+	 * // => 3
+	 *
+	 * _.toInteger(Number.MIN_VALUE);
+	 * // => 0
+	 *
+	 * _.toInteger(Infinity);
+	 * // => 1.7976931348623157e+308
+	 *
+	 * _.toInteger('3.2');
+	 * // => 3
+	 */
+	function toInteger(value) {
+	  var result = toFinite(value),
+	      remainder = result % 1;
+
+	  return result === result ? (remainder ? result - remainder : result) : 0;
+	}	
+
+	/**
+	 * Converts `value` to a number.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.0.0
+	 * @category Lang
+	 * @param {*} value The value to process.
+	 * @returns {number} Returns the number.
+	 * @example
+	 *
+	 * _.toNumber(3.2);
+	 * // => 3.2
+	 *
+	 * _.toNumber(Number.MIN_VALUE);
+	 * // => 5e-324
+	 *
+	 * _.toNumber(Infinity);
+	 * // => Infinity
+	 *
+	 * _.toNumber('3.2');
+	 * // => 3.2
+	 */
+	function toNumber(value) {
+	  if (typeof value == 'number') {
+	    return value;
+	  }
+	  if (isSymbol(value)) {
+	    return NAN;
+	  }
+	  if (isObject(value)) {
+	    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
+	    value = isObject(other) ? (other + '') : other;
+	  }
+	  if (typeof value != 'string') {
+	    return value === 0 ? value : +value;
+	  }
+	  value = value.replace(reTrim, '');
+	  var isBinary = reIsBinary.test(value);
+	  return (isBinary || reIsOctal.test(value))
+	    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+	    : (reIsBadHex.test(value) ? NAN : +value);
+	}
+
+	return  {
+		toFinite : toFinite,
+		toNumber : toNumber,
+		toInteger : toInteger
+	}
+});
+define('skylark-langx/objects',[
+	"./types",
+    "./numbers"
+],function(types,numbers){
 	var hasOwnProperty = Object.prototype.hasOwnProperty,
         slice = Array.prototype.slice,
         isBoolean = types.isBoolean,
         isFunction = types.isFunction,
 		isObject = types.isObject,
 		isPlainObject = types.isPlainObject,
-		isArray = types.isArray;
+		isArray = types.isArray,
+        isArrayLike = types.isArrayLike,
+        isString = types.isString,
+        toInteger = numbers.toInteger;
 
      // An internal function for creating assigner functions.
     function createAssigner(keysFunc, defaults) {
@@ -439,6 +867,50 @@ define('skylark-langx/objects',[
         return !!length;
     }
 
+    /**
+     * Checks if `value` is in `collection`. If `collection` is a string, it's
+     * checked for a substring of `value`, otherwise
+     * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
+     * is used for equality comparisons. If `fromIndex` is negative, it's used as
+     * the offset from the end of `collection`.
+     *
+     * @static
+     * @memberOf _
+     * @since 0.1.0
+     * @category Collection
+     * @param {Array|Object|string} collection The collection to inspect.
+     * @param {*} value The value to search for.
+     * @param {number} [fromIndex=0] The index to search from.
+     * @param- {Object} [guard] Enables use as an iteratee for methods like `_.reduce`.
+     * @returns {boolean} Returns `true` if `value` is found, else `false`.
+     * @example
+     *
+     * _.includes([1, 2, 3], 1);
+     * // => true
+     *
+     * _.includes([1, 2, 3], 1, 2);
+     * // => false
+     *
+     * _.includes({ 'a': 1, 'b': 2 }, 1);
+     * // => true
+     *
+     * _.includes('abcd', 'bc');
+     * // => true
+     */
+    function includes(collection, value, fromIndex, guard) {
+      collection = isArrayLike(collection) ? collection : values(collection);
+      fromIndex = (fromIndex && !guard) ? toInteger(fromIndex) : 0;
+
+      var length = collection.length;
+      if (fromIndex < 0) {
+        fromIndex = nativeMax(length + fromIndex, 0);
+      }
+      return isString(collection)
+        ? (fromIndex <= length && collection.indexOf(value, fromIndex) > -1)
+        : (!!length && baseIndexOf(collection, value, fromIndex) > -1);
+    }
+
+
    // Perform a deep comparison to check if two objects are equal.
     function isEqual(a, b) {
         return eq(a, b);
@@ -600,7 +1072,9 @@ define('skylark-langx/objects',[
 
         has: has,
 
-        isEqual: isEqual,
+        isEqual: isEqual,   
+
+        includes: includes,
 
         isMatch: isMatch,
 
@@ -617,127 +1091,8 @@ define('skylark-langx/objects',[
         values: values
     };
 
-});
-define('skylark-langx/arrays',[
-	"./types",
-    "./objects"
-],function(types,objects){
-	var filter = Array.prototype.filter,
-		isArrayLike = types.isArrayLike;
 
-    function compact(array) {
-        return filter.call(array, function(item) {
-            return item != null;
-        });
-    }
 
-    function flatten(array) {
-        if (isArrayLike(array)) {
-            var result = [];
-            for (var i = 0; i < array.length; i++) {
-                var item = array[i];
-                if (isArrayLike(item)) {
-                    for (var j = 0; j < item.length; j++) {
-                        result.push(item[j]);
-                    }
-                } else {
-                    result.push(item);
-                }
-            }
-            return result;
-        } else {
-            return array;
-        }
-        //return array.length > 0 ? concat.apply([], array) : array;
-    }
-
-    function grep(array, callback) {
-        var out = [];
-
-        each(array, function(i, item) {
-            if (callback(item, i)) {
-                out.push(item);
-            }
-        });
-
-        return out;
-    }
-
-    function inArray(item, array) {
-        if (!array) {
-            return -1;
-        }
-        var i;
-
-        if (array.indexOf) {
-            return array.indexOf(item);
-        }
-
-        i = array.length;
-        while (i--) {
-            if (array[i] === item) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    function makeArray(obj, offset, startWith) {
-       if (isArrayLike(obj) ) {
-        return (startWith || []).concat(Array.prototype.slice.call(obj, offset || 0));
-      }
-
-      // array of single index
-      return [ obj ];             
-    }
-
-    function map(elements, callback) {
-        var value, values = [],
-            i, key
-        if (isArrayLike(elements))
-            for (i = 0; i < elements.length; i++) {
-                value = callback.call(elements[i], elements[i], i);
-                if (value != null) values.push(value)
-            }
-        else
-            for (key in elements) {
-                value = callback.call(elements[key], elements[key], key);
-                if (value != null) values.push(value)
-            }
-        return flatten(values)
-    }
-
-    function uniq(array) {
-        return filter.call(array, function(item, idx) {
-            return array.indexOf(item) == idx;
-        })
-    }
-
-    return {
-        compact: compact,
-
-        first : function(items,n) {
-            if (n) {
-                return items.slice(0,n);
-            } else {
-                return items[0];
-            }
-        },
-
-	    each: objects.each,
-
-        flatten: flatten,
-
-        inArray: inArray,
-
-        makeArray: makeArray,
-
-        map : map,
-        
-        uniq : uniq
-
-    }
 });
 define('skylark-langx/klass',[
     "./arrays",
@@ -749,6 +1104,52 @@ define('skylark-langx/klass',[
         mixin = objects.mixin,
         isArray = types.isArray,
         isDefined = types.isDefined;
+
+/* for reference 
+ function klass(props,parent) {
+    var ctor = function(){
+        this._construct();
+    };
+    ctor.prototype = props;
+    if (parent) {
+        ctor._proto_ = parent;
+        props.__proto__ = parent.prototype;
+    }
+    return ctor;
+}
+
+// Type some JavaScript code here.
+let animal = klass({
+  _construct(){
+      this.name = this.name + ",hi";
+  },
+    
+  name: "Animal",
+  eat() {         // [[HomeObject]] == animal
+    alert(`${this.name} eats.`);
+  }
+    
+    
+});
+
+
+let rabbit = klass({
+  name: "Rabbit",
+  _construct(){
+      super._construct();
+  },
+  eat() {         // [[HomeObject]] == rabbit
+    super.eat();
+  }
+},animal);
+
+let longEar = klass({
+  name: "Long Ear",
+  eat() {         // [[HomeObject]] == longEar
+    super.eat();
+  }
+},rabbit);
+*/
     
     function inherit(ctor, base) {
         var f = function() {};
@@ -762,7 +1163,8 @@ define('skylark-langx/klass',[
             // Copy the properties to the prototype of the class.
             var proto = ctor.prototype,
                 _super = ctor.superclass.prototype,
-                noOverrided = options && options.noOverrided;
+                noOverrided = options && options.noOverrided,
+                overrides = options && options.overrides || {};
 
             for (var name in props) {
                 if (name === "constructor") {
@@ -791,7 +1193,7 @@ define('skylark-langx/klass',[
                             };
                         })(name, prop, _super[name]) :
                         prop;
-                } else if (typeof prop == "object" && prop!==null && (prop.get)) {
+                } else if (types.isPlainObject(prop) && prop!==null && (prop.get)) {
                     Object.defineProperty(proto,name,prop);
                 } else {
                     proto[name] = prop;
@@ -1478,6 +1880,69 @@ define('skylark-langx/funcs',[
         };
     })();
 
+  var templateSettings = {
+    evaluate: /<%([\s\S]+?)%>/g,
+    interpolate: /<%=([\s\S]+?)%>/g,
+    escape: /<%-([\s\S]+?)%>/g
+  };
+
+
+  function template(text, settings, oldSettings) {
+    if (!settings && oldSettings) settings = oldSettings;
+    settings = objects.defaults({}, settings,templateSettings);
+
+    // Combine delimiters into one regular expression via alternation.
+    var matcher = RegExp([
+      (settings.escape || noMatch).source,
+      (settings.interpolate || noMatch).source,
+      (settings.evaluate || noMatch).source
+    ].join('|') + '|$', 'g');
+
+    // Compile the template source, escaping string literals appropriately.
+    var index = 0;
+    var source = "__p+='";
+    text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
+      source += text.slice(index, offset).replace(escapeRegExp, escapeChar);
+      index = offset + match.length;
+
+      if (escape) {
+        source += "'+\n((__t=(" + escape + "))==null?'':_.escape(__t))+\n'";
+      } else if (interpolate) {
+        source += "'+\n((__t=(" + interpolate + "))==null?'':__t)+\n'";
+      } else if (evaluate) {
+        source += "';\n" + evaluate + "\n__p+='";
+      }
+
+      // Adobe VMs need the match returned to produce the correct offset.
+      return match;
+    });
+    source += "';\n";
+
+    // If a variable is not specified, place data values in local scope.
+    if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
+
+    source = "var __t,__p='',__j=Array.prototype.join," +
+      "print=function(){__p+=__j.call(arguments,'');};\n" +
+      source + 'return __p;\n';
+
+    var render;
+    try {
+      render = new Function(settings.variable || 'obj', '_', source);
+    } catch (e) {
+      e.source = source;
+      throw e;
+    }
+
+    var template = function(data) {
+      return render.call(this, data, _);
+    };
+
+    // Provide the compiled source as a convenience for precompilation.
+    var argument = settings.variable || 'obj';
+    template.source = 'function(' + argument + '){\n' + source + '}';
+
+    return template;
+  };
 
     return {
         debounce: debounce,
@@ -1496,7 +1961,10 @@ define('skylark-langx/funcs',[
 
         returnFalse: function() {
             return false;
-        }
+        },
+
+        templateSettings : templateSettings,
+        template : template
     };
 });
 define('skylark-langx/Deferred',[
@@ -1506,7 +1974,8 @@ define('skylark-langx/Deferred',[
 ],function(arrays,funcs,objects){
     "use strict";
     
-    var  PGLISTENERS = Symbol ? Symbol() : '__pglisteners';
+    var  PGLISTENERS = Symbol ? Symbol() : '__pglisteners',
+         PGNOTIFIES = Symbol ? Symbol() : '__pgnotifies';
 
     var slice = Array.prototype.slice,
         proxy = funcs.proxy,
@@ -1521,8 +1990,10 @@ define('skylark-langx/Deferred',[
             this.then(handler,handler);
             return this;
         },
-        done : function(handler) {
-            this.then(handler);
+        done : function() {
+            for (var i = 0;i<arguments.length;i++) {
+                this.then(arguments[i]);
+            }
             return this;
         },
         fail : function(handler) { 
@@ -1530,7 +2001,7 @@ define('skylark-langx/Deferred',[
             //return this.then(null,handler);
             this.catch(handler);
             return this;
-        }
+         }
     });
 
 
@@ -1544,6 +2015,7 @@ define('skylark-langx/Deferred',[
         wrapPromise(p,self);
 
         this[PGLISTENERS] = [];
+        this[PGNOTIFIES] = [];
 
         //this.resolve = Deferred.prototype.resolve.bind(this);
         //this.reject = Deferred.prototype.reject.bind(this);
@@ -1566,7 +2038,7 @@ define('skylark-langx/Deferred',[
                     if (onProgress) {
                         this.progress(onProgress);
                     }
-                    return mixin(Promise.prototype.then.call(this,
+                    return wrapPromise(Promise.prototype.then.call(this,
                             onResolved && function(args) {
                                 if (args && args.__ctx__ !== undefined) {
                                     return onResolved.apply(args.__ctx__,args);
@@ -1580,9 +2052,12 @@ define('skylark-langx/Deferred',[
                                 } else {
                                     return onRejected(args);
                                 }
-                            }),added);
+                            }));
                 },
                 progress : function(handler) {
+                    d[PGNOTIFIES].forEach(function (value) {
+                        handler(value);
+                    });
                     d[PGLISTENERS].push(handler);
                     return this;
                 }
@@ -1607,11 +2082,13 @@ define('skylark-langx/Deferred',[
         return this;
     };
 
-    Deferred.prototype.progress = function(value) {
+    Deferred.prototype.notify = function(value) {
         try {
-          return this[PGLISTENERS].forEach(function (listener) {
-            return listener(value);
-          });
+            this[PGNOTIFIES].push(value);
+
+            return this[PGLISTENERS].forEach(function (listener) {
+                return listener(value);
+            });
         } catch (error) {
           this.reject(error);
         }
@@ -1644,10 +2121,33 @@ define('skylark-langx/Deferred',[
         return p.then(callback, errback, progback);
     };
 
-    Deferred.prototype.done  = Deferred.prototype.then;
+    Deferred.prototype.progress = function(progback){
+        var p = result(this,"promise");
+        return p.progress(progback);
+    };
+   
+    Deferred.prototype.catch = function(errback) {
+        var p = result(this,"promise");
+        return p.catch(errback);
+    };
+
+
+    Deferred.prototype.done  = function() {
+        var p = result(this,"promise");
+        return p.done.apply(p,arguments);
+    };
+
+    Deferred.prototype.fail = function(errback) {
+        var p = result(this,"promise");
+        return p.fail(errback);
+    };
+
 
     Deferred.all = function(array) {
-        return wrapPromise(Promise.all(array));
+        //return wrapPromise(Promise.all(array));
+        var d = new Deferred();
+        Promise.all(array).then(d.resolve.bind(d),d.reject.bind(d));
+        return result(d,"promise");
     };
 
     Deferred.first = function(array) {
@@ -1667,7 +2167,7 @@ define('skylark-langx/Deferred',[
             }
         } else if (!nativePromise) {
             var deferred = new Deferred(valueOrPromise.cancel);
-            valueOrPromise.then(proxy(deferred.resolve,deferred), proxy(deferred.reject,deferred), deferred.progress);
+            valueOrPromise.then(proxy(deferred.resolve,deferred), proxy(deferred.reject,deferred), deferred.notify);
             valueOrPromise = deferred.promise;
         }
 
@@ -1695,9 +2195,9 @@ define('skylark-langx/Deferred',[
 });
 define('skylark-langx/async',[
     "./Deferred",
-    "./arrays"
-],function(Deferred,arrays){
-    var each = arrays.each;
+    "./objects"
+],function(Deferred,objects){
+    var each = objects.each;
     
     var async = {
         parallel : function(arr,args,ctx) {
@@ -1749,12 +2249,77 @@ define('skylark-langx/async',[
 
 	return async;	
 });
+define('skylark-langx/datetimes',[],function(){
+     function parseMilliSeconds(str) {
+
+        var strs = str.split(' ');
+        var number = parseInt(strs[0]);
+
+        if (isNaN(number)){
+            return 0;
+        }
+
+        var min = 60000 * 60;
+
+        switch (strs[1].trim().replace(/\./g, '')) {
+            case 'minutes':
+            case 'minute':
+            case 'min':
+            case 'mm':
+            case 'm':
+                return 60000 * number;
+            case 'hours':
+            case 'hour':
+            case 'HH':
+            case 'hh':
+            case 'h':
+            case 'H':
+                return min * number;
+            case 'seconds':
+            case 'second':
+            case 'sec':
+            case 'ss':
+            case 's':
+                return 1000 * number;
+            case 'days':
+            case 'day':
+            case 'DD':
+            case 'dd':
+            case 'd':
+                return (min * 24) * number;
+            case 'months':
+            case 'month':
+            case 'MM':
+            case 'M':
+                return (min * 24 * 28) * number;
+            case 'weeks':
+            case 'week':
+            case 'W':
+            case 'w':
+                return (min * 24 * 7) * number;
+            case 'years':
+            case 'year':
+            case 'yyyy':
+            case 'yy':
+            case 'y':
+                return (min * 24 * 365) * number;
+            default:
+                return 0;
+        }
+    };
+	
+	return {
+		parseMilliSeconds
+	};
+});
 define('skylark-langx/Evented',[
     "./klass",
+    "./arrays",
     "./objects",
 	"./types"
-],function(klass,objects,types){
+],function(klass,arrays,objects,types){
 	var slice = Array.prototype.slice,
+        compact = arrays.compact,
         isDefined = types.isDefined,
         isPlainObject = types.isPlainObject,
 		isFunction = types.isFunction,
@@ -1993,6 +2558,86 @@ define('skylark-langx/Evented',[
 	return Evented;
 
 });
+define('skylark-langx/hoster',[
+],function(){
+	// The javascript host environment, brower and nodejs are supported.
+	var hoster = {
+		"isBrowser" : true, // default
+		"isNode" : null,
+		"global" : this,
+		"browser" : null,
+		"node" : null
+	};
+
+	if (typeof process == "object" && process.versions && process.versions.node && process.versions.v8) {
+		hoster.isNode = true;
+		hoster.isBrowser = false;
+	}
+
+	hoster.global = (function(){
+		if (typeof global !== 'undefined' && typeof global !== 'function') {
+			// global spec defines a reference to the global object called 'global'
+			// https://github.com/tc39/proposal-global
+			// `global` is also defined in NodeJS
+			return global;
+		} else if (typeof window !== 'undefined') {
+			// window is defined in browsers
+			return window;
+		}
+		else if (typeof self !== 'undefined') {
+			// self is defined in WebWorkers
+			return self;
+		}
+		return this;
+	})();
+
+	var _document = null;
+
+	Object.defineProperty(hoster,"document",function(){
+		if (!_document) {
+			var w = typeof window === 'undefined' ? require('html-element') : window;
+			_document = w.document;
+		}
+
+		return _document;
+	});
+
+	if (hoster.isBrowser) {
+	    function uaMatch( ua ) {
+		    ua = ua.toLowerCase();
+
+		    var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
+		      /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
+		      /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
+		      /(msie) ([\w.]+)/.exec( ua ) ||
+		      ua.indexOf('compatible') < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) ||
+		      [];
+
+		    return {
+		      browser: match[ 1 ] || '',
+		      version: match[ 2 ] || '0'
+		    };
+	  	};
+
+	    var matched = uaMatch( navigator.userAgent );
+
+	    var browser = hoster.browser = {};
+
+	    if ( matched.browser ) {
+	      browser[ matched.browser ] = true;
+	      browser.version = matched.version;
+	    }
+
+	    // Chrome is Webkit, but Webkit is also Safari.
+	    if ( browser.chrome ) {
+	      browser.webkit = true;
+	    } else if ( browser.webkit ) {
+	      browser.safari = true;
+	    }
+	}
+
+	return  hoster;
+});
 define('skylark-langx/strings',[
 ],function(){
 
@@ -2023,6 +2668,7 @@ define('skylark-langx/strings',[
             return value;
         }
     }
+
 
     function trim(str) {
         return str == null ? "" : String.prototype.trim.call(str);
@@ -2080,13 +2726,18 @@ define('skylark-langx/strings',[
             }); // String
     }
 
+    var idCounter = 0;
+    function uniqueId (prefix) {
+        var id = ++idCounter + '';
+        return prefix ? prefix + id : id;
+    }
+
 	return {
         camelCase: function(str) {
             return str.replace(/-([\da-z])/g, function(a) {
                 return a.toUpperCase().replace('-', '');
             });
         },
-
 
         dasherize: dasherize,
 
@@ -2105,6 +2756,8 @@ define('skylark-langx/strings',[
 
         trim: trim,
 
+        uniqueId: uniqueId,
+
         upperFirst: function(str) {
             return str.charAt(0).toUpperCase() + str.slice(1);
         }
@@ -2119,7 +2772,7 @@ define('skylark-langx/Xhr',[
     "./funcs",
     "./types"
 ],function(arrays,Deferred,Evented,objects,funcs,types){
-    var each = arrays.each,
+    var each = objects.each,
         mixin = objects.mixin,
         noop = funcs.noop,
         isArray = types.isArray,
@@ -2350,7 +3003,7 @@ define('skylark-langx/Xhr',[
 
                 var onprogress = function(evt) {
                     if (deferred) {
-                        deferred.progress(evt,xhr.status,xhr);
+                        deferred.notify(evt,xhr.status,xhr);
                     }
                 }
 
@@ -2590,10 +3243,19 @@ define('skylark-langx/Restful',[
     return Restful;
 });
 define('skylark-langx/Stateful',[
-	"./Evented"
-],function(Evented){
+	"./Evented",
+  "./strings",
+  "./objects"
+],function(Evented,strings,objects){
+    var isEqual = objects.isEqual,
+        mixin = objects.mixin,
+        result = objects.result,
+        isEmptyObject = objects.isEmptyObject,
+        clone = objects.clone,
+        uniqueId = strings.uniqueId;
+
     var Stateful = Evented.inherit({
-        init : function(attributes, options) {
+        _construct : function(attributes, options) {
             var attrs = attributes || {};
             options || (options = {});
             this.cid = uniqueId(this.cidPrefix);
@@ -2798,17 +3460,20 @@ define('skylark-langx/langx',[
     "./ArrayStore",
     "./aspect",
     "./async",
+    "./datetimes",
     "./Deferred",
     "./Evented",
     "./funcs",
+    "./hoster",
     "./klass",
+    "./numbers",
     "./objects",
     "./Restful",
     "./Stateful",
     "./strings",
     "./types",
     "./Xhr"
-], function(skylark,arrays,ArrayStore,aspect,async,Deferred,Evented,funcs,klass,objects,Restful,Stateful,strings,types,Xhr) {
+], function(skylark,arrays,ArrayStore,aspect,async,datetimes,Deferred,Evented,funcs,hoster,klass,numbers,objects,Restful,Stateful,strings,types,Xhr) {
     "use strict";
     var toString = {}.toString,
         concat = Array.prototype.concat,
@@ -2859,13 +3524,6 @@ define('skylark-langx/langx',[
         return obj._uid || (obj._uid = _uid++);
     }
 
-    var idCounter = 0;
-    function uniqueId (prefix) {
-        var id = ++idCounter + '';
-        return prefix ? prefix + id : id;
-    }
-
-
     function langx() {
         return langx;
     }
@@ -2881,14 +3539,12 @@ define('skylark-langx/langx',[
 
         uid: uid,
 
-        uniqueId: uniqueId,
-
         URL: typeof window !== "undefined" ? window.URL || window.webkitURL : null
 
     });
 
 
-    mixin(langx, arrays,aspect,funcs,objects,strings,types,{
+    mixin(langx, arrays,aspect,datetimes,funcs,numbers,objects,strings,types,{
         ArrayStore : ArrayStore,
 
         async : async,
@@ -2896,6 +3552,8 @@ define('skylark-langx/langx',[
         Deferred: Deferred,
 
         Evented: Evented,
+
+        hoster : hoster,
 
         klass : klass,
 
@@ -2928,6 +3586,8 @@ define('skylark-utils-dom/browser',[
     "./langx"
 ], function(dom,langx) {
     "use strict";
+
+    var browser = langx.hoster.browser;
  
     var checkedCssProperties = {
             "transitionproperty": "TransitionProperty",
@@ -3010,10 +3670,6 @@ define('skylark-utils-dom/browser',[
 
     function normalizeStyleProperty(name) {
         return cssStyles[name] || name;
-    }
-
-    function browser() {
-        return browser;
     }
 
     langx.mixin(browser, {
@@ -3116,7 +3772,7 @@ define('skylark-utils-dom/styler',[
         if (!elementDisplay[nodeName]) {
             element = document.createElement(nodeName)
             document.body.appendChild(element)
-            display = getComputedStyle(element, '').getPropertyValue("display")
+            display = getStyles(element).getPropertyValue("display")
             element.parentNode.removeChild(element)
             display == "none" && (display = "block")
             elementDisplay[nodeName] = display
@@ -3173,6 +3829,22 @@ define('skylark-utils-dom/styler',[
 
         return this;
     }
+
+    function getStyles( elem ) {
+
+        // Support: IE <=11 only, Firefox <=30 (#15098, #14150)
+        // IE throws on elements created in popups
+        // FF meanwhile throws on frame elements through "defaultView.getComputedStyle"
+        var view = elem.ownerDocument.defaultView;
+
+        if ( !view || !view.opener ) {
+            view = window;
+        }
+
+        return view.getComputedStyle( elem);
+    }
+
+
     /*
      * Get the value of a computed style property for the first element in the set of matched elements or set one or more CSS properties for every matched element.
      * @param {HTMLElement} elm
@@ -3182,7 +3854,7 @@ define('skylark-utils-dom/styler',[
     function css(elm, property, value) {
         if (arguments.length < 3) {
             var computedStyle,
-                computedStyle = getComputedStyle(elm, '')
+                computedStyle = getStyles(elm)
             if (langx.isString(property)) {
                 return elm.style[camelCase(property)] || computedStyle.getPropertyValue(dasherize(property))
             } else if (langx.isArrayLike(property)) {
@@ -3651,14 +4323,20 @@ define('skylark-utils-dom/noder',[
     }
 
     /*   
-     * Check to see if a dom node is a descendant of another dom node.
+     * Check to see if a dom node is a document.
      * @param {Node} node
-     * @param {Node} parent
-     * @param {Node} directly
      */
-    function isDoc(node) {
+    function isDocument(node) {
         return node != null && node.nodeType == node.DOCUMENT_NODE
     }
+
+    /*   
+     * Check to see if a dom node is in the document
+     * @param {Node} node
+     */
+    function isInDocument(node) {
+      return (node === document.body) ? true : document.body.contains(node);
+    }        
 
     /*   
      * Get the owner document object for the specified element.
@@ -3953,7 +4631,9 @@ define('skylark-utils-dom/noder',[
 
         isChildOf: isChildOf,
 
-        isDoc: isDoc,
+        isDocument: isDocument,
+
+        isInDocument: isInDocument,
 
         isWindow: langx.isWindow,
 
@@ -5089,9 +5769,9 @@ define('skylark-utils-dom/finder',[
 
         parent: parent,
 
-        previousSibling: previousSibling,
+        previousSibling,
 
-        previousSiblings: previousSiblings,
+        previousSiblings,
 
         pseudos: local.pseudos,
 
@@ -5258,13 +5938,17 @@ define('skylark-utils-dom/datax',[
      * @param {Array} names
      */
     function removeData(elm, names) {
-        if (langx.isString(names)) {
-            names = names.split(/\s+/);
+        if (names) {
+            if (langx.isString(names)) {
+                names = names.split(/\s+/);
+            }
+            var store = _store(elm, true);
+            names.forEach(function(name) {
+                delete store[name];
+            });            
+        } else {
+            cleanData(elm);
         }
-        var store = _store(elm, true);
-        names.forEach(function(name) {
-            delete store[name];
-        });
         return this;
     }
 
@@ -7546,7 +8230,7 @@ define('skylark-utils-dom/fx',[
         });
 
         return this;
-    };
+    }
 
     /*   
      * Hide an element with a sliding motion.
@@ -7608,7 +8292,7 @@ define('skylark-utils-dom/fx',[
             });
         }
         return this;
-    };
+    }
 
 
     /*   
@@ -7628,8 +8312,22 @@ define('skylark-utils-dom/fx',[
             slideUp(elm, duration, callback);
         }
         return this;
-    };
+    }
 
+    function emulateTransitionEnd(elm,duration) {
+        var called = false;
+        eventer.one(elm,'transitionEnd', function () { 
+            called = true;
+        })
+        var callback = function () { 
+            if (!called) {
+                eventer.trigger(elm,'transitionEnd') 
+            }
+        };
+        setTimeout(callback, duration);
+        
+        return this;
+    } 
 
     function fx() {
         return fx;
@@ -7644,19 +8342,20 @@ define('skylark-utils-dom/fx',[
             slow: 600
         },
 
-        animate: animate,
-        fadeIn: fadeIn,
-        fadeOut: fadeOut,
-        fadeTo: fadeTo,
-        fadeToggle: fadeToggle,
-        hide: hide,
-        scrollToTop: scrollToTop,
+        animate,
+        emulateTransitionEnd,
+        fadeIn,
+        fadeOut,
+        fadeTo,
+        fadeToggle,
+        hide,
+        scrollToTop,
 
-        slideDown: slideDown,
-        slideToggle: slideToggle,
-        slideUp: slideUp,
-        show: show,
-        toggle: toggle
+        slideDown,
+        slideToggle,
+        slideUp,
+        show,
+        toggle
     });
 
     return dom.fx = fx;
@@ -7892,7 +8591,7 @@ define('skylark-utils-dom/query',[
                         nodes = finder.descendants(context, selector);
                     }
                 } else {
-                    if (isArray(selector)) {
+                    if (isArrayLike(selector)) {
                         // a dom node array is expected
                         nodes = selector;
                     } else {
@@ -8102,8 +8801,6 @@ define('skylark-utils-dom/query',[
                 return ret;
             },
             
-            show: wrapper_every_act(fx.show, fx),
-
             replaceWith: function(newContent) {
                 return this.before(newContent).remove();
             },
@@ -8445,6 +9142,7 @@ define('skylark-utils-dom/query',[
         };
 
         $.fn.animate = wrapper_every_act(fx.animate, fx);
+        $.fn.emulateTransitionEnd = wrapper_every_act(fx.emulateTransitionEnd, fx);
 
         $.fn.show = wrapper_every_act(fx.show, fx);
         $.fn.hide = wrapper_every_act(fx.hide, fx);
@@ -8614,7 +9312,7 @@ define('skylark-utils-dom/query',[
     return dom.query = query;
 
 });
-define('skylark-ui-swt/ui',[
+define('skylark-ui-swt/swt',[
   "skylark-langx/skylark",
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
@@ -8700,16 +9398,26 @@ define('skylark-utils-dom/elmx',[
     var VisualElement = langx.klass({
         klassName: "VisualElement",
 
-        "init": function(node) {
+        "_construct": function(node) {
             if (langx.isString(node)) {
-                node = document.getElementById(node);
+                if (node.charAt(0) === "<") {
+                    //html
+                    node = noder.createFragment(node)[0];
+                } else {
+                    // id
+                    node = document.getElementById(node);
+                }
             }
-            this.domNode = node;
+            this._elm = node;
         }
     });
 
     VisualElement.prototype.$ = VisualElement.prototype.query = function(selector) {
-        return $(selector,this.domNode);
+        return $(selector,this._elm);
+    };
+
+    VisualElement.prototype.elm = function() {
+        return this._elm;
     };
 
     /*
@@ -8731,7 +9439,7 @@ define('skylark-utils-dom/elmx',[
     function _delegator(fn, context) {
         return function() {
             var self = this,
-                elem = self.domNode,
+                elem = self._elm,
                 ret = fn.apply(context, [elem].concat(slice.call(arguments)));
 
             if (ret) {
@@ -8888,6 +9596,9 @@ define('skylark-utils-dom/elmx',[
         "empty",
         "html",
         "isChildOf",
+        "isDocument",
+        "isInDocument",
+        "isWindow",
         "ownerDoc",
         "prepend",
         "remove",
@@ -8970,77 +9681,142 @@ define('skylark-utils-dom/plugins',[
 
     var slice = Array.prototype.slice,
         concat = Array.prototype.concat,
-        pluginKlasses = {};
+        pluginKlasses = {},
+        shortcuts = {};
 
+    /*
+     * Create or get or destory a plugin instance assocated with the element.
+     */
+    function instantiate(elm,pluginName,options) {
+        var pair = pluginName.split(":"),
+            instanceDataName = pair[1];
+        pluginName = pair[0];
+
+        if (!instanceDataName) {
+            instanceDataName = pluginName;
+        }
+
+        var pluginInstance = datax.data( elm, instanceDataName );
+
+        if (options === "instance") {
+            return pluginInstance;
+        } else if (options === "destroy") {
+            if (!pluginInstance) {
+                throw new Error ("The plugin instance is not existed");
+            }
+            pluginInstance.destroy();
+            datax.removeData( elm, pluginName);
+            pluginInstance = undefined;
+        } else {
+            if (!pluginInstance) {
+                if (options !== undefined && typeof options !== "object") {
+                    throw new Error ("The options must be a plain object");
+                }
+                var pluginKlass = pluginKlasses[pluginName]; 
+                pluginInstance = new pluginKlass(elm,options);
+                datax.data( elm, instanceDataName,pluginInstance );
+            } else if (options) {
+                pluginInstance.reset(options);
+            }
+        }
+
+        return pluginInstance;
+    }
+
+    function shortcutter(pluginName,extfn) {
+       /*
+        * Create or get or destory a plugin instance assocated with the element,
+        * and also you can execute the plugin method directory;
+        */
+        return function (elm,options) {
+            var  plugin = instantiate(elm, pluginName,"instance");
+            if ( options === "instance" ) {
+              return plugin || null;
+            }
+            if (!plugin) {
+                plugin = instantiate(elm, pluginName,typeof options == 'object' && options || {});
+            }
+
+            if (options) {
+                var args = slice.call(arguments,1);
+                if (extfn) {
+                    return extfn.apply(plugin,args);
+                } else {
+                    if (typeof options == 'string') {
+                        var methodName = options;
+
+                        if ( !plugin ) {
+                            throw new Error( "cannot call methods on " + pluginName +
+                                " prior to initialization; " +
+                                "attempted to call method '" + methodName + "'" );
+                        }
+
+                        if ( !langx.isFunction( plugin[ methodName ] ) || methodName.charAt( 0 ) === "_" ) {
+                            throw new Error( "no such method '" + methodName + "' for " + pluginName +
+                                " plugin instance" );
+                        }
+
+                        return plugin[methodName].apply(plugin,args);
+                    }                
+                }                
+            }
+
+        }
+
+    }
 
     /*
      * Register a plugin type
      */
-    function register( pluginKlass,shortcut) {
-        var name = pluginKlass.prototype.pluginName;
+    function register( pluginKlass,shortcutName,instanceDataName,extfn) {
+        var pluginName = pluginKlass.prototype.pluginName;
         
-        pluginKlasses[name] = pluginKlass;
+        pluginKlasses[pluginName] = pluginKlass;
 
-        if (shortcut) {
-            elmx.partial(shortcut,$.fn[shortcut] = function(options) {
-                var args = slice.call(arguments,0);
-                args.unshift(name);
-                return this.plugin.apply(this,args);
+        if (shortcutName) {
+            if (instanceDataName && langx.isFunction(instanceDataName)) {
+                extfn = instanceDataName;
+                instanceDataName = null;
+            } 
+            if (instanceDataName) {
+                pluginName = pluginName + ":" + instanceDataName;
+            }
+
+            var shortcut = shortcuts[shortcutName] = shortcutter(pluginName,extfn);
+                
+            $.fn[shortcutName] = function(options) {
+                var returnValue = this;
+
+                if ( !this.length && options === "instance" ) {
+                  returnValue = undefined;
+                } else {
+                  var args = slice.call(arguments);
+                  this.each(function () {
+                    var args2 = slice.call(args);
+                    args2.unshift(this);
+                    var  ret  = shortcut.apply(null,args2);
+                    if (ret !== undefined) {
+                        returnValue = ret;
+                        return false;
+                    }
+                  });
+                }
+
+                return returnValue;
+            };
+
+            elmx.partial(shortcutName,function(options) {
+                var  ret  = shortcut(this._elm,options);
+                if (ret === undefined) {
+                    ret = this;
+                }
+                return ret;
             });
+
         }
     }
 
-    /*
-     * Create or get a plugin instance assocated with the element,
-     * also you can execute the plugin method directory;
-     */
-    function instantiate(elm,pluginName,options) {
-
-        var pluginInstance = datax.data( elm, pluginName );
-
-        if (options === "instance") {
-            return pluginInstance;
-        }
-
-        var isMethodCall = typeof options === "string",
-            args = slice.call( arguments, 2 ),
-            returnValue = this;
-
-        if ( isMethodCall ) {
-            var methodName = options;
-
-            if ( !pluginInstance ) {
-                return langx.error( "cannot call methods on " + pluginName +
-                    " prior to initialization; " +
-                    "attempted to call method '" + methodName + "'" );
-            }
-
-            if ( !langx.isFunction( pluginInstance[ methodName ] ) || methodName.charAt( 0 ) === "_" ) {
-                return langx.error( "no such method '" + methodName + "' for " + pluginName +
-                    " plugin instance" );
-            }
-
-            return pluginInstance[ methodName ].apply( pluginInstance, args );
-
-        } else {
-            // Allow multiple hashes to be passed on init
-            if ( args.length ) {
-                options = langx.mixin.apply( langx, [{},options ].concat( args ) );
-            }
-
-            if ( pluginInstance ) {
-                pluginInstance.option( options || {} );
-            } else {
-                var pluginKlass = pluginKlasses[pluginName]; 
-                pluginInstance = new pluginKlass(elm,options);
-                datax.data( elm, pluginName,pluginInstance );
-            }
-            return pluginInstance;
-        }
-
-        return returnValue;
-    }
-
+ 
     var Plugin =   langx.Evented.inherit({
         klassName: "Plugin",
 
@@ -9069,9 +9845,17 @@ define('skylark-utils-dom/plugins',[
               if (ctor.prototype.hasOwnProperty("options")) {
                 langx.mixin(defaults,ctor.prototype.options);
               }
+              if (ctor.hasOwnProperty("options")) {
+                langx.mixin(defaults,ctor.options);
+              }
             }
           }
-          return this.options = langx.mixin({},defaults,options);
+          Object.defineProperty(this,"options",{
+            value :langx.mixin({},defaults,options)
+          });
+
+          //return this.options = langx.mixin({},defaults,options);
+          return this.options;
         },
 
 
@@ -9178,12 +9962,10 @@ define('skylark-utils-dom/plugins',[
     }
      
     langx.mixin(plugins, {
-        instantiate : instantiate,
-        
-        Plugin : Plugin,
-
-        register : register
-
+        instantiate,
+        Plugin,
+        register,
+        shortcuts
     });
 
     return plugins;
@@ -9247,7 +10029,7 @@ define('skylark-utils-collection/Collection',[
             //    desc: "Value to use as this when executing callback."
             //}],
             var it = this.iterator();
-            while(!it.hasNext()){
+            while(it.hasNext()){
                 var item = it.next();
                 func.call(thisArg || item,item);
             }
@@ -9516,8 +10298,8 @@ define('skylark-ui-swt/Widget',[
   "skylark-utils-dom/query",
   "skylark-utils-dom/plugins",
   "skylark-utils-collection/Map",
-  "./ui"
-],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,ui){
+  "./swt"
+],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,swt){
 
 /*---------------------------------------------------------------------------------*/
 
@@ -9536,10 +10318,17 @@ define('skylark-ui-swt/Widget',[
         this.overrided(elm,options);
 
         if (!elm) {
-          this._elm = this._create();
+          this._velm = this._create();
+          this._elm = this._velm.elm();
+        } else {
+          this._velm = elmx(this._elm);
         }
-        this._velm = elmx(this._elm);
-        this.state = this.options.state || new Map();
+        
+        Object.defineProperty(this,"state",{
+          value :this.options.state || new Map()
+        });
+
+        //this.state = this.options.state || new Map();
         this._init();
      },
 
@@ -9565,8 +10354,14 @@ define('skylark-ui-swt/Widget',[
      * @method _create
      */
     _create : function() {
-        //TODO:     
+        var template = this.options.template;
+        if (template) {
+          return this._elmx(template);
+        } else {
+          throw new Error("The template is not existed in options!");
+        }
     },
+
 
     /**
      * Init widget.
@@ -9574,7 +10369,6 @@ define('skylark-ui-swt/Widget',[
      * @method _init
      */
     _init : function() {
-      //TODO:
       var self = this;
       if (this.widgetClass) {
         this._velm.addClass(this.widgetClass);
@@ -9582,16 +10376,15 @@ define('skylark-ui-swt/Widget',[
       this.state.on("changed",function(e,args) {
         self._refresh(args.data);
       });
-
     },
 
 
     /**
-     * Post widget.
+     * Startup widget.
      * This is a callback method called when widget element is added into dom.
      * @method _post
      */
-    _post : function() {
+    _startup : function() {
 
     },
 
@@ -9652,10 +10445,10 @@ define('skylark-ui-swt/Widget',[
     /**
      * Returns a html element representing the widget.
      *
-     * @method html
+     * @method render
      * @return {HtmlElement} HTML element representing the widget.
      */
-    html: function() {
+    render: function() {
       return this._elm;
     },
 
@@ -9789,6 +10582,25 @@ define('skylark-ui-swt/Widget',[
         return ret == velm ? this : ret;
     },
 
+
+    /**
+     *  Attach the current widget element to dom document.
+     *
+     * @method attach
+     * @return {Widget} This Widget.
+     */
+    attach : function(target,position){
+        var elm = target;
+        if (!position || position=="child") {
+            noder.append(elm,this._elm);
+        } else  if (position == "before") {
+            noder.before(elm,this._elm);
+        } else if (position == "after") {
+            noder.after(elm,this._elm);
+        }
+        this._startup();
+    },
+
     /**
      *  Detach the current widget element from dom document.
      *
@@ -9825,7 +10637,33 @@ define('skylark-ui-swt/Widget',[
     return ctor;
   };
 
-	return ui.Widget = Widget;
+  Widget.register = function(ctor,widgetName) {
+    var meta = ctor.prototype,
+        pluginName = widgetName || meta.pluginName;
+
+    function addStatePropMethod(name) {
+        ctor.prototype[name] = function(value) {
+          if (value !== undefined) {
+            this.state.set(name,value);
+            return this;
+          } else {
+            return this.state.get(name);
+          }
+        };
+    }
+    if (meta.state) {
+      for (var name in meta.state) {
+          addStatePropMethod(name);
+      }
+    }
+
+    if (pluginName) {
+      plugins.register(ctor,pluginName);
+    }
+    return ctor;
+  };
+
+	return swt.Widget = Widget;
 });
 
 define('skylark-bootstrap3/bs3',[
@@ -9900,17 +10738,6 @@ define('skylark-bootstrap3/bs3',[
 		isDownArrow: isDownArrow
 	});
 
-/*---------------------------------------------------------------------------------*/
-
-	var WidgetBase = langx.Evented.inherit({
-        klassName: "WidgetBase",
-    });
-
-
-	langx.mixin(bs3, {
-		WidgetBase : WidgetBase
-	});
-
 	return bs3;
 });
 
@@ -9933,16 +10760,6 @@ define('skylark-bootstrap3/transition',[
  * ======================================================================== */
 
   'use strict';
-
-  // http://blog.alexmaccaw.com/css-transitions
-  $.fn.emulateTransitionEnd = function (duration) {
-    var called = false
-    var $el = this
-    $(this).one('transitionEnd', function () { called = true })
-    var callback = function () { if (!called) $($el).trigger(browser.support.transition.end) }
-    setTimeout(callback, duration)
-    return this
-  } 
 
   eventer.special.bsTransitionEnd = eventer.special.transitionEnd;
 });
@@ -9980,12 +10797,8 @@ define('skylark-bootstrap3/collapse',[
 
     pluginName : "bs3.collapse",
 
-    options : {
-      toggle: true
-    },
-
     _construct : function(element,options) {
-      //this.options       = langx.mixin({}, Collapse.DEFAULTS, options)
+      options = langx.mixin({}, Collapse.DEFAULTS, $(element).data(), options)
       this.overrided(element,options);
 
       this.$element      = $(element)
@@ -10026,7 +10839,7 @@ define('skylark-bootstrap3/collapse',[
 
       if (actives && actives.length) {
         //Plugin.call(actives, 'hide')
-        actives.collapse().hide();
+        actives.collapse("hide");
         activesData || actives.data('bs.collapse', null)
       }
 
@@ -10186,9 +10999,9 @@ define('skylark-ui-swt/Panel',[
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
   "skylark-bootstrap3/collapse",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,collapse,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,collapse,swt,Widget){
 
   var Panel = Widget.inherit({
     klassName : "Panel",
@@ -10270,10 +11083,10 @@ define('skylark-ui-swt/Accordion',[
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
   "skylark-bootstrap3/collapse",
-  "./ui",
+  "./swt",
   "./Widget",
   "./Panel"
-],function(langx,browser,eventer,noder,geom,$,collapse,ui,Widget, Panel){
+],function(langx,browser,eventer,noder,geom,$,collapse,swt,Widget, Panel){
 
   var Accordion = Widget.inherit({
     klassName : "Accordion",
@@ -10390,12 +11203,12 @@ define('skylark-ui-swt/Accordion',[
 
     collapse : function() {
       // collapse this panel
-      this._velm.collapse("hide");
+      $(this._elm).collapse("hide");
     },
 
     toogle : function() {
       // toogle this panel
-     this._velm.collapse("toogle");
+     $(this._elm).collapse("toogle");
     },
 
     remove : function() {
@@ -10403,35 +11216,43 @@ define('skylark-ui-swt/Accordion',[
     }
   });
 
-  return ui.Accordion = Accordion;
+  return swt.Accordion = Accordion;
 });
 
 define('skylark-ui-swt/Button',[
   "skylark-langx/langx",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,$,ui,Widget){
+],function(langx,$,swt,Widget){
 
-	var Button = Widget.inherit({
-		klassName : "Button",
+	class Button extends Widget {
+		get klassName() {
+      return "Button";
+    } 
 
-    pluginName : "lark.button",
+    get pluginName(){
+      return "lark.button";
+    } 
 
-		options : {
-			btnSize : "lg",
-      btnType : "default",
-      leftIcon : null,
-      rightIcon : null,
-      topIcon : null, // TODO
-      bottomIcon : null //TODO
-		},
+		get options () {
+      return {
+        btnSize : "lg",
+        btnType : "default",
+        leftIcon : null,
+        rightIcon : null,
+        topIcon : null, // TODO
+        bottomIcon : null //TODO        
+      }
+		}
 
-    state : {
-      "text" : String
-    },
+    get state() {
+      return {
+        "text" : String
+      }
+    }
 
-    _parse: function (elm,options) {
+    _parse (elm,options) {
       var $el = $(elm),
           options = langx.mixin({},options);
 
@@ -10491,10 +11312,11 @@ define('skylark-ui-swt/Button',[
           $fa_icon_right.addClass('fa-icon-right').addClass('fa');
         }        
       }
-    },
+    }
 
-    _refresh: function (updates) {
-      this.overrided(updates);
+    _refresh (updates) {
+      //this.overrided(updates);
+      super._refresh(updates);
 
       var velm = this._velm;
 
@@ -10522,9 +11344,15 @@ define('skylark-ui-swt/Button',[
           }
       }
     }
-  });
+  };
 
-  return ui.Button = Button;
+  Widget.register(Button);
+//  class Buttonx extends Button {
+//
+//  }
+
+//  Widget.register(Buttonx,"lark.button");
+  return swt.Button = Button;
 
 });
 
@@ -10539,7 +11367,8 @@ define('skylark-bootstrap3/carousel',[
     "skylark-utils-dom/geom",
     "skylark-utils-dom/query",
     "skylark-utils-dom/plugins",
-    "./bs3"
+    "./bs3",
+    "./transition"
 ], function(langx, browser, eventer, noder, geom, $, plugins, bs3) {
 
     /* ========================================================================
@@ -10564,29 +11393,204 @@ define('skylark-bootstrap3/carousel',[
             interval: 5000,
             pause: 'hover',
             wrap: true,
-            keyboard: true
+            keyboard: true,
+
+            selectors :{
+                controls : {
+                 // The class for the "toggle" control:
+                  toggle: '.toggle',
+                  // The class for the "prev" control:
+                  prev: '.prev',
+                  // The class for the "next" control:
+                  next: '.next',
+                  // The class for the "close" control:
+                  close: '.close',
+                  // The class for the "play-pause" toggle control:
+                  playPause: '.play-pause'
+                },
+                indicators : {
+                    container : ".carousel-indicators"  
+                },
+                slides : {
+                    container : "",
+                    item : ".item" 
+                }
+            }
+
 
         },
 
         _construct: function(element, options) {
+            options = langx.mixin({}, $(element).data(), options);
             //this.options = options
             this.overrided(element,options);
 
             this.$element = $(element)
-            this.$indicators = this.$element.find('.carousel-indicators')
+            this.$indicators = this.$element.find(this.options.selectors.indicators.container); //'.carousel-indicators'
             this.paused = null
             this.sliding = null
             this.interval = null
             this.$active = null
             this.$items = null
 
-            this.options.keyboard && this.$element.on('keydown.bs.carousel', langx.proxy(this.keydown, this))
+            var self = this;
+            if (!this.options.embeded) {
+                this.options.keyboard && this.$element.on('keydown.bs.carousel', langx.proxy(this.keydown, this))
 
-            this.options.pause == 'hover' && !('ontouchstart' in document.documentElement) && this.$element
-                .on('mouseenter.bs.carousel', langx.proxy(this.pause, this))
-                .on('mouseleave.bs.carousel', langx.proxy(this.cycle, this));
+                this.options.pause == 'hover' && !('ontouchstart' in document.documentElement) && this.$element
+                    .on('mouseenter.bs3.carousel', langx.proxy(this.pause, this))
+                    .on('mouseleave.bs3.carousel', langx.proxy(this.cycle, this));
 
-        }
+                this.$element.on("click.bs3.carousel.data-api", "[data-slide],[data-slide-to]", function(e) {
+                    var $this = $(this),
+                        slide = $this.attr('data-slide'),
+                        slideIndex = $this.attr('data-slide-to');
+
+                    if (slide == "prev") {
+                        self.prev();
+                    } else if (slide == "next") {
+                        self.next();
+                    } else  if (slideIndex) {
+                        self.to(slideIndex);
+                    }
+                    e.preventDefault();
+                });
+            }
+        },
+
+        keydown : function(e) {
+            if (/input|textarea/i.test(e.target.tagName)) return
+            switch (e.which) {
+                case 37:
+                    this.prev();
+                    break
+                case 39:
+                    this.next();
+                    break
+                default:
+                    return
+            }
+
+            e.preventDefault()
+        },
+
+        cycle : function(e) {
+            e || (this.paused = false)
+
+            this.interval && clearInterval(this.interval)
+
+            this.options.interval &&
+                !this.paused &&
+                (this.interval = setInterval(langx.proxy(this.next, this), this.options.interval))
+
+            return this
+        },
+
+        getItemIndex : function(item) {
+            this.$items = item.parent().children(this.options.selectors.slides.item);//'.item' 
+            return this.$items.index(item || this.$active)
+        },
+
+        getItemForDirection : function(direction, active) {
+            var activeIndex = this.getItemIndex(active)
+            var willWrap = (direction == 'prev' && activeIndex === 0) ||
+                (direction == 'next' && activeIndex == (this.$items.length - 1))
+            if (willWrap && !this.options.wrap) return active
+            var delta = direction == 'prev' ? -1 : 1
+            var itemIndex = (activeIndex + delta) % this.$items.length
+            return this.$items.eq(itemIndex)
+        },
+
+        to : function(pos) {
+            var that = this
+            var activeIndex = this.getItemIndex(this.$active = this.$element.find(this.options.selectors.slides.item+".active"));//'.item.active'
+
+            if (pos > (this.$items.length - 1) || pos < 0) return
+
+            if (this.sliding) return this.$element.one('slid.bs.carousel', function() { that.to(pos) }) // yes, "slid"
+            if (activeIndex == pos) return this.pause().cycle()
+
+            return this.slide(pos > activeIndex ? 'next' : 'prev', this.$items.eq(pos))
+        },
+
+        pause : function(e) {
+            e || (this.paused = true)
+
+            if (this.$element.find(this.options.selectors.controls.next + ","+ this.options.selectors.controls.prev).length && browser.support.transition) { //.next,.prev
+                this.$element.trigger(browser.support.transition.end)
+                this.cycle(true)
+            }
+
+            this.interval = clearInterval(this.interval)
+
+            return this
+        },
+
+        next : function() {
+            if (this.sliding) return
+            return this.slide('next')
+        },
+
+        prev : function() {
+            if (this.sliding) return
+            return this.slide('prev')
+        },
+
+        slide : function(type, next) {
+            var $active = this.$element.find(this.options.selectors.slides.item+".active");//'.item.active'
+            var $next = next || this.getItemForDirection(type, $active)
+            var isCycling = this.interval
+            var direction = type == 'next' ? 'left' : 'right'
+            var that = this
+
+            if ($next.hasClass('active')) return (this.sliding = false)
+
+            var relatedTarget = $next[0]
+            var slideEvent = eventer.create('slide.bs.carousel', {
+                relatedTarget: relatedTarget,
+                direction: direction
+            })
+            this.$element.trigger(slideEvent)
+            if (slideEvent.isDefaultPrevented()) return
+
+            this.sliding = true
+
+            isCycling && this.pause()
+
+            if (this.$indicators.length) {
+                this.$indicators.find('.active').removeClass('active')
+                var $nextIndicator = $(this.$indicators.children()[this.getItemIndex($next)])
+                $nextIndicator && $nextIndicator.addClass('active')
+            }
+
+            var slidEvent = eventer.create('slid.bs.carousel', { relatedTarget: relatedTarget, direction: direction }) // yes, "slid"
+            if (browser.support.transition && this.$element.hasClass('slide')) {
+                $next.addClass(type)
+                $next[0].offsetWidth // force reflow
+                $active.addClass(direction)
+                $next.addClass(direction)
+                $active
+                    .one('transitionEnd', function() {
+                        $next.removeClass([type, direction].join(' ')).addClass('active')
+                        $active.removeClass(['active', direction].join(' '))
+                        that.sliding = false
+                        setTimeout(function() {
+                            that.$element.trigger(slidEvent)
+                        }, 0)
+                    })
+                    .emulateTransitionEnd()
+            } else {
+                $active.removeClass('active')
+                $next.addClass('active')
+                this.sliding = false
+                this.$element.trigger(slidEvent)
+            }
+
+            isCycling && this.cycle()
+
+            return this
+        },
+
     });
 
     // var Carousel = function (element, options) {
@@ -10596,145 +11600,7 @@ define('skylark-bootstrap3/carousel',[
 
     Carousel.TRANSITION_DURATION = 600
 
-    Carousel.DEFAULTS = {
-        interval: 5000,
-        pause: 'hover',
-        wrap: true,
-        keyboard: true
-    }
 
-    Carousel.prototype.keydown = function(e) {
-        if (/input|textarea/i.test(e.target.tagName)) return
-        switch (e.which) {
-            case 37:
-                this.prev();
-                break
-            case 39:
-                this.next();
-                break
-            default:
-                return
-        }
-
-        e.preventDefault()
-    }
-
-    Carousel.prototype.cycle = function(e) {
-        e || (this.paused = false)
-
-        this.interval && clearInterval(this.interval)
-
-        this.options.interval &&
-            !this.paused &&
-            (this.interval = setInterval(langx.proxy(this.next, this), this.options.interval))
-
-        return this
-    }
-
-    Carousel.prototype.getItemIndex = function(item) {
-        this.$items = item.parent().children('.item')
-        return this.$items.index(item || this.$active)
-    }
-
-    Carousel.prototype.getItemForDirection = function(direction, active) {
-        var activeIndex = this.getItemIndex(active)
-        var willWrap = (direction == 'prev' && activeIndex === 0) ||
-            (direction == 'next' && activeIndex == (this.$items.length - 1))
-        if (willWrap && !this.options.wrap) return active
-        var delta = direction == 'prev' ? -1 : 1
-        var itemIndex = (activeIndex + delta) % this.$items.length
-        return this.$items.eq(itemIndex)
-    }
-
-    Carousel.prototype.to = function(pos) {
-        var that = this
-        var activeIndex = this.getItemIndex(this.$active = this.$element.find('.item.active'))
-
-        if (pos > (this.$items.length - 1) || pos < 0) return
-
-        if (this.sliding) return this.$element.one('slid.bs.carousel', function() { that.to(pos) }) // yes, "slid"
-        if (activeIndex == pos) return this.pause().cycle()
-
-        return this.slide(pos > activeIndex ? 'next' : 'prev', this.$items.eq(pos))
-    }
-
-    Carousel.prototype.pause = function(e) {
-        e || (this.paused = true)
-
-        if (this.$element.find('.next, .prev').length && browser.support.transition) {
-            this.$element.trigger(browser.support.transition.end)
-            this.cycle(true)
-        }
-
-        this.interval = clearInterval(this.interval)
-
-        return this
-    }
-
-    Carousel.prototype.next = function() {
-        if (this.sliding) return
-        return this.slide('next')
-    }
-
-    Carousel.prototype.prev = function() {
-        if (this.sliding) return
-        return this.slide('prev')
-    }
-
-    Carousel.prototype.slide = function(type, next) {
-        var $active = this.$element.find('.item.active')
-        var $next = next || this.getItemForDirection(type, $active)
-        var isCycling = this.interval
-        var direction = type == 'next' ? 'left' : 'right'
-        var that = this
-
-        if ($next.hasClass('active')) return (this.sliding = false)
-
-        var relatedTarget = $next[0]
-        var slideEvent = eventer.create('slide.bs.carousel', {
-            relatedTarget: relatedTarget,
-            direction: direction
-        })
-        this.$element.trigger(slideEvent)
-        if (slideEvent.isDefaultPrevented()) return
-
-        this.sliding = true
-
-        isCycling && this.pause()
-
-        if (this.$indicators.length) {
-            this.$indicators.find('.active').removeClass('active')
-            var $nextIndicator = $(this.$indicators.children()[this.getItemIndex($next)])
-            $nextIndicator && $nextIndicator.addClass('active')
-        }
-
-        var slidEvent = eventer.create('slid.bs.carousel', { relatedTarget: relatedTarget, direction: direction }) // yes, "slid"
-        if (browser.support.transition && this.$element.hasClass('slide')) {
-            $next.addClass(type)
-            $next[0].offsetWidth // force reflow
-            $active.addClass(direction)
-            $next.addClass(direction)
-            $active
-                .one('transitionEnd', function() {
-                    $next.removeClass([type, direction].join(' ')).addClass('active')
-                    $active.removeClass(['active', direction].join(' '))
-                    that.sliding = false
-                    setTimeout(function() {
-                        that.$element.trigger(slidEvent)
-                    }, 0)
-                })
-                .emulateTransitionEnd()
-        } else {
-            $active.removeClass('active')
-            $next.addClass('active')
-            this.sliding = false
-            this.$element.trigger(slidEvent)
-        }
-
-        isCycling && this.cycle()
-
-        return this
-    }
 
 
     // CAROUSEL PLUGIN DEFINITION
@@ -10760,7 +11626,17 @@ define('skylark-bootstrap3/carousel',[
         })
     }
     */
-    plugins.register(Carousel,"carousel");
+    plugins.register(Carousel,"carousel",function(options){
+        //this -> plugin instance
+        var action = typeof options == 'string' ? options : options.slide
+        if (typeof options == 'number') {
+            this.to(options);
+        } else if (action) {
+            this[action]()
+        } else if (options.interval) {
+            this.pause().cycle();
+        }        
+    });
 
     return Carousel;
 
@@ -10772,14 +11648,40 @@ define('skylark-ui-swt/Carousel',[
     "skylark-utils-dom/noder",
     "skylark-utils-dom/geom",
     "skylark-utils-dom/query",
-    "./ui",
+    "./swt",
     "./Widget",
     "skylark-bootstrap3/carousel"
-], function(langx, browser, eventer, noder, geom,  $, ui, Widget) {
+], function(langx, browser, eventer, noder, geom,  $, swt, Widget) {
 
     var Carousel =  Widget.inherit({
         klassName : "Carousel",
         pluginName : "lark.carousel",
+
+        options : {
+
+            items : [],
+
+            indicatorTemplate : "",
+            slideTemplate : "",
+
+            templates : {
+              container : "<div class=\"carousel slide\" data-ride=\"carousel\">" +
+                          "/div",
+              indicators : {
+                  container : "<ol class=\"carousel-indicators\">" +
+                              "</ol>",
+                  item :  "<li></li>"
+              },
+
+              slides : {
+                  container : "<div class=\"carousel-inner\">" +
+                              "/div",
+                  item :  "<div class=\"item carousel-item\">" +
+                            "<img alt=\"First slide\"  src=\"{{url}}\">" +
+                          "</div>"
+              }
+            }
+        },
 
         _init : function() {
           this._bs_carousel = this._velm.carousel(this.options);
@@ -10826,10 +11728,81 @@ define('skylark-ui-swt/Carousel',[
 
         add : function() {
             
+        },
+
+        createIndicator: function (obj) {
+          var gallery = this.gallery,
+            indicator = this.indicatorPrototype.cloneNode(false)
+          var title = gallery.getItemTitle(obj)
+          var thumbnailProperty = this.options.thumbnailProperty
+          var thumbnailUrl
+          var thumbnail
+          if (this.options.thumbnailIndicators) {
+            if (thumbnailProperty) {
+              thumbnailUrl = Gallery.getItemProperty(obj, thumbnailProperty)
+            }
+            if (thumbnailUrl === undefined) {
+              thumbnail = obj.getElementsByTagName && $(obj).find('img')[0]
+              if (thumbnail) {
+                thumbnailUrl = thumbnail.src
+              }
+            }
+            if (thumbnailUrl) {
+              indicator.style.backgroundImage = 'url("' + thumbnailUrl + '")'
+            }
+          }
+          if (title) {
+            indicator.title = title;
+          }
+          return indicator;
+      },
+
+      addIndicator: function (index) {
+        if (this.indicatorContainer.length) {
+          var indicator = this.createIndicator(this.list[index])
+          indicator.setAttribute('data-slide-to', index)
+          this.indicatorContainer[0].appendChild(indicator)
+          this.indicators.push(indicator)
         }
+      },
+
+      setActiveIndicator: function (index) {
+        if (this.indicators) {
+          if (this.activeIndicator) {
+            this.activeIndicator.removeClass(this.options.activeIndicatorClass)
+          }
+          this.activeIndicator = $(this.indicators[index])
+          this.activeIndicator.addClass(this.options.activeIndicatorClass)
+        }
+      },
+
+      initSlides: function (reload) {
+        if (!reload) {
+          this.indicatorContainer = this.container.find(
+            this.options.indicatorContainer
+          )
+          if (this.indicatorContainer.length) {
+            this.indicatorPrototype = document.createElement('li')
+            this.indicators = this.indicatorContainer[0].children
+          }
+        }
+        this.overrided(reload);
+      },
+
+      addSlide: function (index) {
+        this.overrided(index);
+        this.addIndicator(index)
+      },
+
+      resetSlides: function () {
+        this.overrided();
+        this.indicatorContainer.empty();
+        this.indicators = [];
+      },
+
     });
 
-    return ui.Carousel = Carousel;
+    return swt.Carousel = Carousel;
 
 });
 define('skylark-ui-swt/_Toggler',[
@@ -10839,11 +11812,11 @@ define('skylark-ui-swt/_Toggler',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
-  var _Toggler = ui._Toggler = Widget.inherit({
+  var _Toggler = swt._Toggler = Widget.inherit({
     klassName: "_Toggler",
 
     toggle: function () {
@@ -10887,9 +11860,9 @@ define('skylark-ui-swt/Checkbox',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./_Toggler"
-],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
+],function(langx,browser,eventer,noder,geom,$,swt,_Toggler){
 
   var Checkbox =  _Toggler.inherit({
     klassName: "Checkbox",
@@ -10907,6 +11880,9 @@ define('skylark-ui-swt/Checkbox',[
       value : undefined
     },
 
+    /*
+     *@override
+     */
     _parse : function(elm,options) {
       options = this.overrided(elm,options);
       var $el = $(elm),
@@ -10938,10 +11914,16 @@ define('skylark-ui-swt/Checkbox',[
       return options;
     },
 
+    /*
+     *@override
+     */
     _create : function() {
       //TODO
     },
 
+    /*
+     *@override
+     */
     _init : function() {
       var elm = this._elm;
 
@@ -10950,7 +11932,11 @@ define('skylark-ui-swt/Checkbox',[
       this.$chk = this._velm.$(this.options.selectors.chk);
     },
 
-    _attach : function() {
+
+    /*
+     *@override
+     */
+    _startup : function() {
       // handle internal events
       var self = this;
       this.$chk.on('change', function(evt) {
@@ -10960,6 +11946,9 @@ define('skylark-ui-swt/Checkbox',[
       });
     },
 
+    /*
+     *@override
+     */
     _refresh : function(updates) {
 
         function setCheckedState (checked) {
@@ -11004,7 +11993,7 @@ define('skylark-ui-swt/Checkbox',[
     }
   });
 
-	return ui.Checkbox = Checkbox;
+	return swt.Checkbox = Checkbox;
 });
 
 define('skylark-bootstrap3/dropdown',[
@@ -11014,8 +12003,9 @@ define('skylark-bootstrap3/dropdown',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
+  "skylark-utils-dom/plugins",
   "./bs3"
-],function(langx,browser,eventer,noder,geom,$,bs3){
+],function(langx,browser,eventer,noder,geom,$,plugins,bs3){
 
 /* ========================================================================
  * Bootstrap: dropdown.js v3.3.7
@@ -11032,10 +12022,12 @@ define('skylark-bootstrap3/dropdown',[
   var backdrop = '.dropdown-backdrop';
   var toggle   = '[data-toggle="dropdown"]';
 
-  var Dropdown = bs3.Dropdown = bs3.WidgetBase.inherit({
+  var Dropdown = bs3.Dropdown = plugins.Plugin.inherit({
     klassName: "Dropdown",
 
-    init : function(element,options) {
+    pluginName : "bs3.dropdown",
+
+    _construct : function(element,options) {
       var $el = this.$element = $(element);
       $el.on('click.bs.dropdown', this.toggle);
       $el.on('keydown.bs.dropdown', '[data-toggle="dropdown"],.dropdown-menu',this.keydown);
@@ -11148,7 +12140,7 @@ define('skylark-bootstrap3/dropdown',[
   }
 
 
-
+  /*
   // DROPDOWN PLUGIN DEFINITION
   // ==========================
 
@@ -11177,13 +12169,19 @@ define('skylark-bootstrap3/dropdown',[
   }
 
 
+
+  return $.fn.dropdown;
+  */
+
   // APPLY TO STANDARD DROPDOWN ELEMENTS
   // ===================================
   $(document)
     .on('click.bs.dropdown.data-api', clearMenus)
     .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() });
 
-  return $.fn.dropdown;
+  plugins.register(Dropdown,"dropdown");
+
+  return Dropdown;
 
 });
 
@@ -11194,10 +12192,10 @@ define('skylark-ui-swt/Combobox',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget",
   "skylark-bootstrap3/dropdown"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
 
 
@@ -11514,8 +12512,249 @@ define('skylark-ui-swt/Combobox',[
 
 
 
-	return ui.Combobox = Combobox;
+	return swt.Combobox = Combobox;
 });
+
+define('skylark-ui-swt/InputBox',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./swt",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
+
+  var SyncAttrs = [
+    'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
+    'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
+  ];
+
+	var InputBox =  Widget.inherit({
+		klassName: "InputBox",
+
+    pluginName: "lark.inputbox",
+
+    /*
+     * Parse options from attached dom element.
+     * @override
+     */
+    _parse : function() {
+      var  velm = this._velm;
+
+      // get multiline option
+      this.options.multiline = velm.is("textarea");
+      
+      // get current state of input
+      var value = $chk.prop('checked');
+      var disabled = $chk.prop('disabled');
+      this.state.set("value",value);
+      this.state.set(("disabled",disabled));
+
+    },
+
+    /*
+     * Create a new  dom element for this widget
+     * @override
+     */
+    _create : function() {
+      var tagName = "input",attrs = {},
+          options = this.options;
+
+      langx.each([
+        'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
+        'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
+      ], function (name) {
+        attrs[name] = options[name];
+      });
+
+      if (options.multiline) {
+        tagName = "textarea"
+      } 
+      if (options.subtype) {
+        attrs.type = options.subtype;
+      }
+      this._elm = this._dom.noder.createElement(tagName,attrs);
+    },
+
+    /*
+     * Init this widget
+     * @override
+     */
+    _init : function() {
+    },
+
+    /*
+     * Sync dom element to widget state 
+     * @override
+     */
+    _sync : function() {
+      // handle internal events
+      var self = this;
+      this._velm.on('change', function(evt) {
+        var value = self._velm.prop('value');
+        self.state.set("value",value);
+      });
+    },
+
+    _refresh : function(updates) {
+        var self  = this;
+
+        if (updates["value"] !== undefined) {
+          if (self._velm.value() !== e.value) {
+            self._velm.value(updates.value);
+          }
+        }
+        if (updates["disabled"] !== undefined) {
+          self._velm.disable(updates["disabled"]);
+        }
+
+        // update visual with attribute values from control
+        this.overrided(changed);
+    },
+
+  });
+
+	return swt.InputBox = InputBox;
+});
+
+
+ define('skylark-ui-swt/ListGroup',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/query",
+  "./swt",
+  "./Widget"
+],function(langx,$,swt,Widget){
+
+    var ListGroup = Widget.inherit({
+        klassName : "ListGroup",
+
+        pluginName : "lark.listgroup",
+
+        options : {
+        	multiSelect: false,
+          	multiTier : false,
+          	toggle : false,
+          	classes : {
+            	active : "active"
+          	},
+          	selectors : {
+            	item : ".list-group-item"
+          	},
+          	selected : 0
+        },
+
+        state : {
+          selected : Object
+        },
+
+        _init : function() {
+            this.overrided();
+            var self = this,
+                velm = this._velm,
+                itemSelector = this.options.selectors.item;
+
+            this._$items = velm.$(itemSelector);
+
+            velm.on('click', itemSelector, function () {
+                var veItem = self._elmx(this);
+
+                if (!veItem.hasClass('disabled')) {
+                  var value = veItem.data("value");
+                  if (value === undefined) {
+                    value = self._$items.index(this);
+                  }
+                  self.state.set("selected",value);
+                }
+
+                //veItem.blur();
+                return false;
+            });
+            this.state.set("selected",this.options.selected);
+
+            var $this = velm,
+                $toggle = this.options.toggle,
+                obj = this;
+
+            //if (this.isIE() <= 9) {
+            //    $this.find("li.active").has("ul").children("ul").collapse("show");
+            //    $this.find("li").not(".active").has("ul").children("ul").collapse("hide");
+            //} else {
+                $this.query("li.active").has("ul").children("ul").addClass("collapse in");
+                $this.query("li").not(".active").has("ul").children("ul").addClass("collapse");
+            //}
+
+            //add the "doubleTapToGo" class to active items if needed
+            if (obj.options.doubleTapToGo) {
+                $this.query("li.active").has("ul").children("a").addClass("doubleTapToGo");
+            }
+
+            $this.query("li").has("ul").children("a").on("click" + "." + this.pluginName, function(e) {
+                e.preventDefault();
+
+                //Do we need to enable the double tap
+                if (obj.options.doubleTapToGo) {
+
+                    //if we hit a second time on the link and the href is valid, navigate to that url
+                    if (obj.doubleTapToGo($(this)) && $(this).attr("href") !== "#" && $(this).attr("href") !== "") {
+                        e.stopPropagation();
+                        document.location = $(this).attr("href");
+                        return;
+                    }
+                }
+
+                $(this).parent("li").toggleClass("active").children("ul").collapse("toggle");
+
+                if ($toggle) {
+                    $(this).parent("li").siblings().removeClass("active").children("ul.in").collapse("hide");
+                }
+
+            });
+
+
+        },
+
+        _refresh : function(updates) {
+          this.overrided(updates);
+          var self  = this;
+
+          function findItem(valueOrIdx) {
+            var $item;
+            if (langx.isNumber(valueOrIdx)) {
+              $item = self._$items.eq(valueOrIdx);
+            } else {
+              $item = self._$items.filter('[data-value="' + valueOrIdx + '"]');
+            }
+            return $item;
+          } 
+                 
+          function selectOneItem(valueOrIdx) {
+            findItem(valueOrIdx).addClass(self.options.classes.active);
+          }
+
+          function unselectOneItem(valueOrIdx) {
+            findItem(valueOrIdx).removeClass(self.options.classes.active);
+          }
+
+          if (updates["selected"]) {
+            if (this.options.multiSelect) {
+            } else {
+              unselectOneItem(updates["selected"].oldValue);
+              selectOneItem(updates["selected"].value);
+            }
+
+          }
+        }
+
+  });
+
+  return ListGroup;
+
+});
+
+
+
 
 define('skylark-ui-swt/Menu',[
   "skylark-langx/langx",
@@ -11524,14 +12763,14 @@ define('skylark-ui-swt/Menu',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 	
 	var popup = null;
 	var right_to_left ;
 
-	var Menu = ui.Menu = Widget.inherit({
+	var Menu = swt.Menu = Widget.inherit({
         klassName: "Menu",
 
 	    pluginName : "lark.menu",
@@ -11901,13 +13140,13 @@ define('skylark-ui-swt/Pagination',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
     'use strict';
 
-    var Pagination = ui.Pagination = Widget.inherit({
+    var Pagination = swt.Pagination = Widget.inherit({
         klassName : "Pagination",
 
         pluginName : "lark.pagination",
@@ -12135,13 +13374,13 @@ define('skylark-ui-swt/Progress',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
     'use strict';
 
-     var Progress = ui.Progress = Widget.inherit({
+     var Progress = swt.Progress = Widget.inherit({
      	klassName : "Progress",
 
      	pluginName : "lark.progress",
@@ -12202,11 +13441,11 @@ define('skylark-ui-swt/Radio',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./_Toggler"
-],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
+],function(langx,browser,eventer,noder,geom,$,swt,_Toggler){
 
-  var Radio = ui.Radio = _Toggler.inherit({
+  var Radio = swt.Radio = _Toggler.inherit({
     klassName: "Radio",
 
     pluginName : "lark.radio",
@@ -12326,6 +13565,236 @@ define('skylark-ui-swt/Radio',[
 });
 
 
+define('skylark-ui-swt/SelectList',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./swt",
+  "./Widget",
+  "skylark-bootstrap3/dropdown"
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
+
+
+	// SELECT CONSTRUCTOR AND PROTOTYPE
+
+	var SelectList = Widget.inherit({
+		klassName: "SelectList",
+
+		pluginName : "lark.selectlist",
+	
+		options : {
+			emptyLabelHTML: '<li data-value=""><a href="#">No items</a></li>'
+
+		},
+
+		_init : function() {
+			this.$element = $(this._elm);
+			//this.options = langx.mixin({}, $.fn.selectlist.defaults, options);
+
+
+			this.$button = this.$element.find('.btn.dropdown-toggle');
+			this.$hiddenField = this.$element.find('.hidden-field');
+			this.$label = this.$element.find('.selected-label');
+			this.$dropdownMenu = this.$element.find('.dropdown-menu');
+
+			this.$button.dropdown();
+
+			this.$element.on('click.fu.selectlist', '.dropdown-menu a', langx.proxy(this.itemClicked, this));
+			this.setDefaultSelection();
+
+			if (this.options.resize === 'auto' || this.$element.attr('data-resize') === 'auto') {
+				this.resize();
+			}
+
+			// if selectlist is empty or is one item, disable it
+			var items = this.$dropdownMenu.children('li');
+			if( items.length === 0) {
+				this.disable();
+				this.doSelect( $(this.options.emptyLabelHTML));
+			}
+
+			// support jumping focus to first letter in dropdown when key is pressed
+			this.$element.on('shown.bs.dropdown', function () {
+					var $this = $(this);
+					// attach key listener when dropdown is shown
+					$(document).on('keypress.fu.selectlist', function(e){
+
+						// get the key that was pressed
+						var key = String.fromCharCode(e.which);
+						// look the items to find the first item with the first character match and set focus
+						$this.find("li").each(function(idx,item){
+							if ($(item).text().charAt(0).toLowerCase() === key) {
+								$(item).children('a').focus();
+								return false;
+							}
+						});
+
+				});
+			});
+
+			// unbind key event when dropdown is hidden
+			this.$element.on('hide.bs.dropdown', function () {
+					$(document).off('keypress.fu.selectlist');
+			});
+		},
+
+		destroy: function () {
+			this.$element.remove();
+			// any external bindings
+			// [none]
+			// empty elements to return to original markup
+			// [none]
+			// returns string of markup
+			return this.$element[0].outerHTML;
+		},
+
+		doSelect: function ($item) {
+			var $selectedItem;
+			this.$selectedItem = $selectedItem = $item;
+
+			this.$hiddenField.val(this.$selectedItem.attr('data-value'));
+			this.$label.html($(this.$selectedItem.children()[0]).html());
+
+			// clear and set selected item to allow declarative init state
+			// unlike other controls, selectlist's value is stored internal, not in an input
+			this.$element.find('li').each(function () {
+				if ($selectedItem.is($(this))) {
+					$(this).attr('data-selected', true);
+				} else {
+					$(this).removeData('selected').removeAttr('data-selected');
+				}
+			});
+		},
+
+		itemClicked: function (e) {
+			this.$element.trigger('clicked.fu.selectlist', this.$selectedItem);
+
+			e.preventDefault();
+			// ignore if a disabled item is clicked
+			if ($(e.currentTarget).parent('li').is('.disabled, :disabled')) { return; }
+
+			// is clicked element different from currently selected element?
+			if (!($(e.target).parent().is(this.$selectedItem))) {
+				this.itemChanged(e);
+			}
+
+			// return focus to control after selecting an option
+			this.$element.find('.dropdown-toggle').focus();
+		},
+
+		itemChanged: function (e) {
+			//selectedItem needs to be <li> since the data is stored there, not in <a>
+			this.doSelect($(e.target).closest('li'));
+
+			// pass object including text and any data-attributes
+			// to onchange event
+			var data = this.selectedItem();
+			// trigger changed event
+			this.$element.trigger('changed.fu.selectlist', data);
+		},
+
+		resize: function () {
+			var width = 0;
+			var newWidth = 0;
+			var sizer = $('<div/>').addClass('selectlist-sizer');
+
+
+			if (Boolean($(document).find('html').hasClass('fuelux'))) {
+				// default behavior for fuel ux setup. means fuelux was a class on the html tag
+				$(document.body).append(sizer);
+			} else {
+				// fuelux is not a class on the html tag. So we'll look for the first one we find so the correct styles get applied to the sizer
+				$('.fuelux:first').append(sizer);
+			}
+
+			sizer.append(this.$element.clone());
+
+			this.$element.find('a').each(function () {
+				sizer.find('.selected-label').text($(this).text());
+				newWidth = sizer.find('.selectlist').outerWidth();
+				newWidth = newWidth + sizer.find('.sr-only').outerWidth();
+				if (newWidth > width) {
+					width = newWidth;
+				}
+			});
+
+			if (width <= 1) {
+				return;
+			}
+
+			this.$button.css('width', width);
+			this.$dropdownMenu.css('width', width);
+
+			sizer.remove();
+		},
+
+		selectedItem: function () {
+			var txt = this.$selectedItem.text();
+			return langx.mixin({
+				text: txt
+			}, this.$selectedItem.data());
+		},
+
+		selectByText: function (text) {
+			var $item = $([]);
+			this.$element.find('li').each(function () {
+				if ((this.textContent || this.innerText || $(this).text() || '').toLowerCase() === (text || '').toLowerCase()) {
+					$item = $(this);
+					return false;
+				}
+			});
+			this.doSelect($item);
+		},
+
+		selectByValue: function (value) {
+			var selector = 'li[data-value="' + value + '"]';
+			this.selectBySelector(selector);
+		},
+
+		selectByIndex: function (index) {
+			// zero-based index
+			var selector = 'li:eq(' + index + ')';
+			this.selectBySelector(selector);
+		},
+
+		selectBySelector: function (selector) {
+			var $item = this.$element.find(selector);
+			this.doSelect($item);
+		},
+
+		setDefaultSelection: function () {
+			var $item = this.$element.find('li[data-selected=true]').eq(0);
+
+			if ($item.length === 0) {
+				$item = this.$element.find('li').has('a').eq(0);
+			}
+
+			this.doSelect($item);
+		},
+
+		enable: function () {
+			this.$element.removeClass('disabled');
+			this.$button.removeClass('disabled');
+		},
+
+		disable: function () {
+			this.$element.addClass('disabled');
+			this.$button.addClass('disabled');
+		}
+
+	});	
+
+
+	SelectList.prototype.getValue = SelectList.prototype.selectedItem;
+
+
+
+	return swt.SelectList = SelectList;
+});
+
 define('skylark-bootstrap3/tab',[
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
@@ -12333,8 +13802,9 @@ define('skylark-bootstrap3/tab',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
+  "skylark-utils-dom/plugins",
   "./bs3"
-],function(langx,browser,eventer,noder,geom,$,bs3){
+],function(langx,browser,eventer,noder,geom,$,plugins,bs3){
 
 /* ========================================================================
  * Bootstrap: tab.js v3.3.7
@@ -12350,14 +13820,15 @@ define('skylark-bootstrap3/tab',[
   // ====================
 
 
-  var Tab = bs3.Tab = bs3.WidgetBase.inherit({
+  var Tab = bs3.Tab = plugins.Plugin.inherit({
     klassName: "Tab",
 
-    init : function(element,options) {
+    pluginName : "bs3.tab",
+
+    _construct : function(element,options) {
       // jscs:disable requireDollarBeforejQueryAssignment
       this.element = $(element)
       this.target = options && options.target;
-      $('[data-toggle="dropdown"]',element).dropdown();
 
       // jscs:enable requireDollarBeforejQueryAssignment
       this.element.on("click.bs.tab.data-api",langx.proxy(function(e){
@@ -12462,6 +13933,7 @@ define('skylark-bootstrap3/tab',[
 
   Tab.TRANSITION_DURATION = 150
 
+  /*
   // TAB PLUGIN DEFINITION
   // =====================
 
@@ -12490,7 +13962,11 @@ define('skylark-bootstrap3/tab',[
   }
 
   return $.fn.tab;
+  */
 
+  plugins.register(Tab,"tab");
+
+  return Tab;
 });
 
 define('skylark-ui-swt/TabStrip',[
@@ -12500,11 +13976,11 @@ define('skylark-ui-swt/TabStrip',[
     "skylark-utils-dom/noder",
     "skylark-utils-dom/geom",
     "skylark-utils-dom/query",
-    "./ui",
+    "./swt",
     "./Widget",
     "skylark-bootstrap3/tab",
     "skylark-bootstrap3/dropdown"
-], function(langx, browser, eventer, noder, geom,  $, ui, Widget) {
+], function(langx, browser, eventer, noder, geom,  $, swt, Widget) {
 
     var TabStrip = Widget.inherit({
         klassName : "TabStrip",
@@ -12548,112 +14024,6 @@ define('skylark-ui-swt/TabStrip',[
     return TabStrip;
 
 });
-define('skylark-ui-swt/Textbox',[
-  "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
-  "./ui",
-  "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
-
-
-  var SyncAttrs = [
-    'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
-    'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
-  ];
-
-	var Textbox = ui.Textbox = Widget.inherit({
-		klassName: "Textbox",
-
-    pluginName: "lark.textbox",
-
-    /*
-     * Parse options from attached dom element.
-     * @override
-     */
-    _parse : function() {
-      var  velm = this._velm;
-
-      // get multiline option
-      this.options.multiline = velm.is("textarea");
-      
-      // get current state of input
-      var value = $chk.prop('checked');
-      var disabled = $chk.prop('disabled');
-      this.state.set("value",value);
-      this.state.set(("disabled",disabled));
-
-    },
-
-    /*
-     * Create a new  dom element for this widget
-     * @override
-     */
-    _create : function() {
-      var tagName = "input",attrs = {},
-          options = this.options;
-
-      langx.each([
-        'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
-        'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
-      ], function (name) {
-        attrs[name] = options[name];
-      });
-
-      if (options.multiline) {
-        tagName = "textarea"
-      } 
-      if (options.subtype) {
-        attrs.type = options.subtype;
-      }
-      this._elm = this._dom.noder.createElement(tagName,attrs);
-    },
-
-    /*
-     * Init this widget
-     * @override
-     */
-    _init : function() {
-    },
-
-    /*
-     * Sync dom element to widget state 
-     * @override
-     */
-    _sync : function() {
-      // handle internal events
-      var self = this;
-      this._velm.on('change', function(evt) {
-        var value = self._velm.prop('value');
-        self.state.set("value",value);
-      });
-    },
-
-    _refresh : function(updates) {
-        var self  = this;
-
-        if (updates["value"] !== undefined) {
-          if (self._velm.value() !== e.value) {
-            self._velm.value(updates.value);
-          }
-        }
-        if (updates["disabled"] !== undefined) {
-          self._velm.disable(updates["disabled"]);
-        }
-
-        // update visual with attribute values from control
-        this.overrided(changed);
-    },
-
-  });
-
-	return Textbox;
-});
-
-
 define('skylark-ui-swt/Toolbar',[
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
@@ -12661,11 +14031,11 @@ define('skylark-ui-swt/Toolbar',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
-	var Toolbar = ui.Toolbar = Widget.inherit({
+	var Toolbar = swt.Toolbar = Widget.inherit({
         klassName: "Toolbar",
 
 	    pluginName : "lark.toolbar",
@@ -12865,42 +14235,2382 @@ define('skylark-ui-swt/Toolbar',[
 
 });
 
+define('skylark-utils-collection/List',[
+    "skylark-langx/arrays",
+    "./collections",
+    "./Collection"
+], function(arrays,collections, Collection) {
+
+    var List = collections.List = Collection.inherit({
+        
+        "klassName": "List",
+
+
+        _getInnerItems : function() {
+            return this._items;
+        },
+
+        _clear : function() {
+            this._items = [];
+        },
+
+        "contains": function( /*Object*/ item) {
+            //desc: "Determines whether an item is in the Collection.",
+            //result: {
+            //    type: Boolean,
+            //    desc: "true if item is found in the Collection; otherwise, false."
+            //},
+            //params: [{
+            //    name: "item",
+            //    type: Object,
+            //    desc: "The item to check."
+            //}],
+            var items = this._getInnerItems();
+            return items.indexOf(item) >= 0;
+        },
+
+        "count": function() {
+            //desc: "Gets the number of items actually contained in the Collection.",
+            //result: {
+            //    type: Number,
+            //    desc: "the number of items"
+            //},
+            //params: [],
+            var items = this._getInnerItems();
+            return items.length;
+        },
+
+        "getAll": function() {
+            //desc: "Returns all items.",
+            //result: {
+            //    type: Object,
+            //    desc: "all items"
+            //},
+            //params: [],
+            return this._getInnerItems();
+        },
+
+        "get": function(index) {
+            //desc: "Returns the item at the specified position in the List.",
+            //result: {
+            //    type: Object,
+            //    desc: "The item at the specified position."
+            //},
+            //params: [{
+            //    name: "index",
+            //    type: Number,
+            //    desc: "index of the element to return."
+            //}],
+            var items = this._getInnerItems();
+            if (index < 0 || index >= items.length) {
+                throw new Error("Not exist:" + index);
+            }
+            return items[index];
+        },
+
+        "getRange": function( /*Number*/ index, /*Number*/ count) {
+            //desc: "Returns an Array which represents a subset of the items in the source list.",
+            //result: {
+            //    type: Array,
+            //    desc: "An Array which represents a subset of the items in the source list."
+            //},
+            //params: [{
+            //    name: "index",
+            //    type: Number,
+            //    desc: "The zero-based list index at which the range starts."
+            //}, {
+            //    name: "count",
+            //    type: Number,
+            //    desc: "The number of items in the range."
+            //}],
+            var items = this._getInnerItems(),
+                a1 = [];
+            for (var i = Math.max(index, 0); i < count; i++) {
+                if (i >= items.length) {
+                    break;
+                }
+                a1.push(items[i]);
+            }
+            return a1;
+        },
+
+        "indexOf": function( /*Object*/ item) {
+            //desc: "Searches for the specified Object and returns the zero-based index of the first occurrence within the entire list.",
+            //result: {
+            //    type: Number,
+            //    desc: "The zero-based index of the first occurrence of value within the entire list,if found; otherwise, -1."
+            //},
+            //params: [{
+            //    name: "item",
+            //    type: Object,
+            //    desc: "The Object to locate in the list. The value can be null."
+            //}],
+            var items = this._getInnerItems();
+            return items.indexOf(item);
+        },
+
+        "iterator" : function() {
+            var i =0,
+                self = this;
+            return {
+                hasNext : function() {
+                    return i < self._items.length;
+                },
+                next : function() {
+                    return self._items[i++];
+                }
+            }
+        },
+
+        /*
+         *@params {Object}args
+         *  a plain object for the initialize arguments.
+         */
+        init :  function(/*Array*/data){
+            if (data) {
+                this._items = arrays.makeArray(data);
+            } else {
+                this._items =  [];
+            }
+        }
+    });
+
+    return List;
+});
+
+define('skylark-utils-collection/ArrayList',[
+    "./collections",
+    "./List"
+], function(collections, List) {
+
+    var ArrayList = collections.ArrayList = List.inherit({
+        
+        "klassName": "ArrayList",
+
+        "add": function(item) {
+            //desc: "Adds an item to the end of the List.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call"
+            //},
+            //params: [{
+            //    name: "item",
+            //    type: Object,
+            //    desc: "The item to be added to the end of the List. \nThe item can be null."
+            //}],
+
+            var items = this._getInnerItems();
+            items.push(item);
+            this.trigger("changed:add",{
+                "data" :  [
+                    { "item" : item, "index": items.length - 1, isSingle: true}
+                ]
+            });
+            return this;
+        },
+
+        "addRange": function( /*Collection*/ c) {
+            //desc: "Adds the items of a collection into the List at the specified index.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call"
+            //},
+            //params: [{
+            //    name: "c",
+            //    type: [Collection, Array],
+            //    desc: "The Collection whose items should be added into the List.\nThe collection itself cannot be null, but it can contain items that are null."
+            //}],
+            var items = this._getInnerItems();
+            var a1 = c.toArray ? c.toArray() : c,
+                toAdd = [];
+            for (var i = 0; i < a1.length; i++) {
+                items.push(a1[i]);
+                toAdd.push({
+                    "item" : a1[i],
+                    "index" : items.length-1
+                });
+            }
+            this.trigger("changed:add",{
+                "data" :  toAdd
+            });
+            return this;
+        },
+
+
+        "clone": function() {
+            //desc: "Returns a shallow copy of this ArrayList instance. (The items themselves are not copied.)",
+            //result: {
+            //    type: ArrayList,
+            //   desc: "a clone of this ArrayList instance."
+            //},
+            //params: [],
+
+           return new ArrayList({
+                "items": this._.items
+            });
+        },
+
+        "insert": function( /*Number*/ index, /*Object*/ item) {
+            //desc: "Inserts an item into the list at the specified index.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "index",
+            //    type: Number,
+            //    desc: "The zero-based index at which the new item should be inserted."
+            //}, {
+            //    name: "item",
+            //    type: Object,
+            //    desc: "The item to insert. The value can be null."
+            //}],
+            var items = this._getInnerItems();
+            if (index < 0 || index > items.length) {
+                throw new Error("invalid parameter!");
+            }
+            items.splice(index, 0, item);
+            this.trigger("changed",{
+                "data" :  [
+                    { "item" : item, "index" : index}
+                ]
+            });
+            return this;
+        },
+
+        "insertRange": function( /*Number*/ index, /*Collection*/ c) {
+            //desc: "Inserts the items of a collection into the list at the specified index.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "index",
+            //    type: Number,
+            //    desc: "The zero-based index at which the new item should be inserted."
+            //}, {
+            //    name: "c",
+            //    type: Collection,
+            //    desc: "The Collection whose items should be inserted into the ArrayList. \nThe collection itself cannot be null, but it can contain items that are null. "
+            //}],
+            var items = this._getInnerItems(),
+                toAdd = [];
+            if (index < 0 || index >= items.length) {
+                throw new Error("invalid parameter!");
+            }
+            var a1 = c.toArray();
+            for (var i = 0; i<a1.length - 1; i++) {
+                items.splice(index+i, 0, a1[i]);
+                toAdd.push({
+                    "item" : a1[i],
+                    "index" : index+i
+                });
+            }
+            this.trigger("changed:insert",{
+                "data" :  toAdd
+            });
+            return this;
+        },
+
+        "removeFirstMatch": function( /*Object*/ item) {
+            //desc: "Removes the first occurrence of a specific item from the list.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "item",
+            //    type: Object,
+            //    desc: "The item to remove from the list. The value can be null."
+            //}],
+            var items = this._getInnerItems();
+            for (var i = 0, len = items.length; i < len; i++) {
+                if (items[i] === item) {
+                    this.removeAt(i);
+                    break;
+                }
+            }
+            return this;
+        },
+
+        "remove": function( /*Object*/ item) {
+            //desc: "Removes the all occurrence of a specific item from the list.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "item",
+            //    type: Object,
+            //    desc: "The item to remove from the list. The value can be null."
+            //}],
+            var items = this._getInnerItems(),
+                toRemove = [];
+            for (var i = 0, len = items.length; i < len; i++) {
+                if (items[i] === item) {
+                    Array.removeAt(items, i);
+                    toRemove.push({
+                        "item" : item,
+                        "index" : i
+                    });
+                }
+            }
+            this.trigger("changed:remove",{
+                "data" :  toRemove
+            });
+            return this;
+        },
+
+        "removeAt": function(index) {
+            //desc: "Removes the item at the specified index of the list.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "index",
+            //    type: Number,
+            //    desc: "The zero-based index of the item to remove."
+            //}],
+            var items = this._getInnerItems(),
+                item = items.splice(index, 1)[0];
+            this.trigger("changed:remove",{
+                "data" :  [
+                    { "item" : item, "index" : index}
+                ]
+            });
+            return this;
+        },
+
+        "removeRange": function( /*Number*/ index, /*Number*/ count) {
+            //desc: "Removes a range of items from the list.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "index",
+            //    type: Number,
+            //    desc: "The zero-based index of the item to remove."
+            //}, {
+            //    name: "count",
+            //    type: Number,
+            //    desc: "The number of items to remove."
+            //}],
+            var items = this._getInnerItems(),
+                toRemove = [];
+
+            for (var i = index; i<index+count;i++) {
+                toRemove.push({
+                    "item" : items[i],
+                    "index" : i
+                });
+            }
+            items.splice(index, count);
+
+            this.trigger("changed:remove",{
+                "data" : {
+                    "removed" : toRemove
+                }
+            });
+            return this;
+        },
+
+        "setByIndex": function( /*Number*/ index, /*Item*/ item) {
+            //desc: "Replaces the item at the specified position in the list with the specified item.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "index",
+            //    type: Number,
+            //    desc: "index of the item to replace."
+            //}, {
+            //    name: "item",
+            //    type: Object,
+            //    desc: "item to be stored at the specified position."
+            //}],
+            var items = this._getInnerItems();
+            if (index < 0 || index >= items.length) throw new Error("" + i);
+            var old = items[index];
+            items[i] = item;
+
+            this.trigger("changed:update",{
+                "data" : [
+                    { "item" : item, "index" : index,"oldItem":old}
+                ]
+            });
+            return this;
+        },
+
+        "reset": function(newItems) {
+            //desc: "Reset the internal array.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [],
+            var items = this._getInnerItems();
+            items.length = 0;
+            for (var i=0;i<newItems.length;i++){
+                items.push(newItems[i]);
+            }
+            this.trigger("changed:reset");
+
+            return this;
+        },
+        
+        "reverse": function() {
+            //desc: "Reverse the internal array.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [],
+            var items = this._getInnerItems();
+            items.reverse();
+
+            this.trigger("changed:reverse");
+            return this;
+        },
+
+        "sort": function( /*Function?*/ fn) {
+            //desc: "sort the internal array.",
+            //result: {
+            //    type: List,
+            //    desc: "this instance for chain call."
+            //},
+            //params: [{
+            //    name: "fn",
+            //    type: Function,
+            //    desc: "The function for sort"
+            //}],
+            var items = this._getInnerItems();
+            if (fn) {
+                items.sort(fn);
+            } else {
+                items.sort();
+            }
+            this.trigger("changed:sort");
+            return this;
+        }
+
+    });
+
+    return ArrayList;
+});
+
+define('skylark-utils-filer/filer',[
+    "skylark-langx/skylark"
+], function(skylark) {
+
+    function dataURLtoBlob(dataurl) {
+        var arr = dataurl.split(','),
+            mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]),
+            n = bstr.length,
+            u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], { type: mime });
+    }
+
+
+    var filer = function() {
+        return filer;
+    };
+
+    return skylark.filer = filer;
+});
+ define('skylark-utils-filer/webentry',[
+    "skylark-langx/arrays",
+    "skylark-langx/Deferred",
+    "./filer"
+],function(arrays,Deferred, filer){
+    var concat = Array.prototype.concat;
+    var webentry = (function() {
+        function one(entry, path) {
+            var d = new Deferred(),
+                onError = function(e) {
+                    d.reject(e);
+                };
+
+            path = path || '';
+            if (entry.isFile) {
+                entry.file(function(file) {
+                    file.relativePath = path;
+                    d.resolve(file);
+                }, onError);
+            } else if (entry.isDirectory) {
+                var dirReader = entry.createReader();
+                dirReader.readEntries(function(entries) {
+                    all(
+                        entries,
+                        path + entry.name + '/'
+                    ).then(function(files) {
+                        d.resolve(files);
+                    }).catch(onError);
+                }, onError);
+            } else {
+                // Return an empy list for file system items
+                // other than files or directories:
+                d.resolve([]);
+            }
+            return d.promise;
+        }
+
+        function all(entries, path) {
+            return Deferred.all(
+                arrays.map(entries, function(entry) {
+                    return one(entry, path);
+                })
+            ).then(function() {
+                return concat.apply([], arguments);
+            });
+        }
+
+        return {
+            one: one,
+            all: all
+        };
+    })();
+
+    return filer.webentry = webentry;
+});
+  define('skylark-utils-filer/dropzone',[
+    "skylark-langx/arrays",
+    "skylark-langx/Deferred",
+    "skylark-utils-dom/styler",
+    "skylark-utils-dom/eventer",
+    "./filer",
+    "./webentry"
+],function(arrays,Deferred, styler, eventer, filer, webentry){  /*
+     * Make the specified element to could accept HTML5 file drag and drop.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} params
+     */
+    function dropzone(elm, params) {
+        params = params || {};
+        var hoverClass = params.hoverClass || "dropzone",
+            droppedCallback = params.dropped;
+
+        var enterdCount = 0;
+        eventer.on(elm, "dragenter", function(e) {
+            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
+                eventer.stop(e);
+                enterdCount++;
+                styler.addClass(elm, hoverClass)
+            }
+        });
+
+        eventer.on(elm, "dragover", function(e) {
+            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
+                eventer.stop(e);
+            }
+        });
+
+        eventer.on(elm, "dragleave", function(e) {
+            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
+                enterdCount--
+                if (enterdCount == 0) {
+                    styler.removeClass(elm, hoverClass);
+                }
+            }
+        });
+
+        eventer.on(elm, "drop", function(e) {
+            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
+                styler.removeClass(elm, hoverClass)
+                eventer.stop(e);
+                if (droppedCallback) {
+                    var items = e.dataTransfer.items;
+                    if (items && items.length && (items[0].webkitGetAsEntry ||
+                            items[0].getAsEntry)) {
+                        webentry.all(
+                            arrays.map(items, function(item) {
+                                if (item.webkitGetAsEntry) {
+                                    return item.webkitGetAsEntry();
+                                }
+                                return item.getAsEntry();
+                            })
+                        ).then(droppedCallback);
+                    } else {
+                        droppedCallback(e.dataTransfer.files);
+                    }
+                }
+            }
+        });
+
+        return this;
+    }
+
+     return filer.dropzone = dropzone;
+});
+define('skylark-utils-filer/pastezone',[
+    "skylark-langx/objects",
+    "skylark-utils-dom/eventer",
+    "./filer"
+],function(objects, eventer, filer){
+    function pastezone(elm, params) {
+        params = params || {};
+        var hoverClass = params.hoverClass || "pastezone",
+            pastedCallback = params.pasted;
+
+        eventer.on(elm, "paste", function(e) {
+            var items = e.originalEvent && e.originalEvent.clipboardData &&
+                e.originalEvent.clipboardData.items,
+                files = [];
+            if (items && items.length) {
+                objects.each(items, function(index, item) {
+                    var file = item.getAsFile && item.getAsFile();
+                    if (file) {
+                        files.push(file);
+                    }
+                });
+            }
+            if (pastedCallback && files.length) {
+                pastedCallback(files);
+            }
+        });
+
+        return this;
+    }
+
+    return filer.pastezone = pastezone;
+
+});
+
+define('skylark-utils-filer/select',[
+    "./filer"
+],function(filer){
+    var fileInput,
+        fileInputForm,
+        fileSelected,
+        maxFileSize = 1 / 0;
+
+    function select(params) {
+        params = params || {};
+        var directory = params.directory || false,
+            multiple = params.multiple || false,
+            fileSelected = params.picked;
+        if (!fileInput) {
+            var input = fileInput = document.createElement("input");
+
+            function selectFiles(pickedFiles) {
+                for (var i = pickedFiles.length; i--;) {
+                    if (pickedFiles[i].size > maxFileSize) {
+                        pickedFiles.splice(i, 1);
+                    }
+                }
+                fileSelected(pickedFiles);
+            }
+
+            input.type = "file";
+            input.style.position = "fixed";
+            input.style.left = 0;
+            input.style.top = 0;
+            input.style.opacity = .001;
+            document.body.appendChild(input);
+
+            input.onchange = function(e) {
+                var entries = e.target.webkitEntries || e.target.entries;
+
+                if (entries && entries.length) {
+                    webentry.all(entries).then(function(files) {
+                        selectFiles(files);
+                    });
+                } else {
+                    selectFiles(Array.prototype.slice.call(e.target.files));
+                }
+                // reset to "", so selecting the same file next time still trigger the change handler
+                input.value = "";
+            };
+        }
+        fileInput.multiple = multiple;
+        fileInput.webkitdirectory = directory;
+        fileInput.click();
+    }
+
+    return filer.select = select;
+});
+
+
+define('skylark-utils-filer/picker',[
+    "skylark-langx/objects",
+    "skylark-utils-dom/eventer",
+    "./filer",
+    "./select",
+],function(objects, eventer, filer, select){
+    /*
+     * Make the specified element to pop-up the file selection dialog box when clicked , and read the contents the files selected from client file system by user.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} params
+     */
+    function picker(elm, params) {
+        eventer.on(elm, "click", function(e) {
+            e.preventDefault();
+            select(params);
+        });
+        return this;
+    }
+
+    return filer.picker = picker;
+
+});
+
+
+
+define('skylark-utils-filer/upload',[
+	"skylark-langx/types",
+	"skylark-langx/objects",
+	"skylark-langx/arrays",
+    "skylark-langx/Deferred",
+	"skylark-langx/Xhr",
+	"./filer"
+],function(types, objects, arrays, Deferred,Xhr, filer){
+
+    function upload(params) {
+        var xoptions = objects.mixin({
+            contentRange: null, //
+
+            // The parameter name for the file form data (the request argument name).
+            // If undefined or empty, the name property of the file input field is
+            // used, or "files[]" if the file input name property is also empty,
+            // can be a string or an array of strings:
+            paramName: undefined,
+            // By default, each file of a selection is uploaded using an individual
+            // request for XHR type uploads. Set to false to upload file
+            // selections in one request each:
+            singleFileUploads: true,
+            // To limit the number of files uploaded with one XHR request,
+            // set the following option to an integer greater than 0:
+            limitMultiFileUploads: undefined,
+            // The following option limits the number of files uploaded with one
+            // XHR request to keep the request size under or equal to the defined
+            // limit in bytes:
+            limitMultiFileUploadSize: undefined,
+            // Multipart file uploads add a number of bytes to each uploaded file,
+            // therefore the following option adds an overhead for each file used
+            // in the limitMultiFileUploadSize configuration:
+            limitMultiFileUploadSizeOverhead: 512,
+            // Set the following option to true to issue all file upload requests
+            // in a sequential order:
+            sequentialUploads: false,
+            // To limit the number of concurrent uploads,
+            // set the following option to an integer greater than 0:
+            limitConcurrentUploads: undefined,
+            // By default, XHR file uploads are sent as multipart/form-data.
+            // The iframe transport is always using multipart/form-data.
+            // Set to false to enable non-multipart XHR uploads:
+            multipart: true,
+            // To upload large files in smaller chunks, set the following option
+            // to a preferred maximum chunk size. If set to 0, null or undefined,
+            // or the browser does not support the required Blob API, files will
+            // be uploaded as a whole.
+            maxChunkSize: undefined,
+            // When a non-multipart upload or a chunked multipart upload has been
+            // aborted, this option can be used to resume the upload by setting
+            // it to the size of the already uploaded bytes. This option is most
+            // useful when modifying the options object inside of the "add" or
+            // "send" callbacks, as the options are cloned for each file upload.
+            uploadedBytes: undefined,
+            // By default, failed (abort or error) file uploads are removed from the
+            // global progress calculation. Set the following option to false to
+            // prevent recalculating the global progress data:
+            recalculateProgress: true,
+            // Interval in milliseconds to calculate and trigger progress events:
+            progressInterval: 100,
+            // Interval in milliseconds to calculate progress bitrate:
+            bitrateInterval: 500,
+            // By default, uploads are started automatically when adding files:
+            autoUpload: true,
+
+            // Error and info messages:
+            messages: {
+                uploadedBytes: 'Uploaded bytes exceed file size'
+            },
+
+            // Translation function, gets the message key to be translated
+            // and an object with context specific data as arguments:
+            i18n: function(message, context) {
+                message = this.messages[message] || message.toString();
+                if (context) {
+                    objects.each(context, function(key, value) {
+                        message = message.replace('{' + key + '}', value);
+                    });
+                }
+                return message;
+            },
+
+            // Additional form data to be sent along with the file uploads can be set
+            // using this option, which accepts an array of objects with name and
+            // value properties, a function returning such an array, a FormData
+            // object (for XHR file uploads), or a simple object.
+            // The form of the first fileInput is given as parameter to the function:
+            formData: function(form) {
+                return form.serializeArray();
+            },
+
+            // The add callback is invoked as soon as files are added to the fileupload
+            // widget (via file input selection, drag & drop, paste or add API call).
+            // If the singleFileUploads option is enabled, this callback will be
+            // called once for each file in the selection for XHR file uploads, else
+            // once for each file selection.
+            //
+            // The upload starts when the submit method is invoked on the data parameter.
+            // The data object contains a files property holding the added files
+            // and allows you to override plugin options as well as define ajax settings.
+            //
+            // Listeners for this callback can also be bound the following way:
+            // .bind('fileuploadadd', func);
+            //
+            // data.submit() returns a Promise object and allows to attach additional
+            // handlers using jQuery's Deferred callbacks:
+            // data.submit().done(func).fail(func).always(func);
+            add: function(e, data) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
+                if (data.autoUpload || (data.autoUpload !== false &&
+                        $(this).fileupload('option', 'autoUpload'))) {
+                    data.process().done(function() {
+                        data.submit();
+                    });
+                }
+            },
+
+            // Other callbacks:
+
+            // Callback for the submit event of each file upload:
+            // submit: function (e, data) {}, // .bind('fileuploadsubmit', func);
+
+            // Callback for the start of each file upload request:
+            // send: function (e, data) {}, // .bind('fileuploadsend', func);
+
+            // Callback for successful uploads:
+            // done: function (e, data) {}, // .bind('fileuploaddone', func);
+
+            // Callback for failed (abort or error) uploads:
+            // fail: function (e, data) {}, // .bind('fileuploadfail', func);
+
+            // Callback for completed (success, abort or error) requests:
+            // always: function (e, data) {}, // .bind('fileuploadalways', func);
+
+            // Callback for upload progress events:
+            // progress: function (e, data) {}, // .bind('fileuploadprogress', func);
+
+            // Callback for global upload progress events:
+            // progressall: function (e, data) {}, // .bind('fileuploadprogressall', func);
+
+            // Callback for uploads start, equivalent to the global ajaxStart event:
+            // start: function (e) {}, // .bind('fileuploadstart', func);
+
+            // Callback for uploads stop, equivalent to the global ajaxStop event:
+            // stop: function (e) {}, // .bind('fileuploadstop', func);
+
+            // Callback for change events of the fileInput(s):
+            // change: function (e, data) {}, // .bind('fileuploadchange', func);
+
+            // Callback for paste events to the pasteZone(s):
+            // paste: function (e, data) {}, // .bind('fileuploadpaste', func);
+
+            // Callback for drop events of the dropZone(s):
+            // drop: function (e, data) {}, // .bind('fileuploaddrop', func);
+
+            // Callback for dragover events of the dropZone(s):
+            // dragover: function (e) {}, // .bind('fileuploaddragover', func);
+
+            // Callback for the start of each chunk upload request:
+            // chunksend: function (e, data) {}, // .bind('fileuploadchunksend', func);
+
+            // Callback for successful chunk uploads:
+            // chunkdone: function (e, data) {}, // .bind('fileuploadchunkdone', func);
+
+            // Callback for failed (abort or error) chunk uploads:
+            // chunkfail: function (e, data) {}, // .bind('fileuploadchunkfail', func);
+
+            // Callback for completed (success, abort or error) chunk upload requests:
+            // chunkalways: function (e, data) {}, // .bind('fileuploadchunkalways', func);
+
+            // The plugin options are used as settings object for the ajax calls.
+            // The following are jQuery ajax settings required for the file uploads:
+            processData: false,
+            contentType: false,
+            cache: false
+        }, params);
+
+        var blobSlice = function() {
+                var slice = Blob.prototype.slice || Blob.prototype.webkitSlice || Blob.prototype.mozSlice;
+  	            return slice.apply(this, arguments);
+            },
+            ajax = function(data) {
+                return Xhr.request(data.url, data);
+            };
+
+        function initDataSettings(o) {
+            o.type = o.type || "POST";
+
+            if (!chunkedUpload(o, true)) {
+                if (!o.data) {
+                    initXHRData(o);
+                }
+                //initProgressListener(o);
+            }
+        }
+
+        function initXHRData(o) {
+            var that = this,
+                formData,
+                file = o.files[0],
+                // Ignore non-multipart setting if not supported:
+                multipart = o.multipart,
+                paramName = types.type(o.paramName) === 'array' ?
+                o.paramName[0] : o.paramName;
+
+            o.headers = objects.mixin({}, o.headers);
+            if (o.contentRange) {
+                o.headers['Content-Range'] = o.contentRange;
+            }
+            if (!multipart) {
+                o.headers['Content-Disposition'] = 'attachment; filename="' +
+                    encodeURI(file.name) + '"';
+                o.contentType = file.type || 'application/octet-stream';
+                o.data = o.blob || file;
+            } else {
+                formData = new FormData();
+                if (o.blob) {
+                    formData.append(paramName, o.blob, file.name);
+                } else {
+                    objects.each(o.files, function(index, file) {
+                        // This check allows the tests to run with
+                        // dummy objects:
+                        formData.append(
+                            (types.type(o.paramName) === 'array' &&
+                                o.paramName[index]) || paramName,
+                            file,
+                            file.uploadName || file.name
+                        );
+                    });
+                }
+                o.data = formData;
+            }
+            // Blob reference is not needed anymore, free memory:
+            o.blob = null;
+        }
+
+        function getTotal(files) {
+            var total = 0;
+            objects.each(files, function(index, file) {
+                total += file.size || 1;
+            });
+            return total;
+        }
+
+        function getUploadedBytes(jqXHR) {
+            var range = jqXHR.getResponseHeader('Range'),
+                parts = range && range.split('-'),
+                upperBytesPos = parts && parts.length > 1 &&
+                parseInt(parts[1], 10);
+            return upperBytesPos && upperBytesPos + 1;
+        }
+
+        function initProgressObject(obj) {
+            var progress = {
+                loaded: 0,
+                total: 0,
+                bitrate: 0
+            };
+            if (obj._progress) {
+                objects.mixin(obj._progress, progress);
+            } else {
+                obj._progress = progress;
+            }
+        }
+
+        function BitrateTimer() {
+            this.timestamp = ((Date.now) ? Date.now() : (new Date()).getTime());
+            this.loaded = 0;
+            this.bitrate = 0;
+            this.getBitrate = function(now, loaded, interval) {
+                var timeDiff = now - this.timestamp;
+                if (!this.bitrate || !interval || timeDiff > interval) {
+                    this.bitrate = (loaded - this.loaded) * (1000 / timeDiff) * 8;
+                    this.loaded = loaded;
+                    this.timestamp = now;
+                }
+                return this.bitrate;
+            };
+        }
+
+        function chunkedUpload(options, testOnly) {
+            options.uploadedBytes = options.uploadedBytes || 0;
+            var that = this,
+                file = options.files[0],
+                fs = file.size,
+                ub = options.uploadedBytes,
+                mcs = options.maxChunkSize || fs,
+                slice = blobSlice,
+                dfd = new Deferred(),
+                promise = dfd.promise,
+                jqXHR,
+                upload;
+            if (!(slice && (ub || mcs < fs)) ||
+                options.data) {
+                return false;
+            }
+            if (testOnly) {
+                return true;
+            }
+            if (ub >= fs) {
+                file.error = options.i18n('uploadedBytes');
+                return this._getXHRPromise(
+                    false,
+                    options.context, [null, 'error', file.error]
+                );
+            }
+            // The chunk upload method:
+            upload = function() {
+                // Clone the options object for each chunk upload:
+                var o = objects.mixin({}, options),
+                    currentLoaded = o._progress.loaded;
+                o.blob = slice.call(
+                    file,
+                    ub,
+                    ub + mcs,
+                    file.type
+                );
+                // Store the current chunk size, as the blob itself
+                // will be dereferenced after data processing:
+                o.chunkSize = o.blob.size;
+                // Expose the chunk bytes position range:
+                o.contentRange = 'bytes ' + ub + '-' +
+                    (ub + o.chunkSize - 1) + '/' + fs;
+                // Process the upload data (the blob and potential form data):
+                initXHRData(o);
+                // Add progress listeners for this chunk upload:
+                //initProgressListener(o);
+                jqXHR = ajax(o).done(function(result, textStatus, jqXHR) {
+                        ub = getUploadedBytes(jqXHR) ||
+                            (ub + o.chunkSize);
+                        // Create a progress event if no final progress event
+                        // with loaded equaling total has been triggered
+                        // for this chunk:
+                        if (currentLoaded + o.chunkSize - o._progress.loaded) {
+                            dfd.progress({
+                                lengthComputable: true,
+                                loaded: ub - o.uploadedBytes,
+                                total: ub - o.uploadedBytes
+                            });
+                        }
+                        options.uploadedBytes = o.uploadedBytes = ub;
+                        o.result = result;
+                        o.textStatus = textStatus;
+                        o.jqXHR = jqXHR;
+                        //that._trigger('chunkdone', null, o);
+                        //that._trigger('chunkalways', null, o);
+                        if (ub < fs) {
+                            // File upload not yet complete,
+                            // continue with the next chunk:
+                            upload();
+                        } else {
+                            dfd.resolveWith(
+                                o.context, [result, textStatus, jqXHR]
+                            );
+                        }
+                    })
+                    .fail(function(jqXHR, textStatus, errorThrown) {
+                        o.jqXHR = jqXHR;
+                        o.textStatus = textStatus;
+                        o.errorThrown = errorThrown;
+                        //that._trigger('chunkfail', null, o);
+                        //that._trigger('chunkalways', null, o);
+                        dfd.rejectWith(
+                            o.context, [jqXHR, textStatus, errorThrown]
+                        );
+                    });
+            };
+            //this._enhancePromise(promise);
+            promise.abort = function() {
+                return jqXHR.abort();
+            };
+            upload();
+            return promise;
+        }
+
+        initDataSettings(xoptions);
+
+        xoptions._bitrateTimer = new BitrateTimer();
+
+        var jqXhr = chunkedUpload(xoptions) || ajax(xoptions);
+
+        jqXhr.options = xoptions;
+
+        return jqXhr;
+    }
+
+	return filer.upload = upload;	
+});
+define('skylark-utils-filer/uploader',[
+    "skylark-langx/langx",
+    "skylark-utils-dom/eventer",
+    "skylark-utils-dom/query",
+    "./filer",
+    "./dropzone",
+    "./pastezone",
+    "./picker",
+    "./upload"
+],function (langx,eventer,$,filer,dropzone,pastezone,picker,upload) {
+    'use strict';
+
+    var Deferred = langx.Deferred;
+
+
+    // The fileupload widget listens for change events on file input fields defined
+    // via fileInput setting and paste or drop events of the given dropZone.
+    // In addition to the default jQuery Widget methods, the fileupload widget
+    // exposes the "add" and "send" methods, to add or directly send files using
+    // the fileupload API.
+    // By default, files added via file input selection, paste, drag & drop or
+    // "add" method are uploaded immediately, but it is possible to override
+    // the "add" callback option to queue file uploads.
+
+    var FileUploader = langx.Evented.inherit( {
+
+        options: {
+            // The drop target element(s), by the default the complete document.
+            // Set to null to disable drag & drop support:
+            dropZone: $(document),
+
+            // The paste target element(s), by the default the complete document.
+            // Set to null to disable paste support:
+            pasteZone: $(document),
+
+            // The file input field(s), that are listened to for change events.
+            // If undefined, it is set to the file input fields inside
+            // of the widget element on plugin initialization.
+            // Set to null to disable the change listener.
+            picker: undefined,
+
+
+            // The parameter name for the file form data (the request argument name).
+            // If undefined or empty, the name property of the file input field is
+            // used, or "files[]" if the file input name property is also empty,
+            // can be a string or an array of strings:
+            paramName: undefined,
+            
+            // By default, each file of a selection is uploaded using an individual
+            // request for XHR type uploads. Set to false to upload file
+            // selections in one request each:
+            singleFileUploads: true,
+            
+            // To limit the number of files uploaded with one XHR request,
+            // set the following option to an integer greater than 0:
+            limitMultiFileUploads: undefined,
+            
+            // The following option limits the number of files uploaded with one
+            // XHR request to keep the request size under or equal to the defined
+            // limit in bytes:
+            limitMultiFileUploadSize: undefined,
+
+            // Multipart file uploads add a number of bytes to each uploaded file,
+            // therefore the following option adds an overhead for each file used
+            // in the limitMultiFileUploadSize configuration:
+            limitMultiFileUploadSizeOverhead: 512,
+
+            // Set the following option to true to issue all file upload requests
+            // in a sequential order:
+            sequentialUploads: false,
+            
+            // To limit the number of concurrent uploads,
+            // set the following option to an integer greater than 0:
+            limitConcurrentUploads: undefined,
+
+            // Set the following option to the location of a postMessage window,
+            // to enable postMessage transport uploads:
+            postMessage: undefined,
+ 
+            // By default, XHR file uploads are sent as multipart/form-data.
+            // The iframe transport is always using multipart/form-data.
+            // Set to false to enable non-multipart XHR uploads:
+            multipart: true,
+ 
+            // To upload large files in smaller chunks, set the following option
+            // to a preferred maximum chunk size. If set to 0, null or undefined,
+            // or the browser does not support the required Blob API, files will
+            // be uploaded as a whole.
+            maxChunkSize: undefined,
+ 
+            // When a non-multipart upload or a chunked multipart upload has been
+            // aborted, this option can be used to resume the upload by setting
+            // it to the size of the already uploaded bytes. This option is most
+            // useful when modifying the options object inside of the "add" or
+            // "send" callbacks, as the options are cloned for each file upload.
+            uploadedBytes: undefined,
+ 
+            // By default, failed (abort or error) file uploads are removed from the
+            // global progress calculation. Set the following option to false to
+            // prevent recalculating the global progress data:
+            recalculateProgress: true,
+ 
+            // Interval in milliseconds to calculate and trigger progress events:
+            progressInterval: 100,
+ 
+            // Interval in milliseconds to calculate progress bitrate:
+            bitrateInterval: 500,
+ 
+            // By default, uploads are started automatically when adding files:
+            autoUpload: false,
+
+            // Error and info messages:
+            messages: {
+                uploadedBytes: 'Uploaded bytes exceed file size'
+            },
+
+            // Translation function, gets the message key to be translated
+            // and an object with context specific data as arguments:
+            i18n: function (message, context) {
+                message = this.messages[message] || message.toString();
+                if (context) {
+                    langx.each(context, function (key, value) {
+                        message = message.replace('{' + key + '}', value);
+                    });
+                }
+                return message;
+            },
+
+            // Additional form data to be sent along with the file uploads can be set
+            // using this option, which accepts an array of objects with name and
+            // value properties, a function returning such an array, a FormData
+            // object (for XHR file uploads), or a simple object.
+            // The form of the first fileInput is given as parameter to the function:
+            formData: function (form) {
+                return form.serializeArray();
+            },
+
+            // The add callback is invoked as soon as files are added to the fileupload
+            // widget (via file input selection, drag & drop, paste or add API call).
+            // If the singleFileUploads option is enabled, this callback will be
+            // called once for each file in the selection for XHR file uploads, else
+            // once for each file selection.
+            //
+            // The upload starts when the submit method is invoked on the data parameter.
+            // The data object contains a files property holding the added files
+            // and allows you to override plugin options as well as define ajax settings.
+            //
+            // Listeners for this callback can also be bound the following way:
+            // .bind('fileuploadadd', func);
+            //
+            // data.submit() returns a Promise object and allows to attach additional
+            // handlers using jQuery's Deferred callbacks:
+            // data.submit().done(func).fail(func).always(func);
+            add: function (e, data) {
+                if (e.isDefaultPrevented()) {
+                    return false;
+                }
+                if (data.autoUpload || (data.autoUpload !== false && $(this).fileupload("instance").option('autoUpload') )) {
+                    data.process().done(function () {
+                        data.submit();
+                    });
+                }
+            },
+
+            // Other callbacks:
+
+            // Callback for the submit event of each file upload:
+            // submit: function (e, data) {}, // .bind('fileuploadsubmit', func);
+
+            // Callback for the start of each file upload request:
+            // send: function (e, data) {}, // .bind('fileuploadsend', func);
+
+            // Callback for successful uploads:
+            // done: function (e, data) {}, // .bind('fileuploaddone', func);
+
+            // Callback for failed (abort or error) uploads:
+            // fail: function (e, data) {}, // .bind('fileuploadfail', func);
+
+            // Callback for completed (success, abort or error) requests:
+            // always: function (e, data) {}, // .bind('fileuploadalways', func);
+
+            // Callback for upload progress events:
+            // progress: function (e, data) {}, // .bind('fileuploadprogress', func);
+
+            // Callback for global upload progress events:
+            // progressall: function (e, data) {}, // .bind('fileuploadprogressall', func);
+
+            // Callback for uploads start, equivalent to the global ajaxStart event:
+            // start: function (e) {}, // .bind('fileuploadstart', func);
+
+            // Callback for uploads stop, equivalent to the global ajaxStop event:
+            // stop: function (e) {}, // .bind('fileuploadstop', func);
+
+            // Callback for change events of the fileInput(s):
+            // change: function (e, data) {}, // .bind('fileuploadchange', func);
+
+            // Callback for paste events to the pasteZone(s):
+            // paste: function (e, data) {}, // .bind('fileuploadpaste', func);
+
+            // Callback for drop events of the dropZone(s):
+            // drop: function (e, data) {}, // .bind('fileuploaddrop', func);
+
+            // Callback for dragover events of the dropZone(s):
+            // dragover: function (e) {}, // .bind('fileuploaddragover', func);
+
+            // Callback for the start of each chunk upload request:
+            // chunksend: function (e, data) {}, // .bind('fileuploadchunksend', func);
+
+            // Callback for successful chunk uploads:
+            // chunkdone: function (e, data) {}, // .bind('fileuploadchunkdone', func);
+
+            // Callback for failed (abort or error) chunk uploads:
+            // chunkfail: function (e, data) {}, // .bind('fileuploadchunkfail', func);
+
+            // Callback for completed (success, abort or error) chunk upload requests:
+            // chunkalways: function (e, data) {}, // .bind('fileuploadchunkalways', func);
+
+            // The plugin options are used as settings object for the ajax calls.
+            // The following are jQuery ajax settings required for the file uploads:
+            processData: false,
+            contentType: false,
+            cache: false
+        },
+
+        // A list of options that require reinitializing event listeners and/or
+        // special initialization code:
+        _specialOptions: [
+            'picker',
+            'dropZone',
+            'pasteZone',
+            'multipart',
+            'filesContainer',
+            'uploadTemplateId',
+            'downloadTemplateId'            
+        ],
+
+        _BitrateTimer: function () {
+            this.timestamp = ((Date.now) ? Date.now() : (new Date()).getTime());
+            this.loaded = 0;
+            this.bitrate = 0;
+            this.getBitrate = function (now, loaded, interval) {
+                var timeDiff = now - this.timestamp;
+                if (!this.bitrate || !interval || timeDiff > interval) {
+                    this.bitrate = (loaded - this.loaded) * (1000 / timeDiff) * 8;
+                    this.loaded = loaded;
+                    this.timestamp = now;
+                }
+                return this.bitrate;
+            };
+        },
+
+        _getTotal: function (files) {
+            var total = 0;
+            langx.each(files, function (index, file) {
+                total += file.size || 1;
+            });
+            return total;
+        },
+
+        _initProgressObject: function (obj) {
+            var progress = {
+                loaded: 0,
+                total: 0,
+                bitrate: 0
+            };
+            if (obj._progress) {
+                langx.extend(obj._progress, progress);
+            } else {
+                obj._progress = progress;
+            }
+        },
+
+        _initResponseObject: function (obj) {
+            var prop;
+            if (obj._response) {
+                for (prop in obj._response) {
+                    if (obj._response.hasOwnProperty(prop)) {
+                        delete obj._response[prop];
+                    }
+                }
+            } else {
+                obj._response = {};
+            }
+        },
+
+        _onProgress: function (e, data) {
+            if (e.lengthComputable) {
+                var now = ((Date.now) ? Date.now() : (new Date()).getTime()),
+                    loaded;
+                if (data._time && data.progressInterval &&
+                        (now - data._time < data.progressInterval) &&
+                        e.loaded !== e.total) {
+                    return;
+                }
+                data._time = now;
+                loaded = Math.floor(
+                    e.loaded / e.total * (data.chunkSize || data._progress.total)
+                ) + (data.uploadedBytes || 0);
+                // Add the difference from the previously loaded state
+                // to the global loaded counter:
+                this._progress.loaded += (loaded - data._progress.loaded);
+                this._progress.bitrate = this._bitrateTimer.getBitrate(
+                    now,
+                    this._progress.loaded,
+                    data.bitrateInterval
+                );
+                data._progress.loaded = data.loaded = loaded;
+                data._progress.bitrate = data.bitrate = data._bitrateTimer.getBitrate(
+                    now,
+                    loaded,
+                    data.bitrateInterval
+                );
+                // Trigger a custom progress event with a total data property set
+                // to the file size(s) of the current upload and a loaded data
+                // property calculated accordingly:
+                this._trigger(
+                    'progress',
+                    eventer.create('progress', {delegatedEvent: e}),
+                    data
+                );
+                // Trigger a global progress event for all current file uploads,
+                // including ajax calls queued for sequential file uploads:
+                this._trigger(
+                    'progressall',
+                    eventer.create('progressall', {delegatedEvent: e}),
+                    this._progress
+                );
+            }
+        },
+
+        _getParamName: function (options) {
+            var picker = $(options.picker),
+                paramName = options.paramName;
+            //if (!paramName) {
+            //    paramName = [fileInput.prop('name') || 'files[]'];
+            // } else if (!langx.isArray(paramName)) {
+
+            if (!langx.isArray(paramName)) {
+                paramName = [paramName];
+            }
+            return paramName;
+        },
+
+
+        // jQuery 1.6 doesn't provide .state(),
+        // while jQuery 1.8+ removed .isRejected() and .isResolved():
+        _getDeferredState: function (deferred) {
+            if (deferred.state) {
+                return deferred.state();
+            }
+            if (deferred.isResolved()) {
+                return 'resolved';
+            }
+            if (deferred.isRejected()) {
+                return 'rejected';
+            }
+            return 'pending';
+        },
+
+        // Maps jqXHR callbacks to the equivalent
+        // methods of the given Promise object:
+        _enhancePromise: function (promise) {
+            promise.success = promise.done;
+            promise.error = promise.fail;
+            promise.complete = promise.always;
+            return promise;
+        },
+
+        // Creates and returns a Promise object enhanced with
+        // the jqXHR methods abort, success, error and complete:
+        _getXHRPromise: function (resolveOrReject, context, args) {
+            var dfd = new Deferred(),
+                promise = dfd.promise;
+            context = context || this.options.context || promise;
+            if (resolveOrReject === true) {
+                dfd.resolveWith(context, args);
+            } else if (resolveOrReject === false) {
+                dfd.rejectWith(context, args);
+            }
+            promise.abort = dfd.promise;
+            return this._enhancePromise(promise);
+        },
+
+        // Adds convenience methods to the data callback argument:
+        _addConvenienceMethods: function (e, data) {
+            var that = this,
+                getPromise = function (args) {
+                    return new Deferred().resolveWith(that, args).promise;
+                };
+            data.process = function (resolveFunc, rejectFunc) {
+                if (resolveFunc || rejectFunc) {
+                    data._processQueue = this._processQueue =
+                        (this._processQueue || getPromise([this])).pipe(
+                            function () {
+                                if (data.errorThrown) {
+                                    return new Deferred()
+                                        .rejectWith(that, [data]).promise;
+                                }
+                                return getPromise(arguments);
+                            }
+                        ).pipe(resolveFunc, rejectFunc);
+                }
+                return this._processQueue || getPromise([this]);
+            };
+            data.submit = function () {
+                if (this.state() !== 'pending') {
+                    data.jqXHR = this.jqXHR =
+                        (that._trigger(
+                            'submit',
+                            eventer.create('submit', {delegatedEvent: e}),
+                            this
+                        ) !== false) && that._onSend(e, this);
+                }
+                return this.jqXHR || that._getXHRPromise();
+            };
+            data.abort = function () {
+                if (this.jqXHR) {
+                    return this.jqXHR.abort();
+                }
+                this.errorThrown = 'abort';
+                that._trigger('fail', null, this);
+                return that._getXHRPromise(false);
+            };
+            data.state = function () {
+                if (this.jqXHR) {
+                    return that._getDeferredState(this.jqXHR);
+                }
+                if (this._processQueue) {
+                    return that._getDeferredState(this._processQueue);
+                }
+            };
+            data.processing = function () {
+                return !this.jqXHR && this._processQueue && that
+                    ._getDeferredState(this._processQueue) === 'pending';
+            };
+            data.progress = function () {
+                return this._progress;
+            };
+            data.response = function () {
+                return this._response;
+            };
+        },
+
+        _beforeSend: function (e, data) {
+            if (this._active === 0) {
+                // the start callback is triggered when an upload starts
+                // and no other uploads are currently running,
+                // equivalent to the global ajaxStart event:
+                this._trigger('start');
+                // Set timer for global bitrate progress calculation:
+                this._bitrateTimer = new this._BitrateTimer();
+                // Reset the global progress values:
+                this._progress.loaded = this._progress.total = 0;
+                this._progress.bitrate = 0;
+            }
+            // Make sure the container objects for the .response() and
+            // .progress() methods on the data object are available
+            // and reset to their initial state:
+            this._initResponseObject(data);
+            this._initProgressObject(data);
+            data._progress.loaded = data.loaded = data.uploadedBytes || 0;
+            data._progress.total = data.total = this._getTotal(data.files) || 1;
+            data._progress.bitrate = data.bitrate = 0;
+            this._active += 1;
+            // Initialize the global progress values:
+            this._progress.loaded += data.loaded;
+            this._progress.total += data.total;
+        },
+
+        _onDone: function (result, textStatus, jqXHR, options) {
+            var total = options._progress.total,
+                response = options._response;
+            if (options._progress.loaded < total) {
+                // Create a progress event if no final progress event
+                // with loaded equaling total has been triggered:
+                this._onProgress(eventer.create('progress', {
+                    lengthComputable: true,
+                    loaded: total,
+                    total: total
+                }), options);
+            }
+            response.result = options.result = result;
+            response.textStatus = options.textStatus = textStatus;
+            response.jqXHR = options.jqXHR = jqXHR;
+            this._trigger('done', null, options);
+        },
+
+        _onFail: function (jqXHR, textStatus, errorThrown, options) {
+            var response = options._response;
+            if (options.recalculateProgress) {
+                // Remove the failed (error or abort) file upload from
+                // the global progress calculation:
+                this._progress.loaded -= options._progress.loaded;
+                this._progress.total -= options._progress.total;
+            }
+            response.jqXHR = options.jqXHR = jqXHR;
+            response.textStatus = options.textStatus = textStatus;
+            response.errorThrown = options.errorThrown = errorThrown;
+            this._trigger('fail', null, options);
+        },
+
+        _trigger : function(type,event,data) {
+            var e = eventer.proxy(event);
+            e.type = type;
+            e.data =data;
+            return this.trigger(e,data);
+        },
+
+        _onAlways: function (jqXHRorResult, textStatus, jqXHRorError, options) {
+            // jqXHRorResult, textStatus and jqXHRorError are added to the
+            // options object via done and fail callbacks
+            this._trigger('always', null, options);
+        },
+
+        _onSend: function (e, data) {
+            if (!data.submit) {
+                this._addConvenienceMethods(e, data);
+            }
+            var that = this,
+                jqXHR,
+                aborted,
+                slot,
+                pipe,
+                send = function () {
+                    that._sending += 1;
+                    data.url = that.options.url;
+                    data.dataType = that.options.dataType;
+                    data.xhrFields = that.options.xhrFields;
+
+                    jqXHR = upload(data);
+
+                    jqXHR.progress(function(e){
+                        //var oe = e.originalEvent;
+                        // Make sure the progress event properties get copied over:
+                        //e.lengthComputable = oe.lengthComputable;
+                        //e.loaded = oe.loaded;
+                        //e.total = oe.total;
+                        that._onProgress(e, jqXHR.options);
+
+                    }).done(function (result, textStatus) {
+                        that._onDone(result, textStatus, jqXHR, jqXHR.options);
+                    }).fail(function (e, textStatus) {
+                        that._onFail(jqXHR, textStatus,e, jqXHR.options);
+                    }).always(function () {
+                        that._sending -= 1;
+                        that._active -= 1;
+                        that._trigger('stop');
+                    });
+                    return jqXHR;
+                };
+            this._beforeSend(e, data);
+
+            return send();
+        },
+        _onAdd: function (e, data) {
+            var that = this,
+                result = true,
+                options = langx.extend({}, this.options, data),
+                files = data.files,
+                filesLength = files.length,
+                limit = options.limitMultiFileUploads,
+                limitSize = options.limitMultiFileUploadSize,
+                overhead = options.limitMultiFileUploadSizeOverhead,
+                batchSize = 0,
+                paramName = this._getParamName(options),
+                paramNameSet,
+                paramNameSlice,
+                fileSet,
+                i,
+                j = 0;
+            if (limitSize && (!filesLength || files[0].size === undefined)) {
+                limitSize = undefined;
+            }
+            if (!(options.singleFileUploads || limit || limitSize)) {
+                fileSet = [files];
+                paramNameSet = [paramName];
+            } else if (!(options.singleFileUploads || limitSize) && limit) {
+                fileSet = [];
+                paramNameSet = [];
+                for (i = 0; i < filesLength; i += limit) {
+                    fileSet.push(files.slice(i, i + limit));
+                    paramNameSlice = paramName.slice(i, i + limit);
+                    if (!paramNameSlice.length) {
+                        paramNameSlice = paramName;
+                    }
+                    paramNameSet.push(paramNameSlice);
+                }
+            } else if (!options.singleFileUploads && limitSize) {
+                fileSet = [];
+                paramNameSet = [];
+                for (i = 0; i < filesLength; i = i + 1) {
+                    batchSize += files[i].size + overhead;
+                    if (i + 1 === filesLength ||
+                            ((batchSize + files[i + 1].size + overhead) > limitSize) ||
+                            (limit && i + 1 - j >= limit)) {
+                        fileSet.push(files.slice(j, i + 1));
+                        paramNameSlice = paramName.slice(j, i + 1);
+                        if (!paramNameSlice.length) {
+                            paramNameSlice = paramName;
+                        }
+                        paramNameSet.push(paramNameSlice);
+                        j = i + 1;
+                        batchSize = 0;
+                    }
+                }
+            } else {
+                paramNameSet = paramName;
+            }
+            data.originalFiles = files;
+            langx.each(fileSet || files, function (index, element) {
+                var newData = langx.extend({}, data);
+                newData.files = fileSet ? element : [element];
+                newData.paramName = paramNameSet[index];
+                that._initResponseObject(newData);
+                that._initProgressObject(newData);
+                that._addConvenienceMethods(e, newData);
+                result = that._trigger(
+                    'add',
+                    eventer.create('add', {delegatedEvent: e}),
+                    newData
+                );
+                return result;
+            });
+            return result;
+        },
+
+        _initEventHandlers: function () {
+            var that = this;
+
+            dropzone(this.options.dropZone[0],{
+                dropped : function (files) {
+                    var data = {};
+                    data.files = files;
+                    that._onAdd(null, data);
+                }
+            });
+
+            pastezone(this.options.pasteZone[0],{
+                pasted : function (files) {
+                    var data = {};
+                    data.files = files;
+                    that._onAdd(null, data);
+                }
+            });
+
+            picker(this.options.picker[0],{
+                multiple: true,
+                picked : function (files) {
+                    var data = {};
+                    data.files = files;
+                    that._onAdd(null, data);
+                }
+            });
+        },
+
+        _destroyEventHandlers: function () {
+            //this._off(this.options.dropZone, 'dragover drop');
+            //this._off(this.options.pasteZone, 'paste');
+            //this._off(this.options.picker, 'change');
+        },
+
+        _setOption: function (key, value) {
+            var reinit = langx.inArray(key, this._specialOptions) !== -1;
+            if (reinit) {
+                this._destroyEventHandlers();
+            }
+            this._super(key, value);
+            if (reinit) {
+                this._initSpecialOptions();
+                this._initEventHandlers();
+            }
+        },
+
+        _initSpecialOptions: function () {
+            var options = this.options;
+            //if (options.fileInput === undefined) {
+            //    //options.fileInput = this.element.is('input[type="file"]') ?
+            //    //        this.element : this.element.find('input[type="file"]');
+            //    options.fileInput = this.element.find('.fileinput-button');
+            
+            if (options.picker) {
+                if (!(options.picker instanceof $)) {
+                    options.picker = $(options.picker,this._elm);
+                }                
+            }
+
+            if (options.dropZone) {
+                if (!(options.dropZone instanceof $)) {
+                    options.dropZone = $(options.dropZone,this._elm);
+                }
+            }
+
+            if (options.pasteZone) {
+                if (!(options.pasteZone instanceof $)) {
+                    options.pasteZone = $(options.pasteZone,this._elm);
+                }                
+            }
+        },
+
+        _getRegExp: function (str) {
+            var parts = str.split('/'),
+                modifiers = parts.pop();
+            parts.shift();
+            return new RegExp(parts.join('/'), modifiers);
+        },
+
+        _isRegExpOption: function (key, value) {
+            return key !== 'url' && langx.type(value) === 'string' &&
+                /^\/.*\/[igm]{0,3}$/.test(value);
+        },
+
+        _construct: function (elm,options) {
+            this._elm = elm;
+            this.options = langx.mixin({},this.options,options);
+            this._initSpecialOptions();
+            this._slots = [];
+            this._sequence = this._getXHRPromise(true);
+            this._sending = this._active = 0;
+            this._initProgressObject(this);
+            this._initEventHandlers();
+        },
+
+        // This method is exposed to the widget API and allows to query
+        // the number of active uploads:
+        active: function () {
+            return this._active;
+        },
+
+        // This method is exposed to the widget API and allows to query
+        // the widget upload progress.
+        // It returns an object with loaded, total and bitrate properties
+        // for the running uploads:
+        progress: function () {
+            return this._progress;
+        },
+
+        // This method is exposed to the widget API and allows adding files
+        // using the fileupload API. The data parameter accepts an object which
+        // must have a files property and can contain additional options:
+        // .fileupload('add', {files: filesList});
+        add: function (data) {
+            var that = this;
+            if (!data || this.options.disabled) {
+                return;
+            }
+            data.files = langx.makeArray(data.files);
+            this._onAdd(null, data);
+        },
+
+        // This method is exposed to the widget API and allows sending files
+        // using the fileupload API. The data parameter accepts an object which
+        // must have a files or fileInput property and can contain additional options:
+        // .fileupload('send', {files: filesList});
+        // The method returns a Promise object for the file upload call.
+        send: function (data) {
+            if (data && !this.options.disabled) {
+                data.files = langx.makeArray(data.files);
+                if (data.files.length) {
+                    return this._onSend(null, data);
+                }
+            }
+            return this._getXHRPromise(false, data && data.context);
+        }
+
+    });
+
+
+    function uploader(elm,options) {
+        var fuInst = new FileUploader(elm,options);
+        fuInst.on("all",function(evt,data){
+            var typ = evt.type;
+            if (langx.isFunction(options[typ])) {
+                options[typ].call(fuInst._elm,evt,data);
+            }
+        });
+        return fuInst;
+    }
+
+    return filer.uploader = uploader;
+
+});
+
+define('skylark-ui-swt/Uploader',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "skylark-utils-collection/ArrayList",
+  "skylark-utils-filer/uploader",
+  "./swt",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,ArrayList,uploader,swt,Widget){
+
+    /**
+     * This model represents a file.
+     *
+     */
+    var FileItem = langx.Stateful.inherit({
+        state: "pending",
+
+        /**
+         * Start upload.
+         *
+         */
+        start: function ()  {
+            if (this.isPending()) {
+                this.get('processor').submit();
+                this.state = "running";
+
+                // Dispatch event
+                this.trigger('filestarted', this);
+            }
+        },
+
+        /**
+         * Cancel a file upload.
+         *
+         */
+        cancel: function () {
+            this.get('processor').abort();
+            this.destroy();
+
+            // Dispatch event
+            this.state = "canceled";
+            this.trigger('filecanceled', this);
+        },
+
+        /**
+         * Notify file that progress updated.
+         *
+         */
+        progress: function (data)  {
+            // Dispatch event
+            this.trigger('fileprogress', this.get('processor').progress());
+        },
+
+        /**
+         * Notify file that upload failed.
+         *
+         */
+        fail: function (error)  {
+            // Dispatch event
+            this.state = "error";
+            this.trigger('filefailed', error);
+        },
+
+        /**
+         * Notify file that upload is done.
+         *
+         */
+        done: function (result)  {
+            // Dispatch event
+            this.state = "error";
+            this.trigger('filedone', result);
+        },
+
+        /**
+         * Is this file pending to be uploaded ?
+         *
+         */
+        isPending: function ()  {
+            return this.getState() == "pending";
+        },
+
+        /**
+         * Is this file currently uploading ?
+         *
+         */
+        isRunning: function () {
+            return this.getState() == "running";
+        },
+
+        /**
+         * Is this file uploaded ?
+         *
+         */
+        isDone: function () {
+            return this.getState() == "done";
+        },
+
+        /**
+         * Is this upload in error ?
+         *
+         */
+        isError: function () {
+            return this.getState() == "error" || this.getState == "canceled";
+        },
+
+        /**
+         * Get the file state.
+         *
+         */
+        getState: function () {
+            return this.state;
+        }
+    });
+
+    /**
+     * This is a file collection, used to manage the selected
+     * and processing files.
+     *
+     */
+    var FileItemCollection = ArrayList.inherit({
+        item: FileItem
+    });
+
+    /**
+     * A file view, which is the view that manage a single file
+     * process in the upload manager.
+     *
+     */
+    var FileItemWidget = Widget.inherit({
+        className: 'upload-manager-file row',
+
+        options : {
+          selectors : {
+            fileName : ".name",
+            fileSize : ".size",
+            cancel : ".cancel",
+            clear : ".clear",
+            progress : ".progress",
+            message : ".message"
+          }
+        },
+
+        state : {
+          fileName : String,
+          fileSize : Number
+        },
+
+        _init: function () {
+            this.processUploadMsg = this.options.processUploadMsg;
+            this.doneMsg = this.options.doneMsg;
+
+            this.fileName(this.options.fileName);
+            this.fileSize(this.options.fileSize);
+
+            // Bind model events
+            this.model.on('destroy', this.close, this);
+            this.model.on('fileprogress', this.updateProgress, this);
+            this.model.on('filefailed', this.hasFailed, this);
+            this.model.on('filedone', this.hasDone, this);
+
+            // In each case, update view
+            this.model.on('all', this.update, this);
+
+            // Bind events
+            this.bindEvents();
+
+            // Update elements
+            this.update();            
+        },
+
+        _refresh : function(updates) {
+
+        },
+
+        /**
+         * Update upload progress.
+         *
+         */
+        updateProgress: function (progress) {
+            var percent = parseInt(progress.loaded / progress.total * 100, 10);
+            var progressHTML = this.getHelpers().displaySize(progress.loaded)+' of '+this.getHelpers().displaySize(progress.total);
+            if (percent >= 100 && this.processUploadMsg) { progressHTML = this.processUploadMsg; }
+
+            $('.progress', this.el)
+                .find('.bar')
+                .css('width', percent+'%')
+                .parent()
+                .find('.progress-label')
+                .html(progressHTML);
+        },
+
+        /**
+         * File upload has failed.
+         *
+         */
+        hasFailed: function (error){
+            $('.message', this.el).html('<i class="icon-error"></i> '+error);
+        },
+
+        /**
+         * File upload is done.
+         *
+         */
+        hasDone: function (result){
+            $('.message', this.el).html('<i class="icon-success"></i> ' + (this.doneMsg || 'Uploaded'));
+        },
+
+        /**
+         * Update view without complete rendering.
+         *
+         */
+        update: function () {
+            var selectors = this.options.selectors,
+                when_pending = this._velm.$(selectors.size + "," + selectors.cancel),
+                when_running = this._velm.$(selectors.progress + "," + selectors.cancel),
+                when_done = this._velm.$(selectors.message + "," + selectors.clear);
+
+            if (this.model.isPending()) {
+                when_running.add(when_done).addClass('hidden');
+                when_pending.removeClass('hidden');
+            } else if (this.model.isRunning()) {
+                when_pending.add(when_done).addClass('hidden');
+                when_running.removeClass('hidden');
+            } else if (this.model.isDone() || this.model.isError()) {
+                when_pending.add(when_running).addClass('hidden');
+                when_done.removeClass('hidden');
+            }
+        },
+
+        /**
+         * Startup widget with binding events
+         * @override
+         *
+         */
+        _startup: function () {
+            var self = this;
+
+            // DOM events
+            this._velm.$(this.options.selectors.cancel).click(function(){
+                self.model.cancel();
+                self.collection.remove(self.model);
+            });
+            this._velm.$(this.options.selectors.clear).click(function(){
+                self.model.destroy();
+                self.collection.remove(self.model);
+            });
+        },
+
+        /**
+         * Compute data to be passed to the view.
+         *
+         */
+        computeData: function () {
+            return $.extend(this.getHelpers(), this.model.get('data'));
+        }
+    });
+
+
+    var Uploader =  Widget.inherit({
+        klassName : "Uploader",
+        pluginName : "lark.uploader",
+
+        options: {
+
+            uploadUrl: '/upload',
+            autoUpload: false,
+            selectors : {
+              fileList : '.file-list',
+              nodata : ".file-list .no-data",
+              pickFiles: '.file-picker',
+              startUploads: '.start-uploads',
+              cancelUploads: '.cancel-uploads',
+            },
+
+            dataType: 'json',
+
+            fileItem : {
+            	selectors : {
+
+            	},
+
+            	template : null
+            }
+        },
+
+        state : {
+          files : FileItemCollection
+        },
+
+        /**
+         * Render the main part of upload manager.
+         *
+         */
+        _init: function () {
+            var self = this;
+
+
+            // Create the file list
+            var files = this.files(new FileItemCollection());
+
+            // Add add files handler
+            var filePicker = this._velm.$(this.options.selectors.pickFiles), self = this;
+
+            this.uploadProcess =  uploader(this._elm,{  //$.$(this.el).fileupload({
+                dataType: this.options.dataType,
+                url: this.options.uploadUrl,
+                formData: this.options.formData,
+                autoUpload: this.options.autoUpload,
+                singleFileUploads: true,
+                picker : filePicker,
+
+                'add' : function (e, data) {
+                    // Create an array in which the file objects
+                    // will be stored.
+                    data.uploadManagerFiles = [];
+
+                    // A file is added, process for each file.
+                    // Note: every times, the data.files array length is 1 because
+                    //       of "singleFileUploads" option.
+                    langx.each(data.files, function (index, file_data) {
+                        // Create the file object
+                        file_data.id = self.file_id++;
+                        var file = new FileItem({
+                            data: file_data,
+                            processor: data
+                        });
+
+                        // Add file in data
+                        data.uploadManagerFiles.push(file);
+
+                        // Trigger event
+                        //self.trigger('fileadd', file);
+                        // Add it to current list
+                        self.files.add(file);
+
+                        // Create the view
+                        self.renderFile(file);
+
+
+                    });
+                },
+                'progress' : function (e, data) {
+                    langx.each(data.uploadManagerFiles, function (index, file) {
+                        //self.trigger('fileprogress', file, data);
+
+                        file.progress(progress);
+                    });
+                },
+
+                'fail' : function (e, data) {
+                    langx.each(data.uploadManagerFiles, function (index, file) {
+                        var error = "Unknown error";
+                        if (typeof data.errorThrown == "string") {
+                            error = data.errorThrown;
+                        } else if (typeof data.errorThrown == "object") {
+                            error = data.errorThrown.message;
+                        } else if (data.result) {
+                            if (data.result.error) {
+                                error = data.result.error;
+                            } else if (data.result.files && data.result.files[index] && data.result.files[index].error) {
+                                error = data.result.files[index].error;
+                            } else {
+                                error = "Unknown remote error";
+                            }
+                        }
+
+                        //self.trigger('filefail', file, error);
+                        file.fail(error);
+                    });
+                },
+
+                'done' : function (e, data) {
+                    langx.each(data.uploadManagerFiles, function (index, file) {
+                        //self.trigger('filedone', file, data);
+                        file.done(data.result);
+                    });
+                }
+
+            });
+
+            // Add upload process events handlers
+            this.bindProcessEvents();
+
+            // Add cancel all handler
+            this._velm.$(this.options.selectors.cancelUploads).click(function(){
+                while (self.files.length) {
+                    self.files.at(0).cancel();
+                }
+            });
+
+            // Add start uploads handler
+            this._velm.$(this.options.selectors.startUploads).click(function(){
+                self.files.forEach(function(file){
+                    file.start();
+                });
+            });
+
+            // Render current files
+            /*
+            this.files.forEach(function (file) {
+                self.renderFile(file);
+            });
+            */
+
+            this._refresh({files:true});
+        
+        },
+
+        _refresh : function(updates) {
+            var self = this;
+            function updateFileList()  {
+                var selectors = self.options.selectors,
+                    files = self.files();
+                var with_files_elements = self._velm.$(selectors.cancelUploads + ',' + selectors.startUploads);
+                var without_files_elements = self._velm.$(selectors.nodata);
+                if (files.length > 0) {
+                    with_files_elements.removeClass('hidden');
+                    without_files_elements.addClass('hidden');
+                } else {
+                    with_files_elements.addClass('hidden');
+                    without_files_elements.removeClass('hidden');
+                }
+            }
+
+            if (updates["files"]) {
+              updateFileList();
+            }
+
+        },
+
+        /**
+         * Render a file.
+         *
+         */
+        renderFile: function (file) {
+            var file_view = new FileItemWidget(langx.mixin({},this.options, {
+              model: file,
+              template : this.options.fileItem.template
+            }));
+            //this._velm.$(this.options.selectors.fileList).append(file_view.render());
+            file_view.attach(this._velm.$(this.options.selectors.fileList));
+        },
+
+        /**
+         * Bind events on the upload processor.
+         *
+         */
+        bindProcessEvents: function () {
+        }
+    });
+
+    return swt.Uploader = Uploader;
+});
+
 define('skylark-ui-swt/main',[
-    "./ui",
+    "./swt",
     "./Widget",
     "./Accordion",
     "./Button",
     "./Carousel",
     "./Checkbox",
     "./Combobox",
+    "./InputBox",
+    "./ListGroup",
     "./Menu",
     "./Pagination",
     "./Progress",
     "./Radio",
+    "./SelectList",
     "./TabStrip",
-    "./Textbox",
-    "./Toolbar"
-/*    
-    "./checkbox",
-    "./combobox",
-    "./datepicker",
-    "./dropdown-autoflip",
-    "./infinite-scroll",
-    "./loader",
-    "./menu",
-    "./picker",
-    "./pillbox",
-    "./placard",
-    "./radio",
-    "./scheduler",
-    "./search",
-    "./selectlist",
-    "./spinbox",
-    "./toolbar",
-    "./wizard"
-*/
-], function(ui) {
-    return ui;
+    "./Toolbar",
+    "./Uploader"
+], function(swt) {
+    return swt;
 });
 define('skylark-ui-swt', ['skylark-ui-swt/main'], function (main) { return main; });
 

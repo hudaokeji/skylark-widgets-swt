@@ -5,14 +5,14 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 	
 	var popup = null;
 	var right_to_left ;
 
-	var Menu = ui.Menu = Widget.inherit({
+	var Menu = swt.Menu = Widget.inherit({
         klassName: "Menu",
 
 	    pluginName : "lark.menu",

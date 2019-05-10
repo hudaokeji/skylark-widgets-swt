@@ -5,10 +5,10 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget",
   "skylark-bootstrap3/dropdown"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
 
 
@@ -325,5 +325,5 @@ define([
 
 
 
-	return ui.Combobox = Combobox;
+	return swt.Combobox = Combobox;
 });

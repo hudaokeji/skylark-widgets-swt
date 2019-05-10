@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-ui-swt/
  * @license MIT
  */
-define(["./ui","./Widget","./Accordion","./Button","./Carousel","./Checkbox","./Combobox","./Menu","./Pagination","./Progress","./Radio","./TabStrip","./Textbox","./Toolbar"],function(o){return o});
+define(["./swt","./Widget","./Accordion","./Button","./Carousel","./Checkbox","./Combobox","./InputBox","./ListGroup","./Menu","./Pagination","./Progress","./Radio","./SelectList","./TabStrip","./Toolbar","./Uploader"],function(o){return o});
 //# sourceMappingURL=sourcemaps/main.js.map

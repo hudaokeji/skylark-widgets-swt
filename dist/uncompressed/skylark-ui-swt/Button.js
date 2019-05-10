@@ -1,29 +1,37 @@
 define([
   "skylark-langx/langx",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,$,ui,Widget){
+],function(langx,$,swt,Widget){
 
-	var Button = Widget.inherit({
-		klassName : "Button",
+	class Button extends Widget {
+		get klassName() {
+      return "Button";
+    } 
 
-    pluginName : "lark.button",
+    get pluginName(){
+      return "lark.button";
+    } 
 
-		options : {
-			btnSize : "lg",
-      btnType : "default",
-      leftIcon : null,
-      rightIcon : null,
-      topIcon : null, // TODO
-      bottomIcon : null //TODO
-		},
+		get options () {
+      return {
+        btnSize : "lg",
+        btnType : "default",
+        leftIcon : null,
+        rightIcon : null,
+        topIcon : null, // TODO
+        bottomIcon : null //TODO        
+      }
+		}
 
-    state : {
-      "text" : String
-    },
+    get state() {
+      return {
+        "text" : String
+      }
+    }
 
-    _parse: function (elm,options) {
+    _parse (elm,options) {
       var $el = $(elm),
           options = langx.mixin({},options);
 
@@ -83,10 +91,11 @@ define([
           $fa_icon_right.addClass('fa-icon-right').addClass('fa');
         }        
       }
-    },
+    }
 
-    _refresh: function (updates) {
-      this.overrided(updates);
+    _refresh (updates) {
+      //this.overrided(updates);
+      super._refresh(updates);
 
       var velm = this._velm;
 
@@ -114,9 +123,15 @@ define([
           }
       }
     }
-  });
+  };
 
-  return ui.Button = Button;
+  Widget.register(Button);
+//  class Buttonx extends Button {
+//
+//  }
+
+//  Widget.register(Buttonx,"lark.button");
+  return swt.Button = Button;
 
 });
 

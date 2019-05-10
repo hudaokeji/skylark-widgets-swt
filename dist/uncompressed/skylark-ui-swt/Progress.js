@@ -5,13 +5,13 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
     'use strict';
 
-     var Progress = ui.Progress = Widget.inherit({
+     var Progress = swt.Progress = Widget.inherit({
      	klassName : "Progress",
 
      	pluginName : "lark.progress",

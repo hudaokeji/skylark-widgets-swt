@@ -6,10 +6,10 @@ define([
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
   "skylark-bootstrap3/collapse",
-  "./ui",
+  "./swt",
   "./Widget",
   "./Panel"
-],function(langx,browser,eventer,noder,geom,$,collapse,ui,Widget, Panel){
+],function(langx,browser,eventer,noder,geom,$,collapse,swt,Widget, Panel){
 
   var Accordion = Widget.inherit({
     klassName : "Accordion",
@@ -126,12 +126,12 @@ define([
 
     collapse : function() {
       // collapse this panel
-      this._velm.collapse("hide");
+      $(this._elm).collapse("hide");
     },
 
     toogle : function() {
       // toogle this panel
-     this._velm.collapse("toogle");
+     $(this._elm).collapse("toogle");
     },
 
     remove : function() {
@@ -139,5 +139,5 @@ define([
     }
   });
 
-  return ui.Accordion = Accordion;
+  return swt.Accordion = Accordion;
 });

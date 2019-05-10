@@ -5,13 +5,13 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
     'use strict';
 
-    var Pagination = ui.Pagination = Widget.inherit({
+    var Pagination = swt.Pagination = Widget.inherit({
         klassName : "Pagination",
 
         pluginName : "lark.pagination",

@@ -37,11 +37,16 @@
                 deps: deps.map(function(dep){
                   return absolute(dep,id);
                 }),
+                resolved: false,
                 exports: null
             };
             require(id);
         } else {
-            map[id] = factory;
+            map[id] = {
+                factory : null,
+                resolved : true,
+                exports : factory
+            };
         }
     };
     require = globals.require = function(id) {
@@ -49,14 +54,15 @@
             throw new Error('Module ' + id + ' has not been defined');
         }
         var module = map[id];
-        if (!module.exports) {
+        if (!module.resolved) {
             var args = [];
 
             module.deps.forEach(function(dep){
                 args.push(require(dep));
             })
 
-            module.exports = module.factory.apply(globals, args);
+            module.exports = module.factory.apply(globals, args) || null;
+            module.resolved = true;
         }
         return module.exports;
     };
@@ -80,7 +86,7 @@
 
 })(function(define,require) {
 
-define('skylark-ui-swt/ui',[
+define('skylark-ui-swt/swt',[
   "skylark-langx/skylark",
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
@@ -157,8 +163,8 @@ define('skylark-ui-swt/Widget',[
   "skylark-utils-dom/query",
   "skylark-utils-dom/plugins",
   "skylark-utils-collection/Map",
-  "./ui"
-],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,ui){
+  "./swt"
+],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,swt){
 
 /*---------------------------------------------------------------------------------*/
 
@@ -177,10 +183,17 @@ define('skylark-ui-swt/Widget',[
         this.overrided(elm,options);
 
         if (!elm) {
-          this._elm = this._create();
+          this._velm = this._create();
+          this._elm = this._velm.elm();
+        } else {
+          this._velm = elmx(this._elm);
         }
-        this._velm = elmx(this._elm);
-        this.state = this.options.state || new Map();
+        
+        Object.defineProperty(this,"state",{
+          value :this.options.state || new Map()
+        });
+
+        //this.state = this.options.state || new Map();
         this._init();
      },
 
@@ -206,8 +219,14 @@ define('skylark-ui-swt/Widget',[
      * @method _create
      */
     _create : function() {
-        //TODO:     
+        var template = this.options.template;
+        if (template) {
+          return this._elmx(template);
+        } else {
+          throw new Error("The template is not existed in options!");
+        }
     },
+
 
     /**
      * Init widget.
@@ -215,7 +234,6 @@ define('skylark-ui-swt/Widget',[
      * @method _init
      */
     _init : function() {
-      //TODO:
       var self = this;
       if (this.widgetClass) {
         this._velm.addClass(this.widgetClass);
@@ -223,16 +241,15 @@ define('skylark-ui-swt/Widget',[
       this.state.on("changed",function(e,args) {
         self._refresh(args.data);
       });
-
     },
 
 
     /**
-     * Post widget.
+     * Startup widget.
      * This is a callback method called when widget element is added into dom.
      * @method _post
      */
-    _post : function() {
+    _startup : function() {
 
     },
 
@@ -293,10 +310,10 @@ define('skylark-ui-swt/Widget',[
     /**
      * Returns a html element representing the widget.
      *
-     * @method html
+     * @method render
      * @return {HtmlElement} HTML element representing the widget.
      */
-    html: function() {
+    render: function() {
       return this._elm;
     },
 
@@ -430,6 +447,25 @@ define('skylark-ui-swt/Widget',[
         return ret == velm ? this : ret;
     },
 
+
+    /**
+     *  Attach the current widget element to dom document.
+     *
+     * @method attach
+     * @return {Widget} This Widget.
+     */
+    attach : function(target,position){
+        var elm = target;
+        if (!position || position=="child") {
+            noder.append(elm,this._elm);
+        } else  if (position == "before") {
+            noder.before(elm,this._elm);
+        } else if (position == "after") {
+            noder.after(elm,this._elm);
+        }
+        this._startup();
+    },
+
     /**
      *  Detach the current widget element from dom document.
      *
@@ -466,7 +502,33 @@ define('skylark-ui-swt/Widget',[
     return ctor;
   };
 
-	return ui.Widget = Widget;
+  Widget.register = function(ctor,widgetName) {
+    var meta = ctor.prototype,
+        pluginName = widgetName || meta.pluginName;
+
+    function addStatePropMethod(name) {
+        ctor.prototype[name] = function(value) {
+          if (value !== undefined) {
+            this.state.set(name,value);
+            return this;
+          } else {
+            return this.state.get(name);
+          }
+        };
+    }
+    if (meta.state) {
+      for (var name in meta.state) {
+          addStatePropMethod(name);
+      }
+    }
+
+    if (pluginName) {
+      plugins.register(ctor,pluginName);
+    }
+    return ctor;
+  };
+
+	return swt.Widget = Widget;
 });
 
 define('skylark-ui-swt/Panel',[
@@ -477,9 +539,9 @@ define('skylark-ui-swt/Panel',[
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
   "skylark-bootstrap3/collapse",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,collapse,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,collapse,swt,Widget){
 
   var Panel = Widget.inherit({
     klassName : "Panel",
@@ -561,10 +623,10 @@ define('skylark-ui-swt/Accordion',[
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
   "skylark-bootstrap3/collapse",
-  "./ui",
+  "./swt",
   "./Widget",
   "./Panel"
-],function(langx,browser,eventer,noder,geom,$,collapse,ui,Widget, Panel){
+],function(langx,browser,eventer,noder,geom,$,collapse,swt,Widget, Panel){
 
   var Accordion = Widget.inherit({
     klassName : "Accordion",
@@ -681,12 +743,12 @@ define('skylark-ui-swt/Accordion',[
 
     collapse : function() {
       // collapse this panel
-      this._velm.collapse("hide");
+      $(this._elm).collapse("hide");
     },
 
     toogle : function() {
       // toogle this panel
-     this._velm.collapse("toogle");
+     $(this._elm).collapse("toogle");
     },
 
     remove : function() {
@@ -694,35 +756,43 @@ define('skylark-ui-swt/Accordion',[
     }
   });
 
-  return ui.Accordion = Accordion;
+  return swt.Accordion = Accordion;
 });
 
 define('skylark-ui-swt/Button',[
   "skylark-langx/langx",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,$,ui,Widget){
+],function(langx,$,swt,Widget){
 
-	var Button = Widget.inherit({
-		klassName : "Button",
+	class Button extends Widget {
+		get klassName() {
+      return "Button";
+    } 
 
-    pluginName : "lark.button",
+    get pluginName(){
+      return "lark.button";
+    } 
 
-		options : {
-			btnSize : "lg",
-      btnType : "default",
-      leftIcon : null,
-      rightIcon : null,
-      topIcon : null, // TODO
-      bottomIcon : null //TODO
-		},
+		get options () {
+      return {
+        btnSize : "lg",
+        btnType : "default",
+        leftIcon : null,
+        rightIcon : null,
+        topIcon : null, // TODO
+        bottomIcon : null //TODO        
+      }
+		}
 
-    state : {
-      "text" : String
-    },
+    get state() {
+      return {
+        "text" : String
+      }
+    }
 
-    _parse: function (elm,options) {
+    _parse (elm,options) {
       var $el = $(elm),
           options = langx.mixin({},options);
 
@@ -782,10 +852,11 @@ define('skylark-ui-swt/Button',[
           $fa_icon_right.addClass('fa-icon-right').addClass('fa');
         }        
       }
-    },
+    }
 
-    _refresh: function (updates) {
-      this.overrided(updates);
+    _refresh (updates) {
+      //this.overrided(updates);
+      super._refresh(updates);
 
       var velm = this._velm;
 
@@ -813,9 +884,15 @@ define('skylark-ui-swt/Button',[
           }
       }
     }
-  });
+  };
 
-  return ui.Button = Button;
+  Widget.register(Button);
+//  class Buttonx extends Button {
+//
+//  }
+
+//  Widget.register(Buttonx,"lark.button");
+  return swt.Button = Button;
 
 });
 
@@ -829,14 +906,40 @@ define('skylark-ui-swt/Carousel',[
     "skylark-utils-dom/noder",
     "skylark-utils-dom/geom",
     "skylark-utils-dom/query",
-    "./ui",
+    "./swt",
     "./Widget",
     "skylark-bootstrap3/carousel"
-], function(langx, browser, eventer, noder, geom,  $, ui, Widget) {
+], function(langx, browser, eventer, noder, geom,  $, swt, Widget) {
 
     var Carousel =  Widget.inherit({
         klassName : "Carousel",
         pluginName : "lark.carousel",
+
+        options : {
+
+            items : [],
+
+            indicatorTemplate : "",
+            slideTemplate : "",
+
+            templates : {
+              container : "<div class=\"carousel slide\" data-ride=\"carousel\">" +
+                          "/div",
+              indicators : {
+                  container : "<ol class=\"carousel-indicators\">" +
+                              "</ol>",
+                  item :  "<li></li>"
+              },
+
+              slides : {
+                  container : "<div class=\"carousel-inner\">" +
+                              "/div",
+                  item :  "<div class=\"item carousel-item\">" +
+                            "<img alt=\"First slide\"  src=\"{{url}}\">" +
+                          "</div>"
+              }
+            }
+        },
 
         _init : function() {
           this._bs_carousel = this._velm.carousel(this.options);
@@ -883,10 +986,81 @@ define('skylark-ui-swt/Carousel',[
 
         add : function() {
             
+        },
+
+        createIndicator: function (obj) {
+          var gallery = this.gallery,
+            indicator = this.indicatorPrototype.cloneNode(false)
+          var title = gallery.getItemTitle(obj)
+          var thumbnailProperty = this.options.thumbnailProperty
+          var thumbnailUrl
+          var thumbnail
+          if (this.options.thumbnailIndicators) {
+            if (thumbnailProperty) {
+              thumbnailUrl = Gallery.getItemProperty(obj, thumbnailProperty)
+            }
+            if (thumbnailUrl === undefined) {
+              thumbnail = obj.getElementsByTagName && $(obj).find('img')[0]
+              if (thumbnail) {
+                thumbnailUrl = thumbnail.src
+              }
+            }
+            if (thumbnailUrl) {
+              indicator.style.backgroundImage = 'url("' + thumbnailUrl + '")'
+            }
+          }
+          if (title) {
+            indicator.title = title;
+          }
+          return indicator;
+      },
+
+      addIndicator: function (index) {
+        if (this.indicatorContainer.length) {
+          var indicator = this.createIndicator(this.list[index])
+          indicator.setAttribute('data-slide-to', index)
+          this.indicatorContainer[0].appendChild(indicator)
+          this.indicators.push(indicator)
         }
+      },
+
+      setActiveIndicator: function (index) {
+        if (this.indicators) {
+          if (this.activeIndicator) {
+            this.activeIndicator.removeClass(this.options.activeIndicatorClass)
+          }
+          this.activeIndicator = $(this.indicators[index])
+          this.activeIndicator.addClass(this.options.activeIndicatorClass)
+        }
+      },
+
+      initSlides: function (reload) {
+        if (!reload) {
+          this.indicatorContainer = this.container.find(
+            this.options.indicatorContainer
+          )
+          if (this.indicatorContainer.length) {
+            this.indicatorPrototype = document.createElement('li')
+            this.indicators = this.indicatorContainer[0].children
+          }
+        }
+        this.overrided(reload);
+      },
+
+      addSlide: function (index) {
+        this.overrided(index);
+        this.addIndicator(index)
+      },
+
+      resetSlides: function () {
+        this.overrided();
+        this.indicatorContainer.empty();
+        this.indicators = [];
+      },
+
     });
 
-    return ui.Carousel = Carousel;
+    return swt.Carousel = Carousel;
 
 });
 define('skylark-ui-swt/_Toggler',[
@@ -896,11 +1070,11 @@ define('skylark-ui-swt/_Toggler',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
-  var _Toggler = ui._Toggler = Widget.inherit({
+  var _Toggler = swt._Toggler = Widget.inherit({
     klassName: "_Toggler",
 
     toggle: function () {
@@ -944,9 +1118,9 @@ define('skylark-ui-swt/Checkbox',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./_Toggler"
-],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
+],function(langx,browser,eventer,noder,geom,$,swt,_Toggler){
 
   var Checkbox =  _Toggler.inherit({
     klassName: "Checkbox",
@@ -964,6 +1138,9 @@ define('skylark-ui-swt/Checkbox',[
       value : undefined
     },
 
+    /*
+     *@override
+     */
     _parse : function(elm,options) {
       options = this.overrided(elm,options);
       var $el = $(elm),
@@ -995,10 +1172,16 @@ define('skylark-ui-swt/Checkbox',[
       return options;
     },
 
+    /*
+     *@override
+     */
     _create : function() {
       //TODO
     },
 
+    /*
+     *@override
+     */
     _init : function() {
       var elm = this._elm;
 
@@ -1007,7 +1190,11 @@ define('skylark-ui-swt/Checkbox',[
       this.$chk = this._velm.$(this.options.selectors.chk);
     },
 
-    _attach : function() {
+
+    /*
+     *@override
+     */
+    _startup : function() {
       // handle internal events
       var self = this;
       this.$chk.on('change', function(evt) {
@@ -1017,6 +1204,9 @@ define('skylark-ui-swt/Checkbox',[
       });
     },
 
+    /*
+     *@override
+     */
     _refresh : function(updates) {
 
         function setCheckedState (checked) {
@@ -1061,7 +1251,7 @@ define('skylark-ui-swt/Checkbox',[
     }
   });
 
-	return ui.Checkbox = Checkbox;
+	return swt.Checkbox = Checkbox;
 });
 
 define('skylark-ui-swt/Combobox',[
@@ -1071,10 +1261,10 @@ define('skylark-ui-swt/Combobox',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget",
   "skylark-bootstrap3/dropdown"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
 
 
@@ -1391,8 +1581,249 @@ define('skylark-ui-swt/Combobox',[
 
 
 
-	return ui.Combobox = Combobox;
+	return swt.Combobox = Combobox;
 });
+
+define('skylark-ui-swt/InputBox',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./swt",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
+
+  var SyncAttrs = [
+    'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
+    'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
+  ];
+
+	var InputBox =  Widget.inherit({
+		klassName: "InputBox",
+
+    pluginName: "lark.inputbox",
+
+    /*
+     * Parse options from attached dom element.
+     * @override
+     */
+    _parse : function() {
+      var  velm = this._velm;
+
+      // get multiline option
+      this.options.multiline = velm.is("textarea");
+      
+      // get current state of input
+      var value = $chk.prop('checked');
+      var disabled = $chk.prop('disabled');
+      this.state.set("value",value);
+      this.state.set(("disabled",disabled));
+
+    },
+
+    /*
+     * Create a new  dom element for this widget
+     * @override
+     */
+    _create : function() {
+      var tagName = "input",attrs = {},
+          options = this.options;
+
+      langx.each([
+        'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
+        'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
+      ], function (name) {
+        attrs[name] = options[name];
+      });
+
+      if (options.multiline) {
+        tagName = "textarea"
+      } 
+      if (options.subtype) {
+        attrs.type = options.subtype;
+      }
+      this._elm = this._dom.noder.createElement(tagName,attrs);
+    },
+
+    /*
+     * Init this widget
+     * @override
+     */
+    _init : function() {
+    },
+
+    /*
+     * Sync dom element to widget state 
+     * @override
+     */
+    _sync : function() {
+      // handle internal events
+      var self = this;
+      this._velm.on('change', function(evt) {
+        var value = self._velm.prop('value');
+        self.state.set("value",value);
+      });
+    },
+
+    _refresh : function(updates) {
+        var self  = this;
+
+        if (updates["value"] !== undefined) {
+          if (self._velm.value() !== e.value) {
+            self._velm.value(updates.value);
+          }
+        }
+        if (updates["disabled"] !== undefined) {
+          self._velm.disable(updates["disabled"]);
+        }
+
+        // update visual with attribute values from control
+        this.overrided(changed);
+    },
+
+  });
+
+	return swt.InputBox = InputBox;
+});
+
+
+ define('skylark-ui-swt/ListGroup',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/query",
+  "./swt",
+  "./Widget"
+],function(langx,$,swt,Widget){
+
+    var ListGroup = Widget.inherit({
+        klassName : "ListGroup",
+
+        pluginName : "lark.listgroup",
+
+        options : {
+        	multiSelect: false,
+          	multiTier : false,
+          	toggle : false,
+          	classes : {
+            	active : "active"
+          	},
+          	selectors : {
+            	item : ".list-group-item"
+          	},
+          	selected : 0
+        },
+
+        state : {
+          selected : Object
+        },
+
+        _init : function() {
+            this.overrided();
+            var self = this,
+                velm = this._velm,
+                itemSelector = this.options.selectors.item;
+
+            this._$items = velm.$(itemSelector);
+
+            velm.on('click', itemSelector, function () {
+                var veItem = self._elmx(this);
+
+                if (!veItem.hasClass('disabled')) {
+                  var value = veItem.data("value");
+                  if (value === undefined) {
+                    value = self._$items.index(this);
+                  }
+                  self.state.set("selected",value);
+                }
+
+                //veItem.blur();
+                return false;
+            });
+            this.state.set("selected",this.options.selected);
+
+            var $this = velm,
+                $toggle = this.options.toggle,
+                obj = this;
+
+            //if (this.isIE() <= 9) {
+            //    $this.find("li.active").has("ul").children("ul").collapse("show");
+            //    $this.find("li").not(".active").has("ul").children("ul").collapse("hide");
+            //} else {
+                $this.query("li.active").has("ul").children("ul").addClass("collapse in");
+                $this.query("li").not(".active").has("ul").children("ul").addClass("collapse");
+            //}
+
+            //add the "doubleTapToGo" class to active items if needed
+            if (obj.options.doubleTapToGo) {
+                $this.query("li.active").has("ul").children("a").addClass("doubleTapToGo");
+            }
+
+            $this.query("li").has("ul").children("a").on("click" + "." + this.pluginName, function(e) {
+                e.preventDefault();
+
+                //Do we need to enable the double tap
+                if (obj.options.doubleTapToGo) {
+
+                    //if we hit a second time on the link and the href is valid, navigate to that url
+                    if (obj.doubleTapToGo($(this)) && $(this).attr("href") !== "#" && $(this).attr("href") !== "") {
+                        e.stopPropagation();
+                        document.location = $(this).attr("href");
+                        return;
+                    }
+                }
+
+                $(this).parent("li").toggleClass("active").children("ul").collapse("toggle");
+
+                if ($toggle) {
+                    $(this).parent("li").siblings().removeClass("active").children("ul.in").collapse("hide");
+                }
+
+            });
+
+
+        },
+
+        _refresh : function(updates) {
+          this.overrided(updates);
+          var self  = this;
+
+          function findItem(valueOrIdx) {
+            var $item;
+            if (langx.isNumber(valueOrIdx)) {
+              $item = self._$items.eq(valueOrIdx);
+            } else {
+              $item = self._$items.filter('[data-value="' + valueOrIdx + '"]');
+            }
+            return $item;
+          } 
+                 
+          function selectOneItem(valueOrIdx) {
+            findItem(valueOrIdx).addClass(self.options.classes.active);
+          }
+
+          function unselectOneItem(valueOrIdx) {
+            findItem(valueOrIdx).removeClass(self.options.classes.active);
+          }
+
+          if (updates["selected"]) {
+            if (this.options.multiSelect) {
+            } else {
+              unselectOneItem(updates["selected"].oldValue);
+              selectOneItem(updates["selected"].value);
+            }
+
+          }
+        }
+
+  });
+
+  return ListGroup;
+
+});
+
+
+
 
 define('skylark-ui-swt/Menu',[
   "skylark-langx/langx",
@@ -1401,14 +1832,14 @@ define('skylark-ui-swt/Menu',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 	
 	var popup = null;
 	var right_to_left ;
 
-	var Menu = ui.Menu = Widget.inherit({
+	var Menu = swt.Menu = Widget.inherit({
         klassName: "Menu",
 
 	    pluginName : "lark.menu",
@@ -1778,13 +2209,13 @@ define('skylark-ui-swt/Pagination',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
     'use strict';
 
-    var Pagination = ui.Pagination = Widget.inherit({
+    var Pagination = swt.Pagination = Widget.inherit({
         klassName : "Pagination",
 
         pluginName : "lark.pagination",
@@ -2012,13 +2443,13 @@ define('skylark-ui-swt/Progress',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
     'use strict';
 
-     var Progress = ui.Progress = Widget.inherit({
+     var Progress = swt.Progress = Widget.inherit({
      	klassName : "Progress",
 
      	pluginName : "lark.progress",
@@ -2079,11 +2510,11 @@ define('skylark-ui-swt/Radio',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./_Toggler"
-],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
+],function(langx,browser,eventer,noder,geom,$,swt,_Toggler){
 
-  var Radio = ui.Radio = _Toggler.inherit({
+  var Radio = swt.Radio = _Toggler.inherit({
     klassName: "Radio",
 
     pluginName : "lark.radio",
@@ -2203,6 +2634,236 @@ define('skylark-ui-swt/Radio',[
 });
 
 
+define('skylark-ui-swt/SelectList',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "./swt",
+  "./Widget",
+  "skylark-bootstrap3/dropdown"
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
+
+
+	// SELECT CONSTRUCTOR AND PROTOTYPE
+
+	var SelectList = Widget.inherit({
+		klassName: "SelectList",
+
+		pluginName : "lark.selectlist",
+	
+		options : {
+			emptyLabelHTML: '<li data-value=""><a href="#">No items</a></li>'
+
+		},
+
+		_init : function() {
+			this.$element = $(this._elm);
+			//this.options = langx.mixin({}, $.fn.selectlist.defaults, options);
+
+
+			this.$button = this.$element.find('.btn.dropdown-toggle');
+			this.$hiddenField = this.$element.find('.hidden-field');
+			this.$label = this.$element.find('.selected-label');
+			this.$dropdownMenu = this.$element.find('.dropdown-menu');
+
+			this.$button.dropdown();
+
+			this.$element.on('click.fu.selectlist', '.dropdown-menu a', langx.proxy(this.itemClicked, this));
+			this.setDefaultSelection();
+
+			if (this.options.resize === 'auto' || this.$element.attr('data-resize') === 'auto') {
+				this.resize();
+			}
+
+			// if selectlist is empty or is one item, disable it
+			var items = this.$dropdownMenu.children('li');
+			if( items.length === 0) {
+				this.disable();
+				this.doSelect( $(this.options.emptyLabelHTML));
+			}
+
+			// support jumping focus to first letter in dropdown when key is pressed
+			this.$element.on('shown.bs.dropdown', function () {
+					var $this = $(this);
+					// attach key listener when dropdown is shown
+					$(document).on('keypress.fu.selectlist', function(e){
+
+						// get the key that was pressed
+						var key = String.fromCharCode(e.which);
+						// look the items to find the first item with the first character match and set focus
+						$this.find("li").each(function(idx,item){
+							if ($(item).text().charAt(0).toLowerCase() === key) {
+								$(item).children('a').focus();
+								return false;
+							}
+						});
+
+				});
+			});
+
+			// unbind key event when dropdown is hidden
+			this.$element.on('hide.bs.dropdown', function () {
+					$(document).off('keypress.fu.selectlist');
+			});
+		},
+
+		destroy: function () {
+			this.$element.remove();
+			// any external bindings
+			// [none]
+			// empty elements to return to original markup
+			// [none]
+			// returns string of markup
+			return this.$element[0].outerHTML;
+		},
+
+		doSelect: function ($item) {
+			var $selectedItem;
+			this.$selectedItem = $selectedItem = $item;
+
+			this.$hiddenField.val(this.$selectedItem.attr('data-value'));
+			this.$label.html($(this.$selectedItem.children()[0]).html());
+
+			// clear and set selected item to allow declarative init state
+			// unlike other controls, selectlist's value is stored internal, not in an input
+			this.$element.find('li').each(function () {
+				if ($selectedItem.is($(this))) {
+					$(this).attr('data-selected', true);
+				} else {
+					$(this).removeData('selected').removeAttr('data-selected');
+				}
+			});
+		},
+
+		itemClicked: function (e) {
+			this.$element.trigger('clicked.fu.selectlist', this.$selectedItem);
+
+			e.preventDefault();
+			// ignore if a disabled item is clicked
+			if ($(e.currentTarget).parent('li').is('.disabled, :disabled')) { return; }
+
+			// is clicked element different from currently selected element?
+			if (!($(e.target).parent().is(this.$selectedItem))) {
+				this.itemChanged(e);
+			}
+
+			// return focus to control after selecting an option
+			this.$element.find('.dropdown-toggle').focus();
+		},
+
+		itemChanged: function (e) {
+			//selectedItem needs to be <li> since the data is stored there, not in <a>
+			this.doSelect($(e.target).closest('li'));
+
+			// pass object including text and any data-attributes
+			// to onchange event
+			var data = this.selectedItem();
+			// trigger changed event
+			this.$element.trigger('changed.fu.selectlist', data);
+		},
+
+		resize: function () {
+			var width = 0;
+			var newWidth = 0;
+			var sizer = $('<div/>').addClass('selectlist-sizer');
+
+
+			if (Boolean($(document).find('html').hasClass('fuelux'))) {
+				// default behavior for fuel ux setup. means fuelux was a class on the html tag
+				$(document.body).append(sizer);
+			} else {
+				// fuelux is not a class on the html tag. So we'll look for the first one we find so the correct styles get applied to the sizer
+				$('.fuelux:first').append(sizer);
+			}
+
+			sizer.append(this.$element.clone());
+
+			this.$element.find('a').each(function () {
+				sizer.find('.selected-label').text($(this).text());
+				newWidth = sizer.find('.selectlist').outerWidth();
+				newWidth = newWidth + sizer.find('.sr-only').outerWidth();
+				if (newWidth > width) {
+					width = newWidth;
+				}
+			});
+
+			if (width <= 1) {
+				return;
+			}
+
+			this.$button.css('width', width);
+			this.$dropdownMenu.css('width', width);
+
+			sizer.remove();
+		},
+
+		selectedItem: function () {
+			var txt = this.$selectedItem.text();
+			return langx.mixin({
+				text: txt
+			}, this.$selectedItem.data());
+		},
+
+		selectByText: function (text) {
+			var $item = $([]);
+			this.$element.find('li').each(function () {
+				if ((this.textContent || this.innerText || $(this).text() || '').toLowerCase() === (text || '').toLowerCase()) {
+					$item = $(this);
+					return false;
+				}
+			});
+			this.doSelect($item);
+		},
+
+		selectByValue: function (value) {
+			var selector = 'li[data-value="' + value + '"]';
+			this.selectBySelector(selector);
+		},
+
+		selectByIndex: function (index) {
+			// zero-based index
+			var selector = 'li:eq(' + index + ')';
+			this.selectBySelector(selector);
+		},
+
+		selectBySelector: function (selector) {
+			var $item = this.$element.find(selector);
+			this.doSelect($item);
+		},
+
+		setDefaultSelection: function () {
+			var $item = this.$element.find('li[data-selected=true]').eq(0);
+
+			if ($item.length === 0) {
+				$item = this.$element.find('li').has('a').eq(0);
+			}
+
+			this.doSelect($item);
+		},
+
+		enable: function () {
+			this.$element.removeClass('disabled');
+			this.$button.removeClass('disabled');
+		},
+
+		disable: function () {
+			this.$element.addClass('disabled');
+			this.$button.addClass('disabled');
+		}
+
+	});	
+
+
+	SelectList.prototype.getValue = SelectList.prototype.selectedItem;
+
+
+
+	return swt.SelectList = SelectList;
+});
+
 define('skylark-ui-swt/TabStrip',[
     "skylark-langx/langx",
     "skylark-utils-dom/browser",
@@ -2210,11 +2871,11 @@ define('skylark-ui-swt/TabStrip',[
     "skylark-utils-dom/noder",
     "skylark-utils-dom/geom",
     "skylark-utils-dom/query",
-    "./ui",
+    "./swt",
     "./Widget",
     "skylark-bootstrap3/tab",
     "skylark-bootstrap3/dropdown"
-], function(langx, browser, eventer, noder, geom,  $, ui, Widget) {
+], function(langx, browser, eventer, noder, geom,  $, swt, Widget) {
 
     var TabStrip = Widget.inherit({
         klassName : "TabStrip",
@@ -2258,112 +2919,6 @@ define('skylark-ui-swt/TabStrip',[
     return TabStrip;
 
 });
-define('skylark-ui-swt/Textbox',[
-  "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
-  "./ui",
-  "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
-
-
-  var SyncAttrs = [
-    'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
-    'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
-  ];
-
-	var Textbox = ui.Textbox = Widget.inherit({
-		klassName: "Textbox",
-
-    pluginName: "lark.textbox",
-
-    /*
-     * Parse options from attached dom element.
-     * @override
-     */
-    _parse : function() {
-      var  velm = this._velm;
-
-      // get multiline option
-      this.options.multiline = velm.is("textarea");
-      
-      // get current state of input
-      var value = $chk.prop('checked');
-      var disabled = $chk.prop('disabled');
-      this.state.set("value",value);
-      this.state.set(("disabled",disabled));
-
-    },
-
-    /*
-     * Create a new  dom element for this widget
-     * @override
-     */
-    _create : function() {
-      var tagName = "input",attrs = {},
-          options = this.options;
-
-      langx.each([
-        'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
-        'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
-      ], function (name) {
-        attrs[name] = options[name];
-      });
-
-      if (options.multiline) {
-        tagName = "textarea"
-      } 
-      if (options.subtype) {
-        attrs.type = options.subtype;
-      }
-      this._elm = this._dom.noder.createElement(tagName,attrs);
-    },
-
-    /*
-     * Init this widget
-     * @override
-     */
-    _init : function() {
-    },
-
-    /*
-     * Sync dom element to widget state 
-     * @override
-     */
-    _sync : function() {
-      // handle internal events
-      var self = this;
-      this._velm.on('change', function(evt) {
-        var value = self._velm.prop('value');
-        self.state.set("value",value);
-      });
-    },
-
-    _refresh : function(updates) {
-        var self  = this;
-
-        if (updates["value"] !== undefined) {
-          if (self._velm.value() !== e.value) {
-            self._velm.value(updates.value);
-          }
-        }
-        if (updates["disabled"] !== undefined) {
-          self._velm.disable(updates["disabled"]);
-        }
-
-        // update visual with attribute values from control
-        this.overrided(changed);
-    },
-
-  });
-
-	return Textbox;
-});
-
-
 define('skylark-ui-swt/Toolbar',[
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
@@ -2371,11 +2926,11 @@ define('skylark-ui-swt/Toolbar',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
-	var Toolbar = ui.Toolbar = Widget.inherit({
+	var Toolbar = swt.Toolbar = Widget.inherit({
         klassName: "Toolbar",
 
 	    pluginName : "lark.toolbar",
@@ -2575,44 +3130,486 @@ define('skylark-ui-swt/Toolbar',[
 
 });
 
+define('skylark-ui-swt/Uploader',[
+  "skylark-langx/langx",
+  "skylark-utils-dom/browser",
+  "skylark-utils-dom/eventer",
+  "skylark-utils-dom/noder",
+  "skylark-utils-dom/geom",
+  "skylark-utils-dom/query",
+  "skylark-utils-collection/ArrayList",
+  "skylark-utils-filer/uploader",
+  "./swt",
+  "./Widget"
+],function(langx,browser,eventer,noder,geom,$,ArrayList,uploader,swt,Widget){
+
+    /**
+     * This model represents a file.
+     *
+     */
+    var FileItem = langx.Stateful.inherit({
+        state: "pending",
+
+        /**
+         * Start upload.
+         *
+         */
+        start: function ()  {
+            if (this.isPending()) {
+                this.get('processor').submit();
+                this.state = "running";
+
+                // Dispatch event
+                this.trigger('filestarted', this);
+            }
+        },
+
+        /**
+         * Cancel a file upload.
+         *
+         */
+        cancel: function () {
+            this.get('processor').abort();
+            this.destroy();
+
+            // Dispatch event
+            this.state = "canceled";
+            this.trigger('filecanceled', this);
+        },
+
+        /**
+         * Notify file that progress updated.
+         *
+         */
+        progress: function (data)  {
+            // Dispatch event
+            this.trigger('fileprogress', this.get('processor').progress());
+        },
+
+        /**
+         * Notify file that upload failed.
+         *
+         */
+        fail: function (error)  {
+            // Dispatch event
+            this.state = "error";
+            this.trigger('filefailed', error);
+        },
+
+        /**
+         * Notify file that upload is done.
+         *
+         */
+        done: function (result)  {
+            // Dispatch event
+            this.state = "error";
+            this.trigger('filedone', result);
+        },
+
+        /**
+         * Is this file pending to be uploaded ?
+         *
+         */
+        isPending: function ()  {
+            return this.getState() == "pending";
+        },
+
+        /**
+         * Is this file currently uploading ?
+         *
+         */
+        isRunning: function () {
+            return this.getState() == "running";
+        },
+
+        /**
+         * Is this file uploaded ?
+         *
+         */
+        isDone: function () {
+            return this.getState() == "done";
+        },
+
+        /**
+         * Is this upload in error ?
+         *
+         */
+        isError: function () {
+            return this.getState() == "error" || this.getState == "canceled";
+        },
+
+        /**
+         * Get the file state.
+         *
+         */
+        getState: function () {
+            return this.state;
+        }
+    });
+
+    /**
+     * This is a file collection, used to manage the selected
+     * and processing files.
+     *
+     */
+    var FileItemCollection = ArrayList.inherit({
+        item: FileItem
+    });
+
+    /**
+     * A file view, which is the view that manage a single file
+     * process in the upload manager.
+     *
+     */
+    var FileItemWidget = Widget.inherit({
+        className: 'upload-manager-file row',
+
+        options : {
+          selectors : {
+            fileName : ".name",
+            fileSize : ".size",
+            cancel : ".cancel",
+            clear : ".clear",
+            progress : ".progress",
+            message : ".message"
+          }
+        },
+
+        state : {
+          fileName : String,
+          fileSize : Number
+        },
+
+        _init: function () {
+            this.processUploadMsg = this.options.processUploadMsg;
+            this.doneMsg = this.options.doneMsg;
+
+            this.fileName(this.options.fileName);
+            this.fileSize(this.options.fileSize);
+
+            // Bind model events
+            this.model.on('destroy', this.close, this);
+            this.model.on('fileprogress', this.updateProgress, this);
+            this.model.on('filefailed', this.hasFailed, this);
+            this.model.on('filedone', this.hasDone, this);
+
+            // In each case, update view
+            this.model.on('all', this.update, this);
+
+            // Bind events
+            this.bindEvents();
+
+            // Update elements
+            this.update();            
+        },
+
+        _refresh : function(updates) {
+
+        },
+
+        /**
+         * Update upload progress.
+         *
+         */
+        updateProgress: function (progress) {
+            var percent = parseInt(progress.loaded / progress.total * 100, 10);
+            var progressHTML = this.getHelpers().displaySize(progress.loaded)+' of '+this.getHelpers().displaySize(progress.total);
+            if (percent >= 100 && this.processUploadMsg) { progressHTML = this.processUploadMsg; }
+
+            $('.progress', this.el)
+                .find('.bar')
+                .css('width', percent+'%')
+                .parent()
+                .find('.progress-label')
+                .html(progressHTML);
+        },
+
+        /**
+         * File upload has failed.
+         *
+         */
+        hasFailed: function (error){
+            $('.message', this.el).html('<i class="icon-error"></i> '+error);
+        },
+
+        /**
+         * File upload is done.
+         *
+         */
+        hasDone: function (result){
+            $('.message', this.el).html('<i class="icon-success"></i> ' + (this.doneMsg || 'Uploaded'));
+        },
+
+        /**
+         * Update view without complete rendering.
+         *
+         */
+        update: function () {
+            var selectors = this.options.selectors,
+                when_pending = this._velm.$(selectors.size + "," + selectors.cancel),
+                when_running = this._velm.$(selectors.progress + "," + selectors.cancel),
+                when_done = this._velm.$(selectors.message + "," + selectors.clear);
+
+            if (this.model.isPending()) {
+                when_running.add(when_done).addClass('hidden');
+                when_pending.removeClass('hidden');
+            } else if (this.model.isRunning()) {
+                when_pending.add(when_done).addClass('hidden');
+                when_running.removeClass('hidden');
+            } else if (this.model.isDone() || this.model.isError()) {
+                when_pending.add(when_running).addClass('hidden');
+                when_done.removeClass('hidden');
+            }
+        },
+
+        /**
+         * Startup widget with binding events
+         * @override
+         *
+         */
+        _startup: function () {
+            var self = this;
+
+            // DOM events
+            this._velm.$(this.options.selectors.cancel).click(function(){
+                self.model.cancel();
+                self.collection.remove(self.model);
+            });
+            this._velm.$(this.options.selectors.clear).click(function(){
+                self.model.destroy();
+                self.collection.remove(self.model);
+            });
+        },
+
+        /**
+         * Compute data to be passed to the view.
+         *
+         */
+        computeData: function () {
+            return $.extend(this.getHelpers(), this.model.get('data'));
+        }
+    });
+
+
+    var Uploader =  Widget.inherit({
+        klassName : "Uploader",
+        pluginName : "lark.uploader",
+
+        options: {
+
+            uploadUrl: '/upload',
+            autoUpload: false,
+            selectors : {
+              fileList : '.file-list',
+              nodata : ".file-list .no-data",
+              pickFiles: '.file-picker',
+              startUploads: '.start-uploads',
+              cancelUploads: '.cancel-uploads',
+            },
+
+            dataType: 'json',
+
+            fileItem : {
+            	selectors : {
+
+            	},
+
+            	template : null
+            }
+        },
+
+        state : {
+          files : FileItemCollection
+        },
+
+        /**
+         * Render the main part of upload manager.
+         *
+         */
+        _init: function () {
+            var self = this;
+
+
+            // Create the file list
+            var files = this.files(new FileItemCollection());
+
+            // Add add files handler
+            var filePicker = this._velm.$(this.options.selectors.pickFiles), self = this;
+
+            this.uploadProcess =  uploader(this._elm,{  //$.$(this.el).fileupload({
+                dataType: this.options.dataType,
+                url: this.options.uploadUrl,
+                formData: this.options.formData,
+                autoUpload: this.options.autoUpload,
+                singleFileUploads: true,
+                picker : filePicker,
+
+                'add' : function (e, data) {
+                    // Create an array in which the file objects
+                    // will be stored.
+                    data.uploadManagerFiles = [];
+
+                    // A file is added, process for each file.
+                    // Note: every times, the data.files array length is 1 because
+                    //       of "singleFileUploads" option.
+                    langx.each(data.files, function (index, file_data) {
+                        // Create the file object
+                        file_data.id = self.file_id++;
+                        var file = new FileItem({
+                            data: file_data,
+                            processor: data
+                        });
+
+                        // Add file in data
+                        data.uploadManagerFiles.push(file);
+
+                        // Trigger event
+                        //self.trigger('fileadd', file);
+                        // Add it to current list
+                        self.files.add(file);
+
+                        // Create the view
+                        self.renderFile(file);
+
+
+                    });
+                },
+                'progress' : function (e, data) {
+                    langx.each(data.uploadManagerFiles, function (index, file) {
+                        //self.trigger('fileprogress', file, data);
+
+                        file.progress(progress);
+                    });
+                },
+
+                'fail' : function (e, data) {
+                    langx.each(data.uploadManagerFiles, function (index, file) {
+                        var error = "Unknown error";
+                        if (typeof data.errorThrown == "string") {
+                            error = data.errorThrown;
+                        } else if (typeof data.errorThrown == "object") {
+                            error = data.errorThrown.message;
+                        } else if (data.result) {
+                            if (data.result.error) {
+                                error = data.result.error;
+                            } else if (data.result.files && data.result.files[index] && data.result.files[index].error) {
+                                error = data.result.files[index].error;
+                            } else {
+                                error = "Unknown remote error";
+                            }
+                        }
+
+                        //self.trigger('filefail', file, error);
+                        file.fail(error);
+                    });
+                },
+
+                'done' : function (e, data) {
+                    langx.each(data.uploadManagerFiles, function (index, file) {
+                        //self.trigger('filedone', file, data);
+                        file.done(data.result);
+                    });
+                }
+
+            });
+
+            // Add upload process events handlers
+            this.bindProcessEvents();
+
+            // Add cancel all handler
+            this._velm.$(this.options.selectors.cancelUploads).click(function(){
+                while (self.files.length) {
+                    self.files.at(0).cancel();
+                }
+            });
+
+            // Add start uploads handler
+            this._velm.$(this.options.selectors.startUploads).click(function(){
+                self.files.forEach(function(file){
+                    file.start();
+                });
+            });
+
+            // Render current files
+            /*
+            this.files.forEach(function (file) {
+                self.renderFile(file);
+            });
+            */
+
+            this._refresh({files:true});
+        
+        },
+
+        _refresh : function(updates) {
+            var self = this;
+            function updateFileList()  {
+                var selectors = self.options.selectors,
+                    files = self.files();
+                var with_files_elements = self._velm.$(selectors.cancelUploads + ',' + selectors.startUploads);
+                var without_files_elements = self._velm.$(selectors.nodata);
+                if (files.length > 0) {
+                    with_files_elements.removeClass('hidden');
+                    without_files_elements.addClass('hidden');
+                } else {
+                    with_files_elements.addClass('hidden');
+                    without_files_elements.removeClass('hidden');
+                }
+            }
+
+            if (updates["files"]) {
+              updateFileList();
+            }
+
+        },
+
+        /**
+         * Render a file.
+         *
+         */
+        renderFile: function (file) {
+            var file_view = new FileItemWidget(langx.mixin({},this.options, {
+              model: file,
+              template : this.options.fileItem.template
+            }));
+            //this._velm.$(this.options.selectors.fileList).append(file_view.render());
+            file_view.attach(this._velm.$(this.options.selectors.fileList));
+        },
+
+        /**
+         * Bind events on the upload processor.
+         *
+         */
+        bindProcessEvents: function () {
+        }
+    });
+
+    return swt.Uploader = Uploader;
+});
+
 define('skylark-ui-swt/main',[
-    "./ui",
+    "./swt",
     "./Widget",
     "./Accordion",
     "./Button",
     "./Carousel",
     "./Checkbox",
     "./Combobox",
+    "./InputBox",
+    "./ListGroup",
     "./Menu",
     "./Pagination",
     "./Progress",
     "./Radio",
+    "./SelectList",
     "./TabStrip",
-    "./Textbox",
-    "./Toolbar"
-/*    
-    "./checkbox",
-    "./combobox",
-    "./datepicker",
-    "./dropdown-autoflip",
-    "./infinite-scroll",
-    "./loader",
-    "./menu",
-    "./picker",
-    "./pillbox",
-    "./placard",
-    "./radio",
-    "./scheduler",
-    "./search",
-    "./selectlist",
-    "./spinbox",
-    "./toolbar",
-    "./wizard"
-*/
-], function(ui) {
-    return ui;
+    "./Toolbar",
+    "./Uploader"
+], function(swt) {
+    return swt;
 });
 define('skylark-ui-swt', ['skylark-ui-swt/main'], function (main) { return main; });
 
 
 },this);
+//# sourceMappingURL=sourcemaps/skylark-ui-swt.js.map

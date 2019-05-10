@@ -5,11 +5,11 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
-	var Toolbar = ui.Toolbar = Widget.inherit({
+	var Toolbar = swt.Toolbar = Widget.inherit({
         klassName: "Toolbar",
 
 	    pluginName : "lark.toolbar",

@@ -5,11 +5,11 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./_Toggler"
-],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
+],function(langx,browser,eventer,noder,geom,$,swt,_Toggler){
 
-  var Radio = ui.Radio = _Toggler.inherit({
+  var Radio = swt.Radio = _Toggler.inherit({
     klassName: "Radio",
 
     pluginName : "lark.radio",

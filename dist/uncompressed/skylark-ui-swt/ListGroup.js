@@ -1,113 +1,130 @@
  define([
   "skylark-langx/langx",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,$,ui,Widget){
+],function(langx,$,swt,Widget){
 
     var ListGroup = Widget.inherit({
         klassName : "ListGroup",
 
-        pluginName : "lark.ListGroup",
+        pluginName : "lark.listgroup",
 
-    options : {
-    },
+        options : {
+        	multiSelect: false,
+          	multiTier : false,
+          	toggle : false,
+          	classes : {
+            	active : "active"
+          	},
+          	selectors : {
+            	item : ".list-group-item"
+          	},
+          	selected : 0
+        },
 
-    state : {
-      "text" : String
-    },
+        state : {
+          selected : Object
+        },
 
-    _parse: function (elm,options) {
-      var $el = $(elm),
-          options = langx.mixin({},options);
+        _init : function() {
+            this.overrided();
+            var self = this,
+                velm = this._velm,
+                itemSelector = this.options.selectors.item;
 
-      if (!options.btnType) {
-        if ($el.hasClass("btn-link")) {
-          options.btnType = "link";
-        } else if ($el.hasClass("btn-default")) {
-          options.btnType = "default";
-        } else if ($el.hasClass("btn-primary")) {
-          options.btnType = "primary";
-        } else if ($el.hasClass("btn-info")) {
-          options.btnType = "info";
-        } else if ($el.hasClass("btn-success")) {
-          options.btnType = "success";
-        } else if ($el.hasClass("btn-warning")) {
-          options.btnType = "warning";
-        } else if ($el.hasClass("btn-danger")) {
-          options.btnType = "danger";
-        }        
-      }
+            this._$items = velm.$(itemSelector);
 
-      if (!options.btnSize) {
-        if ($el.hasClass("btn-xs")) {
-          options.btnSize = "xs";
-        } else if ($el.hasClass("btn-sm")) {
-          options.btnSize = "sm";
-        } else if ($el.hasClass("btn-lg")) {
-          options.btnSize = "lg";
-        }        
-      }
+            velm.on('click', itemSelector, function () {
+                var veItem = self._elmx(this);
 
-      if (!options.href) {
-        options.href = $el.attr('href');
+                if (!veItem.hasClass('disabled')) {
+                  var value = veItem.data("value");
+                  if (value === undefined) {
+                    value = self._$items.index(this);
+                  }
+                  self.state.set("selected",value);
+                }
 
-        options.target = $el.attr('target');
-      }
+                //veItem.blur();
+                return false;
+            });
+            this.state.set("selected",this.options.selected);
 
-      if (!options.text) {
-        options.text = $el.find('.text').text();
-      }
+            var $this = velm,
+                $toggle = this.options.toggle,
+                obj = this;
 
-      if (!options.leftIcon) {
-        var $fa_icon_left = $el.find('.fa-icon-left');
-        if ($fa_icon_left.length > 0) {
-          $fa_icon_left.removeClass('fa-icon-left').removeClass('fa');
-          options.leftIcon = $fa_icon_left.attr('class');
-          $fa_icon_left.addClass('fa-icon-left').addClass('fa');
-        }
-      }
+            //if (this.isIE() <= 9) {
+            //    $this.find("li.active").has("ul").children("ul").collapse("show");
+            //    $this.find("li").not(".active").has("ul").children("ul").collapse("hide");
+            //} else {
+                $this.query("li.active").has("ul").children("ul").addClass("collapse in");
+                $this.query("li").not(".active").has("ul").children("ul").addClass("collapse");
+            //}
 
-      if (!options.rightIcon) {
-        var $fa_icon_right = $el.find('.fa-icon-right');
+            //add the "doubleTapToGo" class to active items if needed
+            if (obj.options.doubleTapToGo) {
+                $this.query("li.active").has("ul").children("a").addClass("doubleTapToGo");
+            }
 
-        if ($fa_icon_right.length > 0) {
-          $fa_icon_right.removeClass('fa-icon-right').removeClass('fa');
-          options.rightIcon = $fa_icon_right.attr('class');
-          $fa_icon_right.addClass('fa-icon-right').addClass('fa');
-        }        
-      }
-    },
+            $this.query("li").has("ul").children("a").on("click" + "." + this.pluginName, function(e) {
+                e.preventDefault();
 
-    _refresh: function (updates) {
-      this.overrided(updates);
+                //Do we need to enable the double tap
+                if (obj.options.doubleTapToGo) {
 
-      var velm = this._velm;
+                    //if we hit a second time on the link and the href is valid, navigate to that url
+                    if (obj.doubleTapToGo($(this)) && $(this).attr("href") !== "#" && $(this).attr("href") !== "") {
+                        e.stopPropagation();
+                        document.location = $(this).attr("href");
+                        return;
+                    }
+                }
 
-      if (updates.btnType) {
-          velm.removeClass('btn-link btn-default btn-primary btn-info btn-success btn-warning btn-danger').addClass("btn-" + updates.btnType.value);
-      }
+                $(this).parent("li").toggleClass("active").children("ul").collapse("toggle");
 
-      if (updates.btnSize) {
-        velm.removeClass('btn-xs btn-sm btn-lg').addClass("btn-" + updates.btnSize.value);
-      }
+                if ($toggle) {
+                    $(this).parent("li").siblings().removeClass("active").children("ul.in").collapse("hide");
+                }
 
-      if (updates.text) {
-        velm.$('.text').text(updates.text.value);
-      }
+            });
 
-      if (updates.left) {
-          velm.$('.fa-icon-left').remove();
-          velm.prepend('<i style="word-spacing: -1em;" class="fa fa-icon-left fa-' + updates.iconleft.value + '">&nbsp;</i>\n');
-      }
 
-      if (updates.iconright) {
-          velm.$('.fa-icon-right').remove();
-          if (updates.iconright.value) {
-              velm.append('<i style="word-spacing: -1em;" class="fa fa-icon-right fa-' + updates.iconright.value + '">&nbsp;</i>\n');
+        },
+
+        _refresh : function(updates) {
+          this.overrided(updates);
+          var self  = this;
+
+          function findItem(valueOrIdx) {
+            var $item;
+            if (langx.isNumber(valueOrIdx)) {
+              $item = self._$items.eq(valueOrIdx);
+            } else {
+              $item = self._$items.filter('[data-value="' + valueOrIdx + '"]');
+            }
+            return $item;
+          } 
+                 
+          function selectOneItem(valueOrIdx) {
+            findItem(valueOrIdx).addClass(self.options.classes.active);
           }
-      }
-    }
+
+          function unselectOneItem(valueOrIdx) {
+            findItem(valueOrIdx).removeClass(self.options.classes.active);
+          }
+
+          if (updates["selected"]) {
+            if (this.options.multiSelect) {
+            } else {
+              unselectOneItem(updates["selected"].oldValue);
+              selectOneItem(updates["selected"].value);
+            }
+
+          }
+        }
+
   });
 
   return ListGroup;
@@ -115,66 +132,4 @@
 });
 
 
-
-   // LISTGROUP PUBLIC CLASS DEFINITION
-    // =======================
-    var ListGroup = function (element, options) {
-        this.$element = $(element);
-        this.options = options || {};
-        this.init();
-    };
-
-    ListGroup.prototype.init = function() {
-        var me = this;
-        var $element = this.$element;
-        var options = this.options;
-
-        if (options.toggle)
-            $element.attr('data-toggle', options.toggle);
-
-        $element.on('click', '.list-group-item', function () {
-            var $item = $(this);
-
-            if (!$item.hasClass('disabled')) {
-
-                if ($element.data('toggle') == 'items')
-                    $item.toggleClass('active');
-                else
-                    me.unselect('*')
-                      .select($item);
-
-                if (options.click)
-                    options.click.apply(this);
-            }
-
-            $item.blur();
-            return false;
-        });
-    };
-
-    ListGroup.prototype.select = function (item) {
-        if (item instanceof $)
-            item.addClass('active');
-
-        if (typeof item === 'string')
-            item = [item];
-
-        if (Array.isArray(item)) {
-            for (var i in item) {
-                var val = item[i];
-                this.$element
-                    .find('.list-group-item[data-value=\'' + val + '\']')
-                    .addClass('active');
-            }
-        }
-        return this;
-    };
-
-    ListGroup.prototype.unselect = function (selector) {
-        this.$element
-                .find('.list-group-item')
-                .filter(selector || '*')
-                    .removeClass('active');
-        return this;
-    };
 

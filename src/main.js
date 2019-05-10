@@ -1,37 +1,21 @@
 define([
-    "./ui",
+    "./swt",
     "./Widget",
     "./Accordion",
     "./Button",
     "./Carousel",
     "./Checkbox",
     "./Combobox",
+    "./InputBox",
+    "./ListGroup",
     "./Menu",
     "./Pagination",
     "./Progress",
     "./Radio",
+    "./SelectList",
     "./TabStrip",
-    "./Textbox",
-    "./Toolbar"
-/*    
-    "./checkbox",
-    "./combobox",
-    "./datepicker",
-    "./dropdown-autoflip",
-    "./infinite-scroll",
-    "./loader",
-    "./menu",
-    "./picker",
-    "./pillbox",
-    "./placard",
-    "./radio",
-    "./scheduler",
-    "./search",
-    "./selectlist",
-    "./spinbox",
-    "./toolbar",
-    "./wizard"
-*/
-], function(ui) {
-    return ui;
+    "./Toolbar",
+    "./Uploader"
+], function(swt) {
+    return swt;
 });

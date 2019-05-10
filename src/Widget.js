@@ -10,8 +10,8 @@ define([
   "skylark-utils-dom/query",
   "skylark-utils-dom/plugins",
   "skylark-utils-collection/Map",
-  "./ui"
-],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,ui){
+  "./swt"
+],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,swt){
 
 /*---------------------------------------------------------------------------------*/
 
@@ -30,10 +30,17 @@ define([
         this.overrided(elm,options);
 
         if (!elm) {
-          this._elm = this._create();
+          this._velm = this._create();
+          this._elm = this._velm.elm();
+        } else {
+          this._velm = elmx(this._elm);
         }
-        this._velm = elmx(this._elm);
-        this.state = this.options.state || new Map();
+        
+        Object.defineProperty(this,"state",{
+          value :this.options.state || new Map()
+        });
+
+        //this.state = this.options.state || new Map();
         this._init();
      },
 
@@ -59,8 +66,14 @@ define([
      * @method _create
      */
     _create : function() {
-        //TODO:     
+        var template = this.options.template;
+        if (template) {
+          return this._elmx(template);
+        } else {
+          throw new Error("The template is not existed in options!");
+        }
     },
+
 
     /**
      * Init widget.
@@ -68,7 +81,6 @@ define([
      * @method _init
      */
     _init : function() {
-      //TODO:
       var self = this;
       if (this.widgetClass) {
         this._velm.addClass(this.widgetClass);
@@ -76,16 +88,15 @@ define([
       this.state.on("changed",function(e,args) {
         self._refresh(args.data);
       });
-
     },
 
 
     /**
-     * Post widget.
+     * Startup widget.
      * This is a callback method called when widget element is added into dom.
      * @method _post
      */
-    _post : function() {
+    _startup : function() {
 
     },
 
@@ -146,10 +157,10 @@ define([
     /**
      * Returns a html element representing the widget.
      *
-     * @method html
+     * @method render
      * @return {HtmlElement} HTML element representing the widget.
      */
-    html: function() {
+    render: function() {
       return this._elm;
     },
 
@@ -283,6 +294,25 @@ define([
         return ret == velm ? this : ret;
     },
 
+
+    /**
+     *  Attach the current widget element to dom document.
+     *
+     * @method attach
+     * @return {Widget} This Widget.
+     */
+    attach : function(target,position){
+        var elm = target;
+        if (!position || position=="child") {
+            noder.append(elm,this._elm);
+        } else  if (position == "before") {
+            noder.before(elm,this._elm);
+        } else if (position == "after") {
+            noder.after(elm,this._elm);
+        }
+        this._startup();
+    },
+
     /**
      *  Detach the current widget element from dom document.
      *
@@ -319,5 +349,31 @@ define([
     return ctor;
   };
 
-	return ui.Widget = Widget;
+  Widget.register = function(ctor,widgetName) {
+    var meta = ctor.prototype,
+        pluginName = widgetName || meta.pluginName;
+
+    function addStatePropMethod(name) {
+        ctor.prototype[name] = function(value) {
+          if (value !== undefined) {
+            this.state.set(name,value);
+            return this;
+          } else {
+            return this.state.get(name);
+          }
+        };
+    }
+    if (meta.state) {
+      for (var name in meta.state) {
+          addStatePropMethod(name);
+      }
+    }
+
+    if (pluginName) {
+      plugins.register(ctor,pluginName);
+    }
+    return ctor;
+  };
+
+	return swt.Widget = Widget;
 });

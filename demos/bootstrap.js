@@ -19,6 +19,11 @@ requirejs.config({
             main: 'main'
          },
          {
+           name : "skylark-utils-filer" ,
+           location : "../node_modules/skylark-utils-filer/dist/uncompressed/skylark-utils-filer",
+            main: 'main'
+         },
+         {
             name: 'skylark-bootstrap3',
             location : "../node_modules/skylark-bootstrap3/dist/uncompressed/skylark-bootstrap3",
             main: 'main'

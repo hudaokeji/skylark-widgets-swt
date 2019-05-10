@@ -5,14 +5,40 @@ define([
     "skylark-utils-dom/noder",
     "skylark-utils-dom/geom",
     "skylark-utils-dom/query",
-    "./ui",
+    "./swt",
     "./Widget",
     "skylark-bootstrap3/carousel"
-], function(langx, browser, eventer, noder, geom,  $, ui, Widget) {
+], function(langx, browser, eventer, noder, geom,  $, swt, Widget) {
 
     var Carousel =  Widget.inherit({
         klassName : "Carousel",
         pluginName : "lark.carousel",
+
+        options : {
+
+            items : [],
+
+            indicatorTemplate : "",
+            slideTemplate : "",
+
+            templates : {
+              container : "<div class=\"carousel slide\" data-ride=\"carousel\">" +
+                          "/div",
+              indicators : {
+                  container : "<ol class=\"carousel-indicators\">" +
+                              "</ol>",
+                  item :  "<li></li>"
+              },
+
+              slides : {
+                  container : "<div class=\"carousel-inner\">" +
+                              "/div",
+                  item :  "<div class=\"item carousel-item\">" +
+                            "<img alt=\"First slide\"  src=\"{{url}}\">" +
+                          "</div>"
+              }
+            }
+        },
 
         _init : function() {
           this._bs_carousel = this._velm.carousel(this.options);
@@ -59,9 +85,80 @@ define([
 
         add : function() {
             
+        },
+
+        createIndicator: function (obj) {
+          var gallery = this.gallery,
+            indicator = this.indicatorPrototype.cloneNode(false)
+          var title = gallery.getItemTitle(obj)
+          var thumbnailProperty = this.options.thumbnailProperty
+          var thumbnailUrl
+          var thumbnail
+          if (this.options.thumbnailIndicators) {
+            if (thumbnailProperty) {
+              thumbnailUrl = Gallery.getItemProperty(obj, thumbnailProperty)
+            }
+            if (thumbnailUrl === undefined) {
+              thumbnail = obj.getElementsByTagName && $(obj).find('img')[0]
+              if (thumbnail) {
+                thumbnailUrl = thumbnail.src
+              }
+            }
+            if (thumbnailUrl) {
+              indicator.style.backgroundImage = 'url("' + thumbnailUrl + '")'
+            }
+          }
+          if (title) {
+            indicator.title = title;
+          }
+          return indicator;
+      },
+
+      addIndicator: function (index) {
+        if (this.indicatorContainer.length) {
+          var indicator = this.createIndicator(this.list[index])
+          indicator.setAttribute('data-slide-to', index)
+          this.indicatorContainer[0].appendChild(indicator)
+          this.indicators.push(indicator)
         }
+      },
+
+      setActiveIndicator: function (index) {
+        if (this.indicators) {
+          if (this.activeIndicator) {
+            this.activeIndicator.removeClass(this.options.activeIndicatorClass)
+          }
+          this.activeIndicator = $(this.indicators[index])
+          this.activeIndicator.addClass(this.options.activeIndicatorClass)
+        }
+      },
+
+      initSlides: function (reload) {
+        if (!reload) {
+          this.indicatorContainer = this.container.find(
+            this.options.indicatorContainer
+          )
+          if (this.indicatorContainer.length) {
+            this.indicatorPrototype = document.createElement('li')
+            this.indicators = this.indicatorContainer[0].children
+          }
+        }
+        this.overrided(reload);
+      },
+
+      addSlide: function (index) {
+        this.overrided(index);
+        this.addIndicator(index)
+      },
+
+      resetSlides: function () {
+        this.overrided();
+        this.indicatorContainer.empty();
+        this.indicators = [];
+      },
+
     });
 
-    return ui.Carousel = Carousel;
+    return swt.Carousel = Carousel;
 
 });

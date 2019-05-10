@@ -5,9 +5,9 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./_Toggler"
-],function(langx,browser,eventer,noder,geom,$,ui,_Toggler){
+],function(langx,browser,eventer,noder,geom,$,swt,_Toggler){
 
   var Checkbox =  _Toggler.inherit({
     klassName: "Checkbox",
@@ -25,6 +25,9 @@ define([
       value : undefined
     },
 
+    /*
+     *@override
+     */
     _parse : function(elm,options) {
       options = this.overrided(elm,options);
       var $el = $(elm),
@@ -56,10 +59,16 @@ define([
       return options;
     },
 
+    /*
+     *@override
+     */
     _create : function() {
       //TODO
     },
 
+    /*
+     *@override
+     */
     _init : function() {
       var elm = this._elm;
 
@@ -68,7 +77,11 @@ define([
       this.$chk = this._velm.$(this.options.selectors.chk);
     },
 
-    _attach : function() {
+
+    /*
+     *@override
+     */
+    _startup : function() {
       // handle internal events
       var self = this;
       this.$chk.on('change', function(evt) {
@@ -78,6 +91,9 @@ define([
       });
     },
 
+    /*
+     *@override
+     */
     _refresh : function(updates) {
 
         function setCheckedState (checked) {
@@ -122,5 +138,5 @@ define([
     }
   });
 
-	return ui.Checkbox = Checkbox;
+	return swt.Checkbox = Checkbox;
 });

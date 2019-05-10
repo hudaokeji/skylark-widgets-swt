@@ -5,9 +5,9 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
     /*
     * This module used the following source code
@@ -20,6 +20,41 @@ define([
     * and MIT (http://www.opensource.org/licenses/mit-license.php) licenses.
     */
 
+    var Tabular = Widget.inherit({
+        klassName : "Tabular",
+
+        pluginName : "lark.tabular",
+
+        options : {
+            buttonClasses : { 
+                append: null, 
+                removeLast: null, 
+                insert: null, 
+                remove: null, 
+                moveUp: null, 
+                moveDown: null, 
+                rowDrag: null 
+            },
+            sectionClasses : { 
+                caption: null, 
+                header: null, 
+                body: null, 
+                subPanel: null, 
+                footer: null 
+            },
+            hideButtons : { 
+                append: false, 
+                removeLast: false, 
+                insert: false, 
+                remove: false, 
+                moveUp: false, 
+                moveDown: false 
+            }
+
+        },
+
+
+    });
     // The default initial options.
     var _defaultInitOptions = {
         // The text as table caption, set null to disable caption generation.

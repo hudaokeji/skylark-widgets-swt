@@ -6,9 +6,9 @@ define([
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
   "skylark-bootstrap3/collapse",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,collapse,ui,Widget){
+],function(langx,browser,eventer,noder,geom,$,collapse,swt,Widget){
 
   var Panel = Widget.inherit({
     klassName : "Panel",

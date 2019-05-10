@@ -5,20 +5,19 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./ui",
+  "./swt",
   "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ui,Widget){
-
+],function(langx,browser,eventer,noder,geom,$,swt,Widget){
 
   var SyncAttrs = [
     'rows', 'spellcheck', 'maxLength', 'size', 'readonly', 'min',
     'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
   ];
 
-	var Textbox = ui.Textbox = Widget.inherit({
-		klassName: "Textbox",
+	var InputBox =  Widget.inherit({
+		klassName: "InputBox",
 
-    pluginName: "lark.textbox",
+    pluginName: "lark.inputbox",
 
     /*
      * Parse options from attached dom element.
@@ -100,6 +99,6 @@ define([
 
   });
 
-	return Textbox;
+	return swt.InputBox = InputBox;
 });
 
