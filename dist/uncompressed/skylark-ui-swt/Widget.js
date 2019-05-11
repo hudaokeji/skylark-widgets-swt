@@ -294,6 +294,10 @@ define([
         return ret == velm ? this : ret;
     },
 
+    throb: function(params) {
+      return noder.throb(this._elm,params);
+    },
+
 
     /**
      *  Attach the current widget element to dom document.
