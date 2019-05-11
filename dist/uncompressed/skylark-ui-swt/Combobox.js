@@ -14,8 +14,8 @@ define([
 
 	// COMBOBOX CONSTRUCTOR AND PROTOTYPE
 
-	var Combobox = Widget.inherit({
-		klassName: "Combobox",
+	var ComboBox = Widget.inherit({
+		klassName: "ComboBox",
 
 		pluginName : "lark.combobox",
 
@@ -321,9 +321,9 @@ define([
 
 
 
-	Combobox.prototype.getValue = Combobox.prototype.selectedItem;
+	ComboBox.prototype.getValue = ComboBox.prototype.selectedItem;
 
 
 
-	return swt.Combobox = Combobox;
+	return swt.ComboBox = ComboBox;
 });

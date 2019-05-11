@@ -9,8 +9,8 @@ define([
   "./_Toggler"
 ],function(langx,browser,eventer,noder,geom,$,swt,_Toggler){
 
-  var Checkbox =  _Toggler.inherit({
-    klassName: "Checkbox",
+  var CheckBox =  _Toggler.inherit({
+    klassName: "CheckBox",
 
     pluginName : "lark.checkbox",
 
@@ -138,5 +138,5 @@ define([
     }
   });
 
-	return swt.Checkbox = Checkbox;
+	return swt.CheckBox = CheckBox;
 });
