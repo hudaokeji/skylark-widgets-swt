@@ -5,8 +5,8 @@ define([
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "skylark-utils-collection/ArrayList",
-  "skylark-utils-filer/uploader",
+  "skylark-data-collection/ArrayList",
+  "skylark-storages-diskfs/uploader",
   "./swt",
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,ArrayList,uploader,swt,Widget){

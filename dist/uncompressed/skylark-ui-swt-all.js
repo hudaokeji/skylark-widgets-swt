@@ -10150,12 +10150,12 @@ define('skylark-utils-dom/plugins',[
 
     return plugins;
 });
-define('skylark-utils-collection/collections',[
+define('skylark-data-collection/collections',[
 	"skylark-langx/skylark"
 ],function(skylark){
 	return skylark.collections = {};
 });
-define('skylark-utils-collection/Collection',[
+define('skylark-data-collection/Collection',[
     "skylark-langx/Evented",
     "./collections"
 ], function(Evented, collections) {
@@ -10241,7 +10241,7 @@ define('skylark-utils-collection/Collection',[
 });
 
 
-define('skylark-utils-collection/Map',[
+define('skylark-data-collection/Map',[
     "./collections",
     "./Collection"
 ], function( collections, Collection) {
@@ -10477,7 +10477,7 @@ define('skylark-ui-swt/Widget',[
   "skylark-utils-dom/elmx",
   "skylark-utils-dom/query",
   "skylark-utils-dom/plugins",
-  "skylark-utils-collection/Map",
+  "skylark-data-collection/Map",
   "./swt"
 ],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,swt){
 
@@ -10621,6 +10621,29 @@ define('skylark-ui-swt/Widget',[
 
       }
     },
+
+    addon : function(categoryName,addonName,setting) {
+      this._addons = this.addons || {};
+      var category = this._addons[categoryName] = this._addons[categoryName] || {};
+      if (setting === undefined) {
+        return category[addonName] || null;      
+      } else {
+        category[addonName] = setting;
+        return this;
+      }
+    },
+
+    addons : function(categoryName,settings) {
+      this._addons = this.addons || {};
+      var category = this._addons[categoryName] = this._addons[categoryName] || {};
+
+      if (settings == undefined) {
+        return langx.clone(category || null);
+      } else {
+        langx.mixin(category,settings);
+      }
+    },
+
 
     /**
      * Returns a html element representing the widget.
@@ -11573,13 +11596,44 @@ define('skylark-bootstrap3/carousel',[
 
         pluginName: "bs3.carousel",
 
+        options : {
+            interval: 5000,
+            pause: 'hover',
+            wrap: true,
+            keyboard: true,
+
+            selectors :{
+                controls : {
+                 // The class for the "toggle" control:
+                  toggle: '.toggle',
+                  // The class for the "prev" control:
+                  prev: '.prev',
+                  // The class for the "next" control:
+                  next: '.next',
+                  // The class for the "close" control:
+                  close: '.close',
+                  // The class for the "play-pause" toggle control:
+                  playPause: '.play-pause'
+                },
+                indicators : {
+                    container : ".carousel-indicators"  
+                },
+                slides : {
+                    container : "",
+                    item : ".item" 
+                }
+            }
+
+
+        },
+
         _construct: function(element, options) {
-            options = langx.mixin({}, Carousel.DEFAULTS, $(element).data(), options);
+            options = langx.mixin({}, $(element).data(), options);
             //this.options = options
             this.overrided(element,options);
 
             this.$element = $(element)
-            this.$indicators = this.$element.find('.carousel-indicators')
+            this.$indicators = this.$element.find(this.options.selectors.indicators.container); //'.carousel-indicators'
             this.paused = null
             this.sliding = null
             this.interval = null
@@ -11609,7 +11663,141 @@ define('skylark-bootstrap3/carousel',[
                     e.preventDefault();
                 });
             }
-        }
+        },
+
+        keydown : function(e) {
+            if (/input|textarea/i.test(e.target.tagName)) return
+            switch (e.which) {
+                case 37:
+                    this.prev();
+                    break
+                case 39:
+                    this.next();
+                    break
+                default:
+                    return
+            }
+
+            e.preventDefault()
+        },
+
+        cycle : function(e) {
+            e || (this.paused = false)
+
+            this.interval && clearInterval(this.interval)
+
+            this.options.interval &&
+                !this.paused &&
+                (this.interval = setInterval(langx.proxy(this.next, this), this.options.interval))
+
+            return this
+        },
+
+        getItemIndex : function(item) {
+            this.$items = item.parent().children(this.options.selectors.slides.item);//'.item' 
+            return this.$items.index(item || this.$active)
+        },
+
+        getItemForDirection : function(direction, active) {
+            var activeIndex = this.getItemIndex(active)
+            var willWrap = (direction == 'prev' && activeIndex === 0) ||
+                (direction == 'next' && activeIndex == (this.$items.length - 1))
+            if (willWrap && !this.options.wrap) return active
+            var delta = direction == 'prev' ? -1 : 1
+            var itemIndex = (activeIndex + delta) % this.$items.length
+            return this.$items.eq(itemIndex)
+        },
+
+        to : function(pos) {
+            var that = this
+            var activeIndex = this.getItemIndex(this.$active = this.$element.find(this.options.selectors.slides.item+".active"));//'.item.active'
+
+            if (pos > (this.$items.length - 1) || pos < 0) return
+
+            if (this.sliding) return this.$element.one('slid.bs.carousel', function() { that.to(pos) }) // yes, "slid"
+            if (activeIndex == pos) return this.pause().cycle()
+
+            return this.slide(pos > activeIndex ? 'next' : 'prev', this.$items.eq(pos))
+        },
+
+        pause : function(e) {
+            e || (this.paused = true)
+
+            if (this.$element.find(this.options.selectors.controls.next + ","+ this.options.selectors.controls.prev).length && browser.support.transition) { //.next,.prev
+                this.$element.trigger(browser.support.transition.end)
+                this.cycle(true)
+            }
+
+            this.interval = clearInterval(this.interval)
+
+            return this
+        },
+
+        next : function() {
+            if (this.sliding) return
+            return this.slide('next')
+        },
+
+        prev : function() {
+            if (this.sliding) return
+            return this.slide('prev')
+        },
+
+        slide : function(type, next) {
+            var $active = this.$element.find(this.options.selectors.slides.item+".active");//'.item.active'
+            var $next = next || this.getItemForDirection(type, $active)
+            var isCycling = this.interval
+            var direction = type == 'next' ? 'left' : 'right'
+            var that = this
+
+            if ($next.hasClass('active')) return (this.sliding = false)
+
+            var relatedTarget = $next[0]
+            var slideEvent = eventer.create('slide.bs.carousel', {
+                relatedTarget: relatedTarget,
+                direction: direction
+            })
+            this.$element.trigger(slideEvent)
+            if (slideEvent.isDefaultPrevented()) return
+
+            this.sliding = true
+
+            isCycling && this.pause()
+
+            if (this.$indicators.length) {
+                this.$indicators.find('.active').removeClass('active')
+                var $nextIndicator = $(this.$indicators.children()[this.getItemIndex($next)])
+                $nextIndicator && $nextIndicator.addClass('active')
+            }
+
+            var slidEvent = eventer.create('slid.bs.carousel', { relatedTarget: relatedTarget, direction: direction }) // yes, "slid"
+            if (browser.support.transition && this.$element.hasClass('slide')) {
+                $next.addClass(type)
+                $next[0].offsetWidth // force reflow
+                $active.addClass(direction)
+                $next.addClass(direction)
+                $active
+                    .one('transitionEnd', function() {
+                        $next.removeClass([type, direction].join(' ')).addClass('active')
+                        $active.removeClass(['active', direction].join(' '))
+                        that.sliding = false
+                        setTimeout(function() {
+                            that.$element.trigger(slidEvent)
+                        }, 0)
+                    })
+                    .emulateTransitionEnd()
+            } else {
+                $active.removeClass('active')
+                $next.addClass('active')
+                this.sliding = false
+                this.$element.trigger(slidEvent)
+            }
+
+            isCycling && this.cycle()
+
+            return this
+        },
+
     });
 
     // var Carousel = function (element, options) {
@@ -11619,145 +11807,7 @@ define('skylark-bootstrap3/carousel',[
 
     Carousel.TRANSITION_DURATION = 600
 
-    Carousel.DEFAULTS = {
-        interval: 5000,
-        pause: 'hover',
-        wrap: true,
-        keyboard: true
-    }
 
-    Carousel.prototype.keydown = function(e) {
-        if (/input|textarea/i.test(e.target.tagName)) return
-        switch (e.which) {
-            case 37:
-                this.prev();
-                break
-            case 39:
-                this.next();
-                break
-            default:
-                return
-        }
-
-        e.preventDefault()
-    }
-
-    Carousel.prototype.cycle = function(e) {
-        e || (this.paused = false)
-
-        this.interval && clearInterval(this.interval)
-
-        this.options.interval &&
-            !this.paused &&
-            (this.interval = setInterval(langx.proxy(this.next, this), this.options.interval))
-
-        return this
-    }
-
-    Carousel.prototype.getItemIndex = function(item) {
-        this.$items = item.parent().children('.item')
-        return this.$items.index(item || this.$active)
-    }
-
-    Carousel.prototype.getItemForDirection = function(direction, active) {
-        var activeIndex = this.getItemIndex(active)
-        var willWrap = (direction == 'prev' && activeIndex === 0) ||
-            (direction == 'next' && activeIndex == (this.$items.length - 1))
-        if (willWrap && !this.options.wrap) return active
-        var delta = direction == 'prev' ? -1 : 1
-        var itemIndex = (activeIndex + delta) % this.$items.length
-        return this.$items.eq(itemIndex)
-    }
-
-    Carousel.prototype.to = function(pos) {
-        var that = this
-        var activeIndex = this.getItemIndex(this.$active = this.$element.find('.item.active'))
-
-        if (pos > (this.$items.length - 1) || pos < 0) return
-
-        if (this.sliding) return this.$element.one('slid.bs.carousel', function() { that.to(pos) }) // yes, "slid"
-        if (activeIndex == pos) return this.pause().cycle()
-
-        return this.slide(pos > activeIndex ? 'next' : 'prev', this.$items.eq(pos))
-    }
-
-    Carousel.prototype.pause = function(e) {
-        e || (this.paused = true)
-
-        if (this.$element.find('.next, .prev').length && browser.support.transition) {
-            this.$element.trigger(browser.support.transition.end)
-            this.cycle(true)
-        }
-
-        this.interval = clearInterval(this.interval)
-
-        return this
-    }
-
-    Carousel.prototype.next = function() {
-        if (this.sliding) return
-        return this.slide('next')
-    }
-
-    Carousel.prototype.prev = function() {
-        if (this.sliding) return
-        return this.slide('prev')
-    }
-
-    Carousel.prototype.slide = function(type, next) {
-        var $active = this.$element.find('.item.active')
-        var $next = next || this.getItemForDirection(type, $active)
-        var isCycling = this.interval
-        var direction = type == 'next' ? 'left' : 'right'
-        var that = this
-
-        if ($next.hasClass('active')) return (this.sliding = false)
-
-        var relatedTarget = $next[0]
-        var slideEvent = eventer.create('slide.bs.carousel', {
-            relatedTarget: relatedTarget,
-            direction: direction
-        })
-        this.$element.trigger(slideEvent)
-        if (slideEvent.isDefaultPrevented()) return
-
-        this.sliding = true
-
-        isCycling && this.pause()
-
-        if (this.$indicators.length) {
-            this.$indicators.find('.active').removeClass('active')
-            var $nextIndicator = $(this.$indicators.children()[this.getItemIndex($next)])
-            $nextIndicator && $nextIndicator.addClass('active')
-        }
-
-        var slidEvent = eventer.create('slid.bs.carousel', { relatedTarget: relatedTarget, direction: direction }) // yes, "slid"
-        if (browser.support.transition && this.$element.hasClass('slide')) {
-            $next.addClass(type)
-            $next[0].offsetWidth // force reflow
-            $active.addClass(direction)
-            $next.addClass(direction)
-            $active
-                .one('transitionEnd', function() {
-                    $next.removeClass([type, direction].join(' ')).addClass('active')
-                    $active.removeClass(['active', direction].join(' '))
-                    that.sliding = false
-                    setTimeout(function() {
-                        that.$element.trigger(slidEvent)
-                    }, 0)
-                })
-                .emulateTransitionEnd()
-        } else {
-            $active.removeClass('active')
-            $next.addClass('active')
-            this.sliding = false
-            this.$element.trigger(slidEvent)
-        }
-
-        isCycling && this.cycle()
-
-        return this
-    }
 
 
     // CAROUSEL PLUGIN DEFINITION
@@ -14547,7 +14597,7 @@ define('skylark-ui-swt/Toolbar',[
 
 });
 
-define('skylark-utils-collection/List',[
+define('skylark-data-collection/List',[
     "skylark-langx/arrays",
     "./collections",
     "./Collection"
@@ -14690,7 +14740,7 @@ define('skylark-utils-collection/List',[
     return List;
 });
 
-define('skylark-utils-collection/ArrayList',[
+define('skylark-data-collection/ArrayList',[
     "./collections",
     "./List"
 ], function(collections, List) {
@@ -15013,7 +15063,7 @@ define('skylark-utils-collection/ArrayList',[
     return ArrayList;
 });
 
-define('skylark-utils-filer/filer',[
+define('skylark-storages-diskfs/filer',[
     "skylark-langx/skylark"
 ], function(skylark) {
 
@@ -15036,7 +15086,7 @@ define('skylark-utils-filer/filer',[
 
     return skylark.filer = filer;
 });
- define('skylark-utils-filer/webentry',[
+ define('skylark-storages-diskfs/webentry',[
     "skylark-langx/arrays",
     "skylark-langx/Deferred",
     "./filer"
@@ -15091,7 +15141,7 @@ define('skylark-utils-filer/filer',[
 
     return filer.webentry = webentry;
 });
-  define('skylark-utils-filer/dropzone',[
+  define('skylark-storages-diskfs/dropzone',[
     "skylark-langx/arrays",
     "skylark-langx/Deferred",
     "skylark-utils-dom/styler",
@@ -15160,7 +15210,7 @@ define('skylark-utils-filer/filer',[
 
      return filer.dropzone = dropzone;
 });
-define('skylark-utils-filer/pastezone',[
+define('skylark-storages-diskfs/pastezone',[
     "skylark-langx/objects",
     "skylark-utils-dom/eventer",
     "./filer"
@@ -15194,7 +15244,7 @@ define('skylark-utils-filer/pastezone',[
 
 });
 
-define('skylark-utils-filer/select',[
+define('skylark-storages-diskfs/select',[
     "./filer"
 ],function(filer){
     var fileInput,
@@ -15249,7 +15299,7 @@ define('skylark-utils-filer/select',[
 });
 
 
-define('skylark-utils-filer/picker',[
+define('skylark-storages-diskfs/picker',[
     "skylark-langx/objects",
     "skylark-utils-dom/eventer",
     "./filer",
@@ -15274,7 +15324,7 @@ define('skylark-utils-filer/picker',[
 
 
 
-define('skylark-utils-filer/upload',[
+define('skylark-storages-diskfs/upload',[
 	"skylark-langx/types",
 	"skylark-langx/objects",
 	"skylark-langx/arrays",
@@ -15664,7 +15714,7 @@ define('skylark-utils-filer/upload',[
 
 	return filer.upload = upload;	
 });
-define('skylark-utils-filer/uploader',[
+define('skylark-storages-diskfs/uploader',[
     "skylark-langx/langx",
     "skylark-utils-dom/eventer",
     "skylark-utils-dom/query",
@@ -16453,8 +16503,8 @@ define('skylark-ui-swt/Uploader',[
   "skylark-utils-dom/noder",
   "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "skylark-utils-collection/ArrayList",
-  "skylark-utils-filer/uploader",
+  "skylark-data-collection/ArrayList",
+  "skylark-storages-diskfs/uploader",
   "./swt",
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,ArrayList,uploader,swt,Widget){

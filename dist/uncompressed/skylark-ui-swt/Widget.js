@@ -9,7 +9,7 @@ define([
   "skylark-utils-dom/elmx",
   "skylark-utils-dom/query",
   "skylark-utils-dom/plugins",
-  "skylark-utils-collection/Map",
+  "skylark-data-collection/Map",
   "./swt"
 ],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,swt){
 
@@ -153,6 +153,29 @@ define([
 
       }
     },
+
+    addon : function(categoryName,addonName,setting) {
+      this._addons = this.addons || {};
+      var category = this._addons[categoryName] = this._addons[categoryName] || {};
+      if (setting === undefined) {
+        return category[addonName] || null;      
+      } else {
+        category[addonName] = setting;
+        return this;
+      }
+    },
+
+    addons : function(categoryName,settings) {
+      this._addons = this.addons || {};
+      var category = this._addons[categoryName] = this._addons[categoryName] || {};
+
+      if (settings == undefined) {
+        return langx.clone(category || null);
+      } else {
+        langx.mixin(category,settings);
+      }
+    },
+
 
     /**
      * Returns a html element representing the widget.

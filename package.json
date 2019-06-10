@@ -23,10 +23,10 @@
   "license": "MIT",
   "dependencies": {
     "skylark-bootstrap3": "git+https://github.com/skylarkui/skylark-bootstrap3.git#master",
+    "skylark-data-collection": "git+https://github.com/skylark-data/skylark-data-collection.git#master",
     "skylark-langx": "git+https://github.com/skylarklangx/skylark-langx.git#master",
-    "skylark-utils-collection": "git+https://github.com/skylarkutils/skylark-utils-collection.git#master",
-    "skylark-utils-dom": "git+https://github.com/skylarkutils/skylark-utils-dom.git#master",
-    "skylark-utils-filer": "git+https://github.com/skylarkutils/skylark-utils-filer.git#master"
+    "skylark-storages-diskfs": "git+https://github.com/skylark-storages/skylark-storages-diskfs.git#master",
+    "skylark-utils-dom": "git+https://github.com/skylarkutils/skylark-utils-dom.git#master"
   },
   "engines": {
     "node": ">=0.10.1"
