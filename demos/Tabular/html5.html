@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>appendGrid</title>
+
+    <link rel="stylesheet" href="../../../../intg/ui/skylark-jqueryui-appendgrid/node_modules/skylark-jqueryui/themes/base/all.css" />
+    <link href="../../../../intg/ui/skylark-jqueryui-appendgrid/skins/default/appendGrid.css" rel="stylesheet" />
+
+  </head>
+  <body>
+<script type="text/javascript" src="../require.js" data-main="../bootstrap.js"></script>
+<script id="jsSource" type="text/javascript">
+    var initPage = function ($) {
+      // Initialize appendGrid
+      var tabular = $('#tblAppendGrid').plugin("lark.tabular",{
+          caption: 'HTML 5 Input Types',
+          initRows: 1,
+          columns: [
+              { name: 'DataList', display: 'Data List', type: 'text', ctrlAttr: { list: 'dlOption' }, ctrlCss: { width: '80px'} },
+              { name: 'Email', display: 'Email', type: 'email', ctrlCss: { width: '120px'} },
+              { name: 'Color', display: 'Color', type: 'color' },
+              { name: 'Date', display: 'Date', type: 'date' /* The default date format of HTML 5 is `yyyy-mm-dd` */ },
+              { name: 'Time', display: 'Time', type: 'time', ctrlCss: { width: '80px'} },
+              { name: 'Number', display: 'Number', type: 'number', ctrlCss: { width: '60px' }, value: 0 },
+              { name: 'Range', display: 'Range', type: 'range', ctrlCss: { width: '80px' }, ctrlAttr: { min: 0, max: 10 }, value: 5 }
+          ],
+          initData: [
+              { 'DataList': 'Option 1', 'Email': 'user1@dummy.email', 'Color': '#ff0000', 'Date': '2013-01-31', 'Time': '01:59', 'Number': 123, 'Range': 2 },
+              { 'DataList': 'Option 2', 'Email': 'user2@dummy.email', 'Color': '#00ff00', 'Date': '2013-02-28', 'Time': '02:58', 'Number': 456, 'Range': 5 },
+              { 'DataList': 'Option 3', 'Email': 'user3@dummy.email', 'Color': '#0000ff', 'Date': '2013-03-25', 'Time': '03:57', 'Number': 789, 'Range': 8 }
+          ]
+      });
+
+    };
+
+  </script>
+  <form action="" method="post">
+<datalist id="dlOption">
+    <option value="Option 1" />
+    <option value="Option 2" />
+    <option value="Option 3" />
+    <option value="Option 4" />
+    <option value="Option 5" />
+</datalist>
+<table id="tblAppendGrid">
+</table>
+  </form>
+  </body>
+</html>

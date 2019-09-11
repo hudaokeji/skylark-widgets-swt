@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>appendGrid</title>
+    <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-1.18.0.css" />
+
+    <link rel="stylesheet" href="../node_modules/skylark-jqueryui/themes/base/all.css" />
+    <link href="../skins/default/appendGrid.css" rel="stylesheet" />
+    <script type="text/javascript" src="../dist/uncompressed/skylark-jqueryui-appendgrid-all.js"></script>
+
+  </head>
+  <body>
+  <script id="jsSource" type="text/javascript">
+$(function () {
+    // Initialize appendGrid
+    $('#tblAppendGrid').appendGrid({
+        caption: 'My CD Collections',
+        initRows: 1,
+        columns: [
+            { name: 'Album', display: 'Album', type: 'text', ctrlAttr: { maxlength: 100 }, ctrlCss: { width: '160px' }, onChange: function (evt, rowIndex) { alert('You have changed the value of `Album` at row ' + rowIndex); } },
+            { name: 'Artist', display: 'Artist', type: 'text', ctrlAttr: { maxlength: 100 }, ctrlCss: { width: '100px'} },
+            { name: 'Year', display: 'Year', type: 'text', ctrlAttr: { maxlength: 4 }, ctrlCss: { width: '40px'} },
+            { name: 'Origin', display: 'Origin', type: 'select', ctrlOptions: { 0: '{Choose}', 1: 'Hong Kong', 2: 'Taiwan', 3: 'Japan', 4: 'Korea', 5: 'US', 6: 'Others'} },
+            { name: 'Poster', display: 'With Poster?', type: 'checkbox', onClick: function (evt, rowIndex) { alert('You have clicked on the `With Poster?` at row ' + rowIndex); } },
+            { name: 'Price', display: 'Price', type: 'text', ctrlAttr: { maxlength: 10 }, ctrlCss: { width: '50px', 'text-align': 'right' }, value: 0 }
+        ],
+        initData: [
+            { 'Album': 'Dearest', 'Artist': 'Theresa Fu', 'Year': '2009', 'Origin': 1, 'Poster': true, 'Price': 168.9 },
+            { 'Album': 'To be Free', 'Artist': 'Arashi', 'Year': '2010', 'Origin': 3, 'Poster': true, 'Price': 152.6 },
+            { 'Album': 'Count On Me', 'Artist': 'Show Luo', 'Year': '2012', 'Origin': 2, 'Poster': false, 'Price': 306.8 },
+            { 'Album': 'Wonder Party', 'Artist': 'Wonder Girls', 'Year': '2012', 'Origin': 4, 'Poster': true, 'Price': 108.6 },
+            { 'Album': 'Reflection', 'Artist': 'Kelly Chen', 'Year': '2013', 'Origin': 1, 'Poster': false, 'Price': 138.2 }
+        ],
+        rowDragging: true,
+        afterRowDragged: function (caller, rowIndex) {
+            var msg = 'You have dragged a row. The new row index is ' + rowIndex + '!';
+            $('#spnMessage').text(msg).css('background-color', '#ffff66').animate({
+                backgroundColor: '#ffffff'
+            }, 800);
+        },
+        hideButtons: { moveUp: true, moveDown: true }
+    });
+});
+  </script>
+  <form action="" method="post">
+<table id="tblAppendGrid">
+</table>
+<br />
+<span id="spnMessage">
+    Re-order rows by dragged on the last button at each row.
+</span>
+  </form>
+  </body>
+</html>

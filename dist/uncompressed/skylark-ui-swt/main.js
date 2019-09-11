@@ -14,6 +14,7 @@ define([
     "./Radio",
     "./SearchBox",
     "./SelectList",
+    "./Tabular",
     "./TabStrip",
     "./Toolbar",
     "./Uploader"

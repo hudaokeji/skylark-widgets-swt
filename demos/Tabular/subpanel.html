@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>appendGrid</title>
+
+    <link rel="stylesheet" href="../../../../intg/ui/skylark-jqueryui-appendgrid/node_modules/skylark-jqueryui/themes/base/all.css" />
+    <link href="../../../../intg/ui/skylark-jqueryui-appendgrid/skins/default/appendGrid.css" rel="stylesheet" />
+
+
+  </head>
+  <body>
+<script type="text/javascript" src="../require.js" data-main="../bootstrap.js"></script>
+
+  <script id="jsSource" type="text/javascript">
+    var initPage = function ($) {
+        // Initialize appendGrid
+        $('#tblAppendGrid').plugin("lark.tabular",{
+            caption: 'My CD Collections',
+            initRows: 1,
+            columns: [
+                { name: 'Album', display: 'Album', type: 'text', ctrlAttr: { maxlength: 100 }, ctrlCss: { width: '160px'} },
+                { name: 'Artist', display: 'Artist', type: 'text', ctrlAttr: { maxlength: 100 }, ctrlCss: { width: '100px'} },
+                { name: 'Year', display: 'Year', type: 'text', ctrlAttr: { maxlength: 4 }, ctrlCss: { width: '40px'} },
+                { name: 'Origin', display: 'Origin', type: 'select', ctrlOptions: { 0: '{Choose}', 1: 'Hong Kong', 2: 'Taiwan', 3: 'Japan', 4: 'Korea', 5: 'US', 6: 'Others'} },
+                { name: 'Poster', display: 'With Poster?', type: 'checkbox' },
+                { name: 'Price', display: 'Price', type: 'text', ctrlAttr: { maxlength: 10 }, ctrlCss: { width: '50px', 'text-align': 'right' }, value: 0 }
+            ],
+            initData: [
+                { 'Album': 'Dearest', 'Artist': 'Theresa Fu', 'Year': '2009', 'Origin': 1, 'Poster': true, 'Price': 168.9, 'Comment': 'Good!' },
+                { 'Album': 'To be Free', 'Artist': 'Arashi', 'Year': '2010', 'Origin': 3, 'Poster': true, 'Price': 152.6, 'Comment': 'Nice :)' },
+                { 'Album': 'Count On Me', 'Artist': 'Show Luo', 'Year': '2012', 'Origin': 2, 'Poster': false, 'Price': 306.8, 'Comment': 'Amazing~' },
+                { 'Album': 'Wonder Party', 'Artist': 'Wonder Girls', 'Year': '2012', 'Origin': 4, 'Poster': true, 'Price': 108.6, 'Comment': 'Wonderful~' },
+                { 'Album': 'Reflection', 'Artist': 'Kelly Chen', 'Year': '2013', 'Origin': 1, 'Poster': false, 'Price': 138.2, 'Comment': 'Great!' }
+            ],
+            useSubPanel: true,
+            subPanelBuilder: function (cell, uniqueIndex) {
+                // Create a label
+                $('<span></span>').text('Comment: ').appendTo(cell);
+                // Create a text area
+                $('<textarea></textarea>').css('vertical-align', 'middle').attr({
+                    id: 'tblAppendGrid_AdtComment_' + uniqueIndex,
+                    name: 'tblAppendGrid_AdtComment_' + uniqueIndex,
+                    rows: 2, cols: 60
+                }).appendTo(cell);
+            },
+            subPanelGetter: function (uniqueIndex) {
+                // Return the element value inside sub panel for `getAllValue` and `getRowValue` methods
+                return { 'Comment': $('#tblAppendGrid_AdtComment_' + uniqueIndex).val() };
+            },
+            rowDataLoaded: function (caller, record, rowIndex, uniqueIndex) {
+                // Check the record contains `Comment`
+                if (record.Comment) {
+                    // Get the control in sub panel
+                    var elem = document.getElementById('tblAppendGrid_AdtComment_' + uniqueIndex);
+                    // Fill the comment values in the sub panel
+                    elem.value = record.Comment;
+                }
+            }
+        });
+        $('#btnGetAllValue1').button().on('click', function () {
+            // Get grid values in array mode
+            var allData = $('#tblAppendGrid').appendGrid('getAllValue');
+            alert(JSON.stringify(allData));
+        });
+        $('#btnGetAllValue2').button().on('click', function () {
+            // Get grid values in object mode
+            var allData = $('#tblAppendGrid').appendGrid('getAllValue', true);
+            alert(JSON.stringify(allData));
+        });
+    };
+  </script>
+  <form action="" method="post">
+<table id="tblAppendGrid">
+</table>
+<br />
+<button id="btnGetAllValue1" type="button">
+    Demo: getAllValue, Array Mode</button>
+<button id="btnGetAllValue2" type="button">
+    Demo: getAllValue, Object Mode</button>
+  </form>
+  </body>
+</html>
