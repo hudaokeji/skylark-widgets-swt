@@ -1,5 +1,5 @@
 {
-  "name": "skylark-ui-swt",
+  "name": "skylark-widgets-swt",
   "description": "The skylark widget framework and standard widgets",
   "version": "0.9.0",
   "keywords": [
@@ -8,17 +8,17 @@
     "swt",
     "widget"
   ],
-  "homepage": "https://github.com/skylarkui/skylark-ui-swt/",
+  "homepage": "https://github.com/skylark-widgets/skylark-widgets-swt/",
   "author": "Hudaokeji, Inc.",
   "scripts": {
     "build": "sbundle build ."
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/skylarkui/skylark-ui-swt.git"
+    "url": "https://github.com/skylark-widgets/skylark-widgets-swt.git"
   },
   "bugs": {
-    "url": "https://github.com/skylarkui/skylark-ui-swt/issues"
+    "url": "https://github.com/skylark-widgets/skylark-widgets-swt/issues"
   },
   "license": "MIT",
   "dependencies": {
