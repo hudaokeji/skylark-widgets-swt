@@ -152,410 +152,9 @@ define('skylark-widgets-swt/swt',[
 });
 
 define('skylark-widgets-swt/Widget',[
-  "skylark-langx/skylark",
-  "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/datax",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/elmx",
-  "skylark-utils-dom/query",
-  "skylark-utils-dom/plugins",
-  "skylark-data-collection/Map",
-  "./swt"
-],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,swt){
-
-/*---------------------------------------------------------------------------------*/
-
-	var Widget = plugins.Plugin.inherit({
-    klassName: "Widget",
-
-    _elmx : elmx,
-
-    _construct : function(elm,options) {
-        if (langx.isHtmlNode(elm)) {
-          options = this._parse(elm,options);
-        } else {
-          options = elm;
-          elm = null;
-        }
-        this.overrided(elm,options);
-
-        if (!elm) {
-          this._velm = this._create();
-          this._elm = this._velm.elm();
-        } else {
-          this._velm = elmx(this._elm);
-        }
-        
-        Object.defineProperty(this,"state",{
-          value :this.options.state || new Map()
-        });
-
-        //this.state = this.options.state || new Map();
-        this._init();
-     },
-
-    /**
-     * Parses widget options from attached element.
-     * This is a callback method called by constructor when attached element is specified.
-     * @method _parse
-     * @return {Object} options.
-     */
-    _parse : function(elm,options) {
-      var optionsAttr = datax.data(elm,"options");
-      if (optionsAttr) {
-         var options1 = JSON.parse("{" + optionsAttr + "}");
-         options = langx.mixin(options1,options); 
-      }
-      return options || {};
-    },
-
-
-    /**
-     * Create html element for this widget.
-     * This is a callback method called by constructor when attached element is not specified.
-     * @method _create
-     */
-    _create : function() {
-        var template = this.options.template;
-        if (template) {
-          return this._elmx(template);
-        } else {
-          throw new Error("The template is not existed in options!");
-        }
-    },
-
-
-    /**
-     * Init widget.
-     * This is a callback method called by constructor.
-     * @method _init
-     */
-    _init : function() {
-      var self = this;
-      if (this.widgetClass) {
-        this._velm.addClass(this.widgetClass);
-      }
-      this.state.on("changed",function(e,args) {
-        self._refresh(args.data);
-      });
-    },
-
-
-    /**
-     * Startup widget.
-     * This is a callback method called when widget element is added into dom.
-     * @method _post
-     */
-    _startup : function() {
-
-    },
-
-
-    /**
-     * Refresh widget.
-     * This is a callback method called when widget state is changed.
-     * @method _refresh
-     */
-    _refresh : function(updates) {
-      /*
-      var _ = this._,
-          model = _.model,
-          dom = _.dom,
-          props = {
-
-          };
-      updates = updates || {};
-      for (var attrName in updates){
-          var v = updates[attrName].value;
-          if (v && v.toCss) {
-              v.toCss(props);
-              updates[attrName].processed = true;
-          }
-
-      };
-
-      this.css(props);
-
-      if (updates["disabled"]) {
-          var v = updates["disabled"].value;
-          dom.aria('disabled', v);
-          self.classes.toggle('disabled', v);
-      }
-      */
-    },                
-
-    mapping : {
-      "events" : {
-  //       'mousedown .title':  'edit',
-  //       'click .button':     'save',
-  //       'click .open':       function(e) { ... }            
-      },
-
-      "attributs" : {
-
-      },
-
-      "properties" : {
-
-      },
-
-      "styles" : {
-
-      }
-    },
-
-    addon : function(categoryName,addonName,setting) {
-      this._addons = this.addons || {};
-      var category = this._addons[categoryName] = this._addons[categoryName] || {};
-      if (setting === undefined) {
-        return category[addonName] || null;      
-      } else {
-        category[addonName] = setting;
-        return this;
-      }
-    },
-
-    addons : function(categoryName,settings) {
-      this._addons = this.addons || {};
-      var category = this._addons[categoryName] = this._addons[categoryName] || {};
-
-      if (settings == undefined) {
-        return langx.clone(category || null);
-      } else {
-        langx.mixin(category,settings);
-      }
-    },
-
-
-    /**
-     * Returns a html element representing the widget.
-     *
-     * @method render
-     * @return {HtmlElement} HTML element representing the widget.
-     */
-    render: function() {
-      return this._elm;
-    },
-
-
-    /**
-     * Returns a parent widget  enclosing this widgets, or null if not exist.
-     *
-     * @method getEnclosing
-     * @return {Widget} The enclosing parent widget, or null if not exist.
-     */
-    getEnclosing : function(selector) {
-      return null;
-    },
-
-    /**
-     * Returns a widget collection with all enclosed child widgets.
-     *
-     * @method getEnclosed
-     * @return {List} Collection with all enclosed child widgets..
-     */
-    getEnclosed : function() {
-      var self = this;
-          children = new ArrayList();
-      return children;
-    },
-
-    /**
-     * Sets the visible state to true.
-     *
-     * @method show
-     * @return {Widget} Current widget instance.
-     */
-
-    show : function() {
-      this._velm.show();
-    },
-
-    /**
-     * Sets the visible state to false.
-     *
-     * @method hide
-     * @return {Widget} Current widget instance.
-     */
-    hide : function() {
-      this._velm.hide();
-    },
-
-    /**
-     * Focuses the current widget.
-     *
-     * @method focus
-     * @return {Widget} Current widget instance.
-     */
-    focus :function() {
-      try {
-        this._velm.focus();
-      } catch (ex) {
-        // Ignore IE error
-      }
-
-      return this;
-    },
-
-    /**
-     * Blurs the current widget.
-     *
-     * @method blur
-     * @return {Widget} Current widget instance.
-     */
-    blur : function() {
-      this._velm.blur();
-
-      return this;
-    },
-
-    enable: function () {
-      this.state.set('disabled',false);
-      return this;
-    },
-
-    disable: function () {
-      this.state.set('disabled',true);
-      return this;
-    },
-
-    /**
-     * Sets the specified aria property.
-     *
-     * @method aria
-     * @param {String} name Name of the aria property to set.
-     * @param {String} value Value of the aria property.
-     * @return {Widget} Current widget instance.
-     */
-    aria : function(name, value) {
-      const self = this, elm = self.getEl(self.ariaTarget);
-
-      if (typeof value === 'undefined') {
-        return self._aria[name];
-      }
-
-      self._aria[name] = value;
-
-      if (self.state.get('rendered')) {
-        elm.setAttribute(name === 'role' ? name : 'aria-' + name, value);
-      }
-
-      return self;
-    },
-
-    attr: function (name,value) {
-        var velm = this._velm,
-            ret = velm.attr(name,value);
-        return ret == velm ? this : ret;
-    },
-
-    css: function (name, value) {
-        var velm = this._velm,
-            ret = velm.css(name, value);
-        return ret == velm ? this : ret;
-    },
-
-    data: function (name, value) {
-        var velm = this._velm,
-            ret = velm.data(name,value);
-        return ret == velm ? this : ret;
-    },
-
-    prop: function (name,value) {
-        var velm = this._velm,
-            ret = velm.prop(name,value);
-        return ret == velm ? this : ret;
-    },
-
-    throb: function(params) {
-      return noder.throb(this._elm,params);
-    },
-
-
-    /**
-     *  Attach the current widget element to dom document.
-     *
-     * @method attach
-     * @return {Widget} This Widget.
-     */
-    attach : function(target,position){
-        var elm = target;
-        if (!position || position=="child") {
-            noder.append(elm,this._elm);
-        } else  if (position == "before") {
-            noder.before(elm,this._elm);
-        } else if (position == "after") {
-            noder.after(elm,this._elm);
-        }
-        this._startup();
-    },
-
-    /**
-     *  Detach the current widget element from dom document.
-     *
-     * @method html
-     * @return {HtmlElement} HTML element representing the widget.
-     */
-    detach : function() {
-      this._velm.remove();
-    }
-  });
-
-  Widget.inherit = function(meta) {
-    var ctor = plugins.Plugin.inherit.apply(this,arguments);
-
-    function addStatePropMethod(name) {
-        ctor.prototype[name] = function(value) {
-          if (value !== undefined) {
-            this.state.set(name,value);
-            return this;
-          } else {
-            return this.state.get(name);
-          }
-        };
-    }
-    if (meta.state) {
-      for (var name in meta.state) {
-          addStatePropMethod(name);
-      }
-    }
-
-    if (meta.pluginName) {
-      plugins.register(ctor,meta.pluginName);
-    }
-    return ctor;
-  };
-
-  Widget.register = function(ctor,widgetName) {
-    var meta = ctor.prototype,
-        pluginName = widgetName || meta.pluginName;
-
-    function addStatePropMethod(name) {
-        ctor.prototype[name] = function(value) {
-          if (value !== undefined) {
-            this.state.set(name,value);
-            return this;
-          } else {
-            return this.state.get(name);
-          }
-        };
-    }
-    if (meta.state) {
-      for (var name in meta.state) {
-          addStatePropMethod(name);
-      }
-    }
-
-    if (pluginName) {
-      plugins.register(ctor,pluginName);
-    }
-    return ctor;
-  };
-
-	return swt.Widget = Widget;
+  "skylark-widgets-base/Widget"
+],function(Widget){
+  return Widget;
 });
 
 define('skylark-widgets-swt/Panel',[
@@ -4867,215 +4466,168 @@ define('skylark-widgets-swt/TabStrip',[
 });
 define('skylark-widgets-swt/Toolbar',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./swt",
-  "./Widget"
-],function(langx,browser,eventer,noder,geom,$,swt,Widget){
-
-	var Toolbar = swt.Toolbar = Widget.inherit({
-        klassName: "Toolbar",
-
-	    pluginName : "lark.toolbar",
-
-        init : function(elm,options) {
-			var self = this;
-			this._options = langx.mixin({
-					autoredraw: true,
-					buttons: {},
-					context: {},
-					list: [],
-					show: true,
-			},options);
+  "skylark-widgets-base/Widget"
+],function(langx,$,Widget){ 
 
 
-			this.$container = $('<nav class="navbar"/>');
-			this.$el = $(elm).append(this.$container);
 
-			this.$container.on('mousedown.bs.dropdown.data-api', '[data-toggle="dropdown"]',function(e) {
-				$(this).dropdown();
-			}); 
-
-			this.render();
-        },
-
-
-		render : function () {
-			function createToolbarItems(items,container) {
-				langx.each(items,function(i,item)  {
-					var type = item.type;
-					if (!type) {
-						type = "button";
-					}
-					switch (type) {
-						case "buttongroup":
-							// Create an element with the HTML
-							createButtonGroup(item,container);
-							break;
-						case "button":
-							createButton(item,container)
-							break;
-						case "dropdown":
-						case "dropup":
-							createDrop(item,container)
-							break;
-						case "input":
-							createInput(item,container)
-							break;
-						default:
-							throw "Wrong widget button type";
-					}
-				});
-
-			}
-
-			function createButtonGroup(item,container) {
-				var  group = $("<div/>", { class: "btn-group", role: "group" });
-				container.append(group);
-				createToolbarItems(item.items,group);
-				return group;
-			}
-
-			function createButton(item,container) {
-				// Create button
-				var button = $('<button type="button" class="btn btn-default"/>'),
-					attrs = langx.mixin({},item);
-
-				// If has icon
-				if ("icon" in item) {
-					button.append($("<span/>", { class: item.icon }));
-					delete attrs.icon;
-				}
-				// If has text
-				if ("text" in attrs) {
-					button.append(" " + item.text);
-					delete attrs.text;
-				}
-
-				button.attr(attrs);
-
-				// Add button to the group
-				container.append(button);
-
-			}
-
-			function createDrop(item,container) {
-				// Create button
-				var dropdown_group = $('<div class="btn-group" role="group"/>');
-				var dropdown_button = $('<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"/>');
-				var dropdown_list = $('<ul class="dropdown-menu"/>');
-
-				var	attrs = langx.mixin({},item);
-
-				if(item.type === "dropup") {
-					dropdown_group.addClass("dropup");
-				}
-
-				// If has icon
-				if ("icon" in item) {
-					dropdown_button.append($("<span/>", { class: item.icon }));
-					delete attrs.icon;
-				}
-				// If has text
-				if ("text" in item) {
-					dropdown_button.append(" " + item.text);
-					delete attrs.text;
-				}
-				// Add caret
-				dropdown_button.append(' <span class="caret"/>');
-
-				// Add list of options
-				for(var i in item.list) {
-					var dropdown_option = item.list[i];
-					var dropdown_option_li = $('<li/>');
-
-					// If has icon
-					if ("icon" in dropdown_option) {
-						dropdown_option_li.append($("<span/>", { class: dropdown_option.icon }));
-					}
-
-					// If has text
-					if ("text" in dropdown_option) {
-						dropdown_option_li.append(" " + dropdown_option.text);
-					}
-					// Set attributes
-					dropdown_option_li.attr(dropdown_option);
-
-					// Add to dropdown list
-					dropdown_list.append(dropdown_option_li);
-				}
-				
-				// Set attributes
-				dropdown_group.attr(attrs);
-
-				dropdown_group.append(dropdown_button);
-				dropdown_group.append(dropdown_list);
-				container.append(dropdown_group);
-
-			}
-
-			function createInput(item,container) {
-				var input_group = $('<div class="input-group"/>');
-				var input_element = $('<input class="form-control"/>');
-				
-				var	attrs = langx.mixin({},item);
-
-				// Add prefix addon
-				if("prefix" in item) {
-					var input_prefix = $('<span class="input-group-addon"/>');
-					input_prefix.html(item.prefix);
-					input_group.append(input_prefix);
-
-					delete attrs.prefix;
-				}
-				
-				// Add input
-				input_group.append(input_element);
-
-				// Add sufix addon
-				if("sufix" in item) {
-					var input_sufix = $('<span class="input-group-addon"/>');
-					input_sufix.html(item.sufix);
-					input_group.append(input_sufix);
-
-					delete attrs.sufix;
-				}
-
-				attrs.type = attrs.inputType;
-
-				delete attrs.inputType;
-
-				// Set attributes
-				input_element.attr(attrs);
-
-				container.append(input_group);
-
-			}
-
-			var items = this._options.items;
-			if (items) {
-				createToolbarItems(items,this.$container);
-			}
-		}
-
-	});
+  var Toolbar = Widget.inherit({
+    options : {
+      toolbar: true,
+      toolbarFloat: true,
+      toolbarHidden: false,
+      toolbarFloatOffset: 0,
+      template : '<div class="richeditor-toolbar"><ul></ul></div>',
+      separator : {
+        template :  '<li><span class="separator"></span></li>'
+      }
+    },
 
 
-	$.fn.toolbar = function (options) {
-		options = options || {};
+    _construct : function(editor,opts) {
+      this.editor =editor;
+      Widget.prototype._construct.call(this,opts);
+    },
 
-		return this.each(function () {
-			return new Toolbar(this, langx.mixin({}, options,true));
-		});
-	};
+    _init : function(editor,opts) {
+      var floatInitialized, initToolbarFloat, toolbarHeight;
+      //this.editor = editor;
 
-	return Toolbar;
+      //this.opts = langx.extend({}, this.opts, opts);
+      this.opts = this.options;
+
+      if (!this.opts.toolbar) {
+        return;
+      }
+      //if (!langx.isArray(this.opts.toolbar)) {
+      //  this.opts.toolbar = ['bold', 'italic', 'underline', 'strikethrough', '|', 'ol', 'ul', 'blockquote', 'code', '|', 'link', 'image', '|', 'indent', 'outdent'];
+      //}
+      this._render();
+      this.list.on('click', function(e) {
+        return false;
+      });
+      this.wrapper.on('mousedown', (function(_this) {
+        return function(e) {
+          return _this.list.find('.menu-on').removeClass('.menu-on');
+        };
+      })(this));
+      $(document).on('mousedown.richeditor' + this.editor.id, (function(_this) {
+        return function(e) {
+          return _this.list.find('.menu-on').removeClass('.menu-on');
+        };
+      })(this));
+      if (!this.opts.toolbarHidden && this.opts.toolbarFloat) {
+        this.wrapper.css('top', this.opts.toolbarFloatOffset);
+        toolbarHeight = 0;
+        initToolbarFloat = (function(_this) {
+          return function() {
+            _this.wrapper.css('position', 'static');
+            _this.wrapper.width('auto');
+            _this.editor.editable.util.reflow(_this.wrapper);
+            _this.wrapper.width(_this.wrapper.outerWidth());
+            _this.wrapper.css('left', _this.editor.editable.util.os.mobile ? _this.wrapper.position().left : _this.wrapper.offset().left);
+            _this.wrapper.css('position', '');
+            toolbarHeight = _this.wrapper.outerHeight();
+            _this.editor.placeholderEl.css('top', toolbarHeight);
+            return true;
+          };
+        })(this);
+        floatInitialized = null;
+        $(window).on('resize.richeditor-' + this.editor.id, function(e) {
+          return floatInitialized = initToolbarFloat();
+        });
+        $(window).on('scroll.richeditor-' + this.editor.id, (function(_this) {
+          return function(e) {
+            var bottomEdge, scrollTop, topEdge;
+            if (!_this.wrapper.is(':visible')) {
+              return;
+            }
+            topEdge = _this.editor.wrapper.offset().top;
+            bottomEdge = topEdge + _this.editor.wrapper.outerHeight() - 80;
+            scrollTop = $(document).scrollTop() + _this.opts.toolbarFloatOffset;
+            if (scrollTop <= topEdge || scrollTop >= bottomEdge) {
+              _this.editor.wrapper.removeClass('toolbar-floating').css('padding-top', '');
+              if (_this.editor.editable.util.os.mobile) {
+                return _this.wrapper.css('top', _this.opts.toolbarFloatOffset);
+              }
+            } else {
+              floatInitialized || (floatInitialized = initToolbarFloat());
+              _this.editor.wrapper.addClass('toolbar-floating').css('padding-top', toolbarHeight);
+              if (_this.editor.editable.util.os.mobile) {
+                return _this.wrapper.css('top', scrollTop - topEdge + _this.opts.toolbarFloatOffset);
+              }
+            }
+          };
+        })(this));
+      }
+      this.editor.on('destroy', (function(_this) {
+        return function() {
+          return _this.buttons.length = 0;
+        };
+      })(this));
+      $(document).on("mousedown.richeditor-" + this.editor.id, (function(_this) {
+        return function(e) {
+          return _this.list.find('li.menu-on').removeClass('menu-on');
+        };
+      })(this));
+    }
+
+  });
+
+  Toolbar.pluginName = 'Toolbar';
+
+
+
+  Toolbar.prototype._tpl = {
+    wrapper: '<div class="richeditor-toolbar"><ul></ul></div>',
+    separator: '<li><span class="separator"></span></li>'
+  };
+
+
+  Toolbar.prototype._render = function() {
+    var k, len, name, ref;
+    this.buttons = [];
+    //this.wrapper = $(this._tpl.wrapper).prependTo(this.editor.wrapper);
+    this.wrapper = $(this._elm).prependTo(this.editor.wrapper);
+    this.list = this.wrapper.find('ul');
+    ref = this.opts.toolbar;
+    for (k = 0, len = ref.length; k < len; k++) {
+      name = ref[k];
+      if (name === '|') {
+        //$(this._tpl.separator).appendTo(this.list);
+        $(this.options.separator.template).appendTo(this.list);
+        continue;
+      }
+      if (!this.constructor.buttons[name]) {
+        throw new Error("richeditor: invalid toolbar button " + name);
+        continue;
+      }
+      this.buttons.push(new this.constructor.buttons[name]({
+        toolbar : this,
+        editor: this.editor
+      }));
+    }
+    if (this.opts.toolbarHidden) {
+      return this.wrapper.hide();
+    }
+  };
+
+  Toolbar.prototype.findButton = function(name) {
+    var button;
+    button = this.list.find('.toolbar-item-' + name).data('button');
+    return button != null ? button : null;
+  };
+
+  Toolbar.addButton = function(btn) {
+    return this.buttons[btn.prototype.name] = btn;
+  };
+
+  Toolbar.buttons = {};
+
+  return Toolbar;
 
 });
-
 define('skylark-widgets-swt/Uploader',[
   "skylark-langx/langx",
   "skylark-utils-dom/browser",

@@ -22,11 +22,12 @@
   },
   "license": "MIT",
   "dependencies": {
-    "skylark-bootstrap3": "https://github.com/skylark-integration/skylark-bootstrap3#master",
-    "skylark-data-collection": "https://github.com/skylark-data/skylark-data-collection.git#master",
+    "skylark-bootstrap3": "git+https://github.com/skylark-integration/skylark-bootstrap3.git#master",
+    "skylark-data-collection": "git+https://github.com/skylark-data/skylark-data-collection.git#master",
     "skylark-langx": "git+https://github.com/skylarklangx/skylark-langx.git#master",
     "skylark-storages-diskfs": "git+https://github.com/skylark-storages/skylark-storages-diskfs.git#master",
-    "skylark-utils-dom": "git+https://github.com/skylarkutils/skylark-utils-dom.git#master"
+    "skylark-utils-dom": "git+https://github.com/skylarkutils/skylark-utils-dom.git#master",
+    "skylark-widgets-base": "git+https://github.com/skylark-widgets/skylark-widgets-base.git#master"
   },
   "engines": {
     "node": ">=0.10.1"

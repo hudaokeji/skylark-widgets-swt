@@ -83,6 +83,95 @@ requirejs.config({
            location : "../node_modules/skylark-langx/dist/uncompressed/skylark-langx",
             main: 'main'
          },
+
+
+         {
+           name : "skylark-domx-browser",
+           location : "../node_modules/skylark-domx-browser/dist/uncompressed/skylark-domx-browser",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-css",
+           location : "../node_modules/skylark-domx-css/dist/uncompressed/skylark-domx-css",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-browser",
+           location : "../node_modules/skylark-domx-browser/dist/uncompressed/skylark-domx-browser",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-data",
+           location : "../node_modules/skylark-domx-data/dist/uncompressed/skylark-domx-data",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-eventer",
+           location : "../node_modules/skylark-domx-eventer/dist/uncompressed/skylark-domx-eventer",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-finder",
+           location : "../node_modules/skylark-domx-finder/dist/uncompressed/skylark-domx-finder",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-fx",
+           location : "../node_modules/skylark-domx-fx/dist/uncompressed/skylark-domx-fx",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-geom",
+           location : "../node_modules/skylark-domx-geom/dist/uncompressed/skylark-domx-geom",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-images",
+           location : "../node_modules/skylark-domx-images/dist/uncompressed/skylark-domx-images",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-noder",
+           location : "../node_modules/skylark-domx-noder/dist/uncompressed/skylark-domx-noder",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-plugins",
+           location : "../node_modules/skylark-domx-plugins/dist/uncompressed/skylark-domx-plugins",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-query",
+           location : "../node_modules/skylark-domx-query/dist/uncompressed/skylark-domx-query",
+            main: 'main'
+         },
+
+         {
+           name : "skylark-domx-scripter",
+           location : "../node_modules/skylark-domx-scripter/dist/uncompressed/skylark-domx-scripter",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-styler",
+           location : "../node_modules/skylark-domx-styler/dist/uncompressed/skylark-domx-styler",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-tables",
+           location : "../node_modules/skylark-domx-tables/dist/uncompressed/skylark-domx-tables",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-transforms",
+           location : "../node_modules/skylark-domx-transforms/dist/uncompressed/skylark-domx-transforms",
+            main: 'main'
+         },
+         {
+           name : "skylark-domx-velm",
+           location : "../node_modules/skylark-domx-velm/dist/uncompressed/skylark-domx-velm",
+            main: 'main'
+         },
+                  
          {
            name : "skylark-utils-dom" ,
            location : "../node_modules/skylark-utils-dom/dist/uncompressed/skylark-utils-dom",
@@ -103,6 +192,11 @@ requirejs.config({
             location : "../node_modules/skylark-bootstrap3/dist/uncompressed/skylark-bootstrap3",
             main: 'main'
           },
+         {
+           name : "skylark-widgets-base",
+           location : "../../skylark-widgets-base/src",
+            main: 'main'
+         },          
           {
             name: 'skylark-ui-swt',
             location : "../src",

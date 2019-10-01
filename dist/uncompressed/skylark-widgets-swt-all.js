@@ -4112,19 +4112,13 @@ define('skylark-utils-dom/skylark',["skylark-langx/skylark"], function(skylark) 
 });
 
 define('skylark-utils-dom/dom',["./skylark"], function(skylark) {
-	return skylark.dom = skylark.attach("utils.dom",{});
+	return skylark.dom = skylark.attach("dom",{});
 });
 
-define('skylark-utils-dom/langx',[
+define('skylark-domx-browser/browser',[
+    "skylark-langx/skylark",
     "skylark-langx/langx"
-], function(langx) {
-    return langx;
-});
-
-define('skylark-utils-dom/browser',[
-    "./dom",
-    "./langx"
-], function(dom,langx) {
+], function(skylark,langx) {
     "use strict";
 
     var browser = langx.hoster.browser;
@@ -4247,13 +4241,29 @@ define('skylark-utils-dom/browser',[
 
     testEl = null;
 
+    return skylark.attach("domx.browser",browser);
+});
+
+define('skylark-domx-browser/main',[
+	"./browser"
+],function(browser){
+	return browser;
+});
+define('skylark-domx-browser', ['skylark-domx-browser/main'], function (main) { return main; });
+
+define('skylark-utils-dom/browser',[
+    "./dom",
+    "skylark-domx-browser"
+], function(dom,browser) {
+    "use strict";
+
     return dom.browser = browser;
 });
 
-define('skylark-utils-dom/styler',[
-    "./dom",
-    "./langx"
-], function(dom, langx) {
+define('skylark-domx-styler/styler',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx"
+], function(skylark, langx) {
     var every = Array.prototype.every,
         forEach = Array.prototype.forEach,
         camelCase = langx.camelCase,
@@ -4515,14 +4525,21 @@ define('skylark-utils-dom/styler',[
         toggleClass: toggleClass
     });
 
-    return dom.styler = styler;
+    return skylark.attach("domx.styler", styler);
 });
-define('skylark-utils-dom/noder',[
-    "./dom",
-    "./langx",
-    "./browser",
-    "./styler"
-], function(dom, langx, browser, styler) {
+define('skylark-domx-styler/main',[
+	"./styler"
+],function(styler){
+	return styler;
+});
+define('skylark-domx-styler', ['skylark-domx-styler/main'], function (main) { return main; });
+
+define('skylark-domx-noder/noder',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser",
+    "skylark-domx-styler"
+], function(skylark, langx, browser, styler) {
     var isIE = !!navigator.userAgent.match(/Trident/g) || !!navigator.userAgent.match(/MSIE/g),
         fragmentRE = /^\s*<(\w+|!)[^>]*>/,
         singleTagRE = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
@@ -4903,6 +4920,16 @@ define('skylark-utils-dom/noder',[
       return (node === document.body) ? true : document.body.contains(node);
     }        
 
+    var blockNodes = ["div", "p", "ul", "ol", "li", "blockquote", "hr", "pre", "h1", "h2", "h3", "h4", "h5", "table"];
+
+    function isBlockNode(node) {
+        if (!node || node.nodeType === 3) {
+          return false;
+        }
+        return new RegExp("^(" + (blockNodes.join('|')) + ")$").test(node.nodeName.toLowerCase());
+    }
+
+
     /*   
      * Get the owner document object for the specified element.
      * @param {Node} elm
@@ -5025,7 +5052,17 @@ define('skylark-utils-dom/noder',[
             scrollParent;
     };
 
-        /*   
+
+    function reflow(elm) {
+        if (el == null) {
+          elm = document;
+        }
+        elm.offsetHeight;
+
+        return this;      
+    }
+
+    /*   
      * Replace an old node with the specified node.
      * @param {Node} node
      * @param {Node} oldNode
@@ -5221,6 +5258,8 @@ define('skylark-utils-dom/noder',[
 
         append: append,
 
+        reflow: reflow,
+
         remove: remove,
 
         removeChild : removeChild,
@@ -5240,14 +5279,21 @@ define('skylark-utils-dom/noder',[
         unwrap: unwrap
     });
 
-    return dom.noder = noder;
+    return skylark.attach("domx.noder" , noder);
 });
-define('skylark-utils-dom/finder',[
-    "./dom",
-    "./langx",
-    "./browser",
-    "./noder"
-], function(dom, langx, browser, noder, velm) {
+define('skylark-domx-noder/main',[
+	"./noder"
+],function(noder){
+	return noder;
+});
+define('skylark-domx-noder', ['skylark-domx-noder/main'], function (main) { return main; });
+
+define('skylark-domx-finder/finder',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser",
+    "skylark-domx-noder"
+], function(skylark, langx, browser, noder, velm) {
     var local = {},
         filter = Array.prototype.filter,
         slice = Array.prototype.slice,
@@ -6351,14 +6397,21 @@ define('skylark-utils-dom/finder',[
         siblings: siblings
     });
 
-    return dom.finder = finder;
+    return skylark.attach("domx.finder", finder);
 });
-define('skylark-utils-dom/datax',[
-    "./dom",
-    "./langx",
-    "./finder",
-    "./noder"
-], function(dom, langx, finder,noder) {
+define('skylark-domx-finder/main',[
+	"./finder"
+],function(finder){
+	return finder;
+});
+define('skylark-domx-finder', ['skylark-domx-finder/main'], function (main) { return main; });
+
+define('skylark-domx-data/data',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-finder",
+    "skylark-domx-noder"
+], function(skylark, langx, finder,noder) {
     var map = Array.prototype.map,
         filter = Array.prototype.filter,
         camelCase = langx.camelCase,
@@ -6795,16 +6848,23 @@ define('skylark-utils-dom/datax',[
         valHooks : valHooks
     });
 
-    return dom.datax = datax;
+    return skylark.attach("domx.data", datax);
 });
-define('skylark-utils-dom/eventer',[
-    "./dom",
-    "./langx",
-    "./browser",
-    "./finder",
-    "./noder",
-    "./datax"
-], function(dom, langx, browser, finder, noder, datax) {
+define('skylark-domx-data/main',[
+	"./data"
+],function(data){
+	return data;
+});
+define('skylark-domx-data', ['skylark-domx-data/main'], function (main) { return main; });
+
+define('skylark-domx-eventer/eventer',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser",
+    "skylark-domx-finder",
+    "skylark-domx-noder",
+    "skylark-domx-data"
+], function(skylark, langx, browser, finder, noder, datax) {
     var mixin = langx.mixin,
         each = langx.each,
         slice = Array.prototype.slice,
@@ -7478,14 +7538,35 @@ define('skylark-utils-dom/eventer',[
 
     });
 
+    return skylark.attach("domx.eventer",eventer);
+});
+define('skylark-domx-eventer/main',[
+	"./eventer"
+],function(eventer){
+	return eventer;
+});
+define('skylark-domx-eventer', ['skylark-domx-eventer/main'], function (main) { return main; });
+
+define('skylark-utils-dom/eventer',[
+    "./dom",
+    "skylark-domx-eventer"
+], function(dom, eventer) {
+ 
     return dom.eventer = eventer;
 });
-define('skylark-utils-dom/geom',[
+define('skylark-utils-dom/noder',[
     "./dom",
-    "./langx",
-    "./noder",
-    "./styler"
-], function(dom, langx, noder, styler) {
+    "skylark-domx-noder"
+], function(dom, noder) {
+
+    return dom.noder = noder;
+});
+define('skylark-domx-geom/geom',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-styler"
+], function(skylark, langx, noder, styler) {
     var rootNodeRE = /^(?:body|html)$/i,
         px = langx.toPixel,
         offsetParent = noder.offsetParent,
@@ -8540,16 +8621,30 @@ define('skylark-utils-dom/geom',[
         geom.posit = posit;
     })();
 
+    return skylark.attach("domx.geom", geom);
+});
+define('skylark-domx-geom/main',[
+	"./geom"
+],function(geom){
+	return geom;
+});
+define('skylark-domx-geom', ['skylark-domx-geom/main'], function (main) { return main; });
+
+define('skylark-utils-dom/geom',[
+    "./dom",
+    "skylark-domx-geom"
+], function(dom, geom) {
+
     return dom.geom = geom;
 });
-define('skylark-utils-dom/fx',[
-    "./dom",
-    "./langx",
-    "./browser",
-    "./geom",
-    "./styler",
-    "./eventer"
-], function(dom, langx, browser, geom, styler, eventer) {
+define('skylark-domx-fx/fx',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser",
+    "skylark-domx-geom",
+    "skylark-domx-styler",
+    "skylark-domx-eventer"
+], function(skylark, langx, browser, geom, styler, eventer) {
     var animationName,
         animationDuration,
         animationTiming,
@@ -9085,14 +9180,21 @@ define('skylark-utils-dom/fx',[
         toggle
     });
 
-    return dom.fx = fx;
+    return skylark.attach("domx.fx", fx);
 });
-define('skylark-utils-dom/scripter',[
-    "./dom",
-    "./langx",
-    "./noder",
-    "./finder"
-], function(dom, langx, noder, finder) {
+define('skylark-domx-fx/main',[
+	"./fx"
+],function(fx){
+	return fx;
+});
+define('skylark-domx-fx', ['skylark-domx-fx/main'], function (main) { return main; });
+
+define('skylark-domx-scripter/scripter',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-finder"
+], function(skylark, langx, noder, finder) {
 
     var head = document.getElementsByTagName('head')[0],
         scriptsByUrl = {},
@@ -9246,20 +9348,27 @@ define('skylark-utils-dom/scripter',[
         }
     });
 
-    return dom.scripter = scripter;
+    return skylark.attach("domx.scripter", scripter);
 });
-define('skylark-utils-dom/query',[
-    "./dom",
-    "./langx",
-    "./noder",
-    "./datax",
-    "./eventer",
-    "./finder",
-    "./geom",
-    "./styler",
-    "./fx",
-    "./scripter"
-], function(dom, langx, noder, datax, eventer, finder, geom, styler, fx,scripter) {
+define('skylark-domx-scripter/main',[
+	"./scripter"
+],function(scripter){
+	return scripter;
+});
+define('skylark-domx-scripter', ['skylark-domx-scripter/main'], function (main) { return main; });
+
+define('skylark-domx-query/query',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-data",
+    "skylark-domx-eventer",
+    "skylark-domx-finder",
+    "skylark-domx-geom",
+    "skylark-domx-styler",
+    "skylark-domx-fx",
+    "skylark-domx-scripter"
+], function(skylark, langx, noder, datax, eventer, finder, geom, styler, fx,scripter) {
     var some = Array.prototype.some,
         push = Array.prototype.push,
         every = Array.prototype.every,
@@ -10192,6 +10301,14 @@ define('skylark-utils-dom/query',[
         $.fn.enableSelection = function() {
             return this.off( ".ui-disableSelection" );
         };
+
+        $.fn.reflow = function() {
+            return noder.flow(this[0]);
+        };
+
+        $.fn.isBlockNode = function() {
+            return noder.isBlockNode(this[0]);
+        };
        
 
     })(query);
@@ -10206,6 +10323,21 @@ define('skylark-utils-dom/query',[
         });
         return returnValue;
     };
+
+    return skylark.attach("domx.query", query);
+
+});
+define('skylark-domx-query/main',[
+	"./query"
+],function(query){
+	return query;
+});
+define('skylark-domx-query', ['skylark-domx-query/main'], function (main) { return main; });
+
+define('skylark-utils-dom/query',[
+    "./dom",
+    "skylark-domx-query"
+], function(dom, query) {
 
     return dom.query = query;
 
@@ -10275,18 +10407,18 @@ define('skylark-widgets-swt/swt',[
 
 });
 
-define('skylark-utils-dom/elmx',[
-    "./dom",
-    "./langx",
-    "./datax",
-    "./eventer",
-    "./finder",
-    "./fx",
-    "./geom",
-    "./noder",
-    "./styler",
-    "./query"
-], function(dom, langx, datax, eventer, finder, fx, geom, noder, styler,$) {
+define('skylark-domx-velm/velm',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-data",
+    "skylark-domx-eventer",
+    "skylark-domx-finder",
+    "skylark-domx-geom",
+    "skylark-domx-styler",
+    "skylark-domx-fx",
+    "skylark-domx-query"
+], function(skylark, langx, noder, datax, eventer, finder, geom, styler, fx, $) {
     var map = Array.prototype.map,
         slice = Array.prototype.slice;
     /*
@@ -10560,21 +10692,28 @@ define('skylark-utils-dom/elmx',[
     });
 
 
-    return dom.elmx = elmx;
+    return skylark.attach("domx.elmx", elmx);
 });
-define('skylark-utils-dom/plugins',[
-    "./dom",
-    "./langx",
-    "./noder",
-    "./datax",
-    "./eventer",
-    "./finder",
-    "./geom",
-    "./styler",
-    "./fx",
-    "./query",
-    "./elmx"
-], function(dom, langx, noder, datax, eventer, finder, geom, styler, fx, $, elmx) {
+define('skylark-domx-velm/main',[
+	"./velm"
+],function(velm){
+	return velm;
+});
+define('skylark-domx-velm', ['skylark-domx-velm/main'], function (main) { return main; });
+
+define('skylark-domx-plugins/plugins',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-data",
+    "skylark-domx-eventer",
+    "skylark-domx-finder",
+    "skylark-domx-geom",
+    "skylark-domx-styler",
+    "skylark-domx-fx",
+    "skylark-domx-query",
+    "skylark-domx-velm"
+], function(skylark, langx, noder, datax, eventer, finder, geom, styler, fx, $, elmx) {
     "use strict";
 
     var slice = Array.prototype.slice,
@@ -10870,8 +11009,15 @@ define('skylark-utils-dom/plugins',[
         shortcuts
     });
 
-    return plugins;
+    return  skylark.attach("domx.plugins",plugins);
 });
+define('skylark-domx-plugins/main',[
+	"./plugins"
+],function(plugins){
+	return plugins;
+});
+define('skylark-domx-plugins', ['skylark-domx-plugins/main'], function (main) { return main; });
+
 define('skylark-data-collection/collections',[
 	"skylark-langx/skylark"
 ],function(skylark){
@@ -11188,20 +11334,25 @@ define('skylark-data-collection/Map',[
     return Map;
 });
 
-define('skylark-widgets-swt/Widget',[
+define('skylark-widgets-base/base',[
+	"skylark-langx/skylark"
+],function(skylark){
+	return skylark.attach("widgets.base",{});
+});
+define('skylark-widgets-base/Widget',[
   "skylark-langx/skylark",
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/datax",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/elmx",
-  "skylark-utils-dom/query",
-  "skylark-utils-dom/plugins",
+  "skylark-domx-browser",
+  "skylark-domx-data",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-velm",
+  "skylark-domx-query",
+  "skylark-domx-plugins",
   "skylark-data-collection/Map",
-  "./swt"
-],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,swt){
+  "./base"
+],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,base){
 
 /*---------------------------------------------------------------------------------*/
 
@@ -11232,6 +11383,29 @@ define('skylark-widgets-swt/Widget',[
 
         //this.state = this.options.state || new Map();
         this._init();
+
+        var addonCategoryOptions = this.options.addons;
+        if (addonCategoryOptions) {
+          var widgetCtor = this.constructor,
+              addons = widgetCtor.addons;
+          for (var categoryName in addonCategoryOptions) {
+              for (var i =0;i < addonCategoryOptions[categoryName].length; i++ ) {
+                var addonOption = addonCategoryOptions[categoryName][i];
+                if (langx.isString(addonOption)) {
+                  var addonName = addonOption,
+                      addonCtor = addons[categoryName][addonName];
+
+                  this.addon(addonCtor);
+
+                }
+
+              }
+          }
+
+
+        }
+
+
      },
 
     /**
@@ -11344,15 +11518,14 @@ define('skylark-widgets-swt/Widget',[
       }
     },
 
-    addon : function(categoryName,addonName,setting) {
+    addon : function(ctor,setting) {
+      var categoryName = ctor.categoryName,
+          addonName = ctor.addonName;
+
       this._addons = this.addons || {};
       var category = this._addons[categoryName] = this._addons[categoryName] || {};
-      if (setting === undefined) {
-        return category[addonName] || null;      
-      } else {
-        category[addonName] = setting;
-        return this;
-      }
+      category[addonName] = new ctor(this,setting);
+      return this;
     },
 
     addons : function(categoryName,settings) {
@@ -11592,9 +11765,24 @@ define('skylark-widgets-swt/Widget',[
     return ctor;
   };
 
-	return swt.Widget = Widget;
+	return base.Widget = Widget;
 });
 
+define('skylark-widgets-swt/Widget',[
+  "skylark-widgets-base/Widget"
+],function(Widget){
+  return Widget;
+});
+
+define('skylark-utils-dom/plugins',[
+    "./dom",
+    "skylark-domx-plugins"
+], function(dom, plugins) {
+    "use strict";
+
+
+    return dom.plugins = plugins;
+});
 define('skylark-bootstrap3/bs3',[
   "skylark-utils-dom/skylark",
   "skylark-langx/langx",
@@ -16874,215 +17062,168 @@ define('skylark-widgets-swt/TabStrip',[
 });
 define('skylark-widgets-swt/Toolbar',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./swt",
-  "./Widget"
-],function(langx,browser,eventer,noder,geom,$,swt,Widget){
-
-	var Toolbar = swt.Toolbar = Widget.inherit({
-        klassName: "Toolbar",
-
-	    pluginName : "lark.toolbar",
-
-        init : function(elm,options) {
-			var self = this;
-			this._options = langx.mixin({
-					autoredraw: true,
-					buttons: {},
-					context: {},
-					list: [],
-					show: true,
-			},options);
+  "skylark-widgets-base/Widget"
+],function(langx,$,Widget){ 
 
 
-			this.$container = $('<nav class="navbar"/>');
-			this.$el = $(elm).append(this.$container);
 
-			this.$container.on('mousedown.bs.dropdown.data-api', '[data-toggle="dropdown"]',function(e) {
-				$(this).dropdown();
-			}); 
-
-			this.render();
-        },
-
-
-		render : function () {
-			function createToolbarItems(items,container) {
-				langx.each(items,function(i,item)  {
-					var type = item.type;
-					if (!type) {
-						type = "button";
-					}
-					switch (type) {
-						case "buttongroup":
-							// Create an element with the HTML
-							createButtonGroup(item,container);
-							break;
-						case "button":
-							createButton(item,container)
-							break;
-						case "dropdown":
-						case "dropup":
-							createDrop(item,container)
-							break;
-						case "input":
-							createInput(item,container)
-							break;
-						default:
-							throw "Wrong widget button type";
-					}
-				});
-
-			}
-
-			function createButtonGroup(item,container) {
-				var  group = $("<div/>", { class: "btn-group", role: "group" });
-				container.append(group);
-				createToolbarItems(item.items,group);
-				return group;
-			}
-
-			function createButton(item,container) {
-				// Create button
-				var button = $('<button type="button" class="btn btn-default"/>'),
-					attrs = langx.mixin({},item);
-
-				// If has icon
-				if ("icon" in item) {
-					button.append($("<span/>", { class: item.icon }));
-					delete attrs.icon;
-				}
-				// If has text
-				if ("text" in attrs) {
-					button.append(" " + item.text);
-					delete attrs.text;
-				}
-
-				button.attr(attrs);
-
-				// Add button to the group
-				container.append(button);
-
-			}
-
-			function createDrop(item,container) {
-				// Create button
-				var dropdown_group = $('<div class="btn-group" role="group"/>');
-				var dropdown_button = $('<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"/>');
-				var dropdown_list = $('<ul class="dropdown-menu"/>');
-
-				var	attrs = langx.mixin({},item);
-
-				if(item.type === "dropup") {
-					dropdown_group.addClass("dropup");
-				}
-
-				// If has icon
-				if ("icon" in item) {
-					dropdown_button.append($("<span/>", { class: item.icon }));
-					delete attrs.icon;
-				}
-				// If has text
-				if ("text" in item) {
-					dropdown_button.append(" " + item.text);
-					delete attrs.text;
-				}
-				// Add caret
-				dropdown_button.append(' <span class="caret"/>');
-
-				// Add list of options
-				for(var i in item.list) {
-					var dropdown_option = item.list[i];
-					var dropdown_option_li = $('<li/>');
-
-					// If has icon
-					if ("icon" in dropdown_option) {
-						dropdown_option_li.append($("<span/>", { class: dropdown_option.icon }));
-					}
-
-					// If has text
-					if ("text" in dropdown_option) {
-						dropdown_option_li.append(" " + dropdown_option.text);
-					}
-					// Set attributes
-					dropdown_option_li.attr(dropdown_option);
-
-					// Add to dropdown list
-					dropdown_list.append(dropdown_option_li);
-				}
-				
-				// Set attributes
-				dropdown_group.attr(attrs);
-
-				dropdown_group.append(dropdown_button);
-				dropdown_group.append(dropdown_list);
-				container.append(dropdown_group);
-
-			}
-
-			function createInput(item,container) {
-				var input_group = $('<div class="input-group"/>');
-				var input_element = $('<input class="form-control"/>');
-				
-				var	attrs = langx.mixin({},item);
-
-				// Add prefix addon
-				if("prefix" in item) {
-					var input_prefix = $('<span class="input-group-addon"/>');
-					input_prefix.html(item.prefix);
-					input_group.append(input_prefix);
-
-					delete attrs.prefix;
-				}
-				
-				// Add input
-				input_group.append(input_element);
-
-				// Add sufix addon
-				if("sufix" in item) {
-					var input_sufix = $('<span class="input-group-addon"/>');
-					input_sufix.html(item.sufix);
-					input_group.append(input_sufix);
-
-					delete attrs.sufix;
-				}
-
-				attrs.type = attrs.inputType;
-
-				delete attrs.inputType;
-
-				// Set attributes
-				input_element.attr(attrs);
-
-				container.append(input_group);
-
-			}
-
-			var items = this._options.items;
-			if (items) {
-				createToolbarItems(items,this.$container);
-			}
-		}
-
-	});
+  var Toolbar = Widget.inherit({
+    options : {
+      toolbar: true,
+      toolbarFloat: true,
+      toolbarHidden: false,
+      toolbarFloatOffset: 0,
+      template : '<div class="richeditor-toolbar"><ul></ul></div>',
+      separator : {
+        template :  '<li><span class="separator"></span></li>'
+      }
+    },
 
 
-	$.fn.toolbar = function (options) {
-		options = options || {};
+    _construct : function(editor,opts) {
+      this.editor =editor;
+      Widget.prototype._construct.call(this,opts);
+    },
 
-		return this.each(function () {
-			return new Toolbar(this, langx.mixin({}, options,true));
-		});
-	};
+    _init : function(editor,opts) {
+      var floatInitialized, initToolbarFloat, toolbarHeight;
+      //this.editor = editor;
 
-	return Toolbar;
+      //this.opts = langx.extend({}, this.opts, opts);
+      this.opts = this.options;
+
+      if (!this.opts.toolbar) {
+        return;
+      }
+      //if (!langx.isArray(this.opts.toolbar)) {
+      //  this.opts.toolbar = ['bold', 'italic', 'underline', 'strikethrough', '|', 'ol', 'ul', 'blockquote', 'code', '|', 'link', 'image', '|', 'indent', 'outdent'];
+      //}
+      this._render();
+      this.list.on('click', function(e) {
+        return false;
+      });
+      this.wrapper.on('mousedown', (function(_this) {
+        return function(e) {
+          return _this.list.find('.menu-on').removeClass('.menu-on');
+        };
+      })(this));
+      $(document).on('mousedown.richeditor' + this.editor.id, (function(_this) {
+        return function(e) {
+          return _this.list.find('.menu-on').removeClass('.menu-on');
+        };
+      })(this));
+      if (!this.opts.toolbarHidden && this.opts.toolbarFloat) {
+        this.wrapper.css('top', this.opts.toolbarFloatOffset);
+        toolbarHeight = 0;
+        initToolbarFloat = (function(_this) {
+          return function() {
+            _this.wrapper.css('position', 'static');
+            _this.wrapper.width('auto');
+            _this.editor.editable.util.reflow(_this.wrapper);
+            _this.wrapper.width(_this.wrapper.outerWidth());
+            _this.wrapper.css('left', _this.editor.editable.util.os.mobile ? _this.wrapper.position().left : _this.wrapper.offset().left);
+            _this.wrapper.css('position', '');
+            toolbarHeight = _this.wrapper.outerHeight();
+            _this.editor.placeholderEl.css('top', toolbarHeight);
+            return true;
+          };
+        })(this);
+        floatInitialized = null;
+        $(window).on('resize.richeditor-' + this.editor.id, function(e) {
+          return floatInitialized = initToolbarFloat();
+        });
+        $(window).on('scroll.richeditor-' + this.editor.id, (function(_this) {
+          return function(e) {
+            var bottomEdge, scrollTop, topEdge;
+            if (!_this.wrapper.is(':visible')) {
+              return;
+            }
+            topEdge = _this.editor.wrapper.offset().top;
+            bottomEdge = topEdge + _this.editor.wrapper.outerHeight() - 80;
+            scrollTop = $(document).scrollTop() + _this.opts.toolbarFloatOffset;
+            if (scrollTop <= topEdge || scrollTop >= bottomEdge) {
+              _this.editor.wrapper.removeClass('toolbar-floating').css('padding-top', '');
+              if (_this.editor.editable.util.os.mobile) {
+                return _this.wrapper.css('top', _this.opts.toolbarFloatOffset);
+              }
+            } else {
+              floatInitialized || (floatInitialized = initToolbarFloat());
+              _this.editor.wrapper.addClass('toolbar-floating').css('padding-top', toolbarHeight);
+              if (_this.editor.editable.util.os.mobile) {
+                return _this.wrapper.css('top', scrollTop - topEdge + _this.opts.toolbarFloatOffset);
+              }
+            }
+          };
+        })(this));
+      }
+      this.editor.on('destroy', (function(_this) {
+        return function() {
+          return _this.buttons.length = 0;
+        };
+      })(this));
+      $(document).on("mousedown.richeditor-" + this.editor.id, (function(_this) {
+        return function(e) {
+          return _this.list.find('li.menu-on').removeClass('menu-on');
+        };
+      })(this));
+    }
+
+  });
+
+  Toolbar.pluginName = 'Toolbar';
+
+
+
+  Toolbar.prototype._tpl = {
+    wrapper: '<div class="richeditor-toolbar"><ul></ul></div>',
+    separator: '<li><span class="separator"></span></li>'
+  };
+
+
+  Toolbar.prototype._render = function() {
+    var k, len, name, ref;
+    this.buttons = [];
+    //this.wrapper = $(this._tpl.wrapper).prependTo(this.editor.wrapper);
+    this.wrapper = $(this._elm).prependTo(this.editor.wrapper);
+    this.list = this.wrapper.find('ul');
+    ref = this.opts.toolbar;
+    for (k = 0, len = ref.length; k < len; k++) {
+      name = ref[k];
+      if (name === '|') {
+        //$(this._tpl.separator).appendTo(this.list);
+        $(this.options.separator.template).appendTo(this.list);
+        continue;
+      }
+      if (!this.constructor.buttons[name]) {
+        throw new Error("richeditor: invalid toolbar button " + name);
+        continue;
+      }
+      this.buttons.push(new this.constructor.buttons[name]({
+        toolbar : this,
+        editor: this.editor
+      }));
+    }
+    if (this.opts.toolbarHidden) {
+      return this.wrapper.hide();
+    }
+  };
+
+  Toolbar.prototype.findButton = function(name) {
+    var button;
+    button = this.list.find('.toolbar-item-' + name).data('button');
+    return button != null ? button : null;
+  };
+
+  Toolbar.addButton = function(btn) {
+    return this.buttons[btn.prototype.name] = btn;
+  };
+
+  Toolbar.buttons = {};
+
+  return Toolbar;
 
 });
-
 define('skylark-data-collection/List',[
     "skylark-langx/arrays",
     "./collections",
@@ -17571,6 +17712,13 @@ define('skylark-storages-diskfs/diskfs',[
     };
 
     return skylark.attach("storages.diskfs", diskfs);
+});
+define('skylark-utils-dom/styler',[
+    "./dom",
+    "skylark-domx-styler"
+], function(dom, styler) {
+
+    return dom.styler = styler;
 });
  define('skylark-storages-diskfs/webentry',[
     "skylark-langx/arrays",

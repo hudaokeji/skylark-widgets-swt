@@ -1,210 +1,164 @@
 define([
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
   "skylark-utils-dom/query",
-  "./swt",
-  "./Widget"
-],function(langx,browser,eventer,noder,geom,$,swt,Widget){
-
-	var Toolbar = swt.Toolbar = Widget.inherit({
-        klassName: "Toolbar",
-
-	    pluginName : "lark.toolbar",
-
-        init : function(elm,options) {
-			var self = this;
-			this._options = langx.mixin({
-					autoredraw: true,
-					buttons: {},
-					context: {},
-					list: [],
-					show: true,
-			},options);
+  "skylark-widgets-base/Widget"
+],function(langx,$,Widget){ 
 
 
-			this.$container = $('<nav class="navbar"/>');
-			this.$el = $(elm).append(this.$container);
 
-			this.$container.on('mousedown.bs.dropdown.data-api', '[data-toggle="dropdown"]',function(e) {
-				$(this).dropdown();
-			}); 
-
-			this.render();
-        },
-
-
-		render : function () {
-			function createToolbarItems(items,container) {
-				langx.each(items,function(i,item)  {
-					var type = item.type;
-					if (!type) {
-						type = "button";
-					}
-					switch (type) {
-						case "buttongroup":
-							// Create an element with the HTML
-							createButtonGroup(item,container);
-							break;
-						case "button":
-							createButton(item,container)
-							break;
-						case "dropdown":
-						case "dropup":
-							createDrop(item,container)
-							break;
-						case "input":
-							createInput(item,container)
-							break;
-						default:
-							throw "Wrong widget button type";
-					}
-				});
-
-			}
-
-			function createButtonGroup(item,container) {
-				var  group = $("<div/>", { class: "btn-group", role: "group" });
-				container.append(group);
-				createToolbarItems(item.items,group);
-				return group;
-			}
-
-			function createButton(item,container) {
-				// Create button
-				var button = $('<button type="button" class="btn btn-default"/>'),
-					attrs = langx.mixin({},item);
-
-				// If has icon
-				if ("icon" in item) {
-					button.append($("<span/>", { class: item.icon }));
-					delete attrs.icon;
-				}
-				// If has text
-				if ("text" in attrs) {
-					button.append(" " + item.text);
-					delete attrs.text;
-				}
-
-				button.attr(attrs);
-
-				// Add button to the group
-				container.append(button);
-
-			}
-
-			function createDrop(item,container) {
-				// Create button
-				var dropdown_group = $('<div class="btn-group" role="group"/>');
-				var dropdown_button = $('<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"/>');
-				var dropdown_list = $('<ul class="dropdown-menu"/>');
-
-				var	attrs = langx.mixin({},item);
-
-				if(item.type === "dropup") {
-					dropdown_group.addClass("dropup");
-				}
-
-				// If has icon
-				if ("icon" in item) {
-					dropdown_button.append($("<span/>", { class: item.icon }));
-					delete attrs.icon;
-				}
-				// If has text
-				if ("text" in item) {
-					dropdown_button.append(" " + item.text);
-					delete attrs.text;
-				}
-				// Add caret
-				dropdown_button.append(' <span class="caret"/>');
-
-				// Add list of options
-				for(var i in item.list) {
-					var dropdown_option = item.list[i];
-					var dropdown_option_li = $('<li/>');
-
-					// If has icon
-					if ("icon" in dropdown_option) {
-						dropdown_option_li.append($("<span/>", { class: dropdown_option.icon }));
-					}
-
-					// If has text
-					if ("text" in dropdown_option) {
-						dropdown_option_li.append(" " + dropdown_option.text);
-					}
-					// Set attributes
-					dropdown_option_li.attr(dropdown_option);
-
-					// Add to dropdown list
-					dropdown_list.append(dropdown_option_li);
-				}
-				
-				// Set attributes
-				dropdown_group.attr(attrs);
-
-				dropdown_group.append(dropdown_button);
-				dropdown_group.append(dropdown_list);
-				container.append(dropdown_group);
-
-			}
-
-			function createInput(item,container) {
-				var input_group = $('<div class="input-group"/>');
-				var input_element = $('<input class="form-control"/>');
-				
-				var	attrs = langx.mixin({},item);
-
-				// Add prefix addon
-				if("prefix" in item) {
-					var input_prefix = $('<span class="input-group-addon"/>');
-					input_prefix.html(item.prefix);
-					input_group.append(input_prefix);
-
-					delete attrs.prefix;
-				}
-				
-				// Add input
-				input_group.append(input_element);
-
-				// Add sufix addon
-				if("sufix" in item) {
-					var input_sufix = $('<span class="input-group-addon"/>');
-					input_sufix.html(item.sufix);
-					input_group.append(input_sufix);
-
-					delete attrs.sufix;
-				}
-
-				attrs.type = attrs.inputType;
-
-				delete attrs.inputType;
-
-				// Set attributes
-				input_element.attr(attrs);
-
-				container.append(input_group);
-
-			}
-
-			var items = this._options.items;
-			if (items) {
-				createToolbarItems(items,this.$container);
-			}
-		}
-
-	});
+  var Toolbar = Widget.inherit({
+    options : {
+      toolbar: true,
+      toolbarFloat: true,
+      toolbarHidden: false,
+      toolbarFloatOffset: 0,
+      template : '<div class="richeditor-toolbar"><ul></ul></div>',
+      separator : {
+        template :  '<li><span class="separator"></span></li>'
+      }
+    },
 
 
-	$.fn.toolbar = function (options) {
-		options = options || {};
+    _construct : function(editor,opts) {
+      this.editor =editor;
+      Widget.prototype._construct.call(this,opts);
+    },
 
-		return this.each(function () {
-			return new Toolbar(this, langx.mixin({}, options,true));
-		});
-	};
+    _init : function(editor,opts) {
+      var floatInitialized, initToolbarFloat, toolbarHeight;
+      //this.editor = editor;
 
-	return Toolbar;
+      //this.opts = langx.extend({}, this.opts, opts);
+      this.opts = this.options;
+
+      if (!this.opts.toolbar) {
+        return;
+      }
+      //if (!langx.isArray(this.opts.toolbar)) {
+      //  this.opts.toolbar = ['bold', 'italic', 'underline', 'strikethrough', '|', 'ol', 'ul', 'blockquote', 'code', '|', 'link', 'image', '|', 'indent', 'outdent'];
+      //}
+      this._render();
+      this.list.on('click', function(e) {
+        return false;
+      });
+      this.wrapper.on('mousedown', (function(_this) {
+        return function(e) {
+          return _this.list.find('.menu-on').removeClass('.menu-on');
+        };
+      })(this));
+      $(document).on('mousedown.richeditor' + this.editor.id, (function(_this) {
+        return function(e) {
+          return _this.list.find('.menu-on').removeClass('.menu-on');
+        };
+      })(this));
+      if (!this.opts.toolbarHidden && this.opts.toolbarFloat) {
+        this.wrapper.css('top', this.opts.toolbarFloatOffset);
+        toolbarHeight = 0;
+        initToolbarFloat = (function(_this) {
+          return function() {
+            _this.wrapper.css('position', 'static');
+            _this.wrapper.width('auto');
+            _this.editor.editable.util.reflow(_this.wrapper);
+            _this.wrapper.width(_this.wrapper.outerWidth());
+            _this.wrapper.css('left', _this.editor.editable.util.os.mobile ? _this.wrapper.position().left : _this.wrapper.offset().left);
+            _this.wrapper.css('position', '');
+            toolbarHeight = _this.wrapper.outerHeight();
+            _this.editor.placeholderEl.css('top', toolbarHeight);
+            return true;
+          };
+        })(this);
+        floatInitialized = null;
+        $(window).on('resize.richeditor-' + this.editor.id, function(e) {
+          return floatInitialized = initToolbarFloat();
+        });
+        $(window).on('scroll.richeditor-' + this.editor.id, (function(_this) {
+          return function(e) {
+            var bottomEdge, scrollTop, topEdge;
+            if (!_this.wrapper.is(':visible')) {
+              return;
+            }
+            topEdge = _this.editor.wrapper.offset().top;
+            bottomEdge = topEdge + _this.editor.wrapper.outerHeight() - 80;
+            scrollTop = $(document).scrollTop() + _this.opts.toolbarFloatOffset;
+            if (scrollTop <= topEdge || scrollTop >= bottomEdge) {
+              _this.editor.wrapper.removeClass('toolbar-floating').css('padding-top', '');
+              if (_this.editor.editable.util.os.mobile) {
+                return _this.wrapper.css('top', _this.opts.toolbarFloatOffset);
+              }
+            } else {
+              floatInitialized || (floatInitialized = initToolbarFloat());
+              _this.editor.wrapper.addClass('toolbar-floating').css('padding-top', toolbarHeight);
+              if (_this.editor.editable.util.os.mobile) {
+                return _this.wrapper.css('top', scrollTop - topEdge + _this.opts.toolbarFloatOffset);
+              }
+            }
+          };
+        })(this));
+      }
+      this.editor.on('destroy', (function(_this) {
+        return function() {
+          return _this.buttons.length = 0;
+        };
+      })(this));
+      $(document).on("mousedown.richeditor-" + this.editor.id, (function(_this) {
+        return function(e) {
+          return _this.list.find('li.menu-on').removeClass('menu-on');
+        };
+      })(this));
+    }
+
+  });
+
+  Toolbar.pluginName = 'Toolbar';
+
+
+
+  Toolbar.prototype._tpl = {
+    wrapper: '<div class="richeditor-toolbar"><ul></ul></div>',
+    separator: '<li><span class="separator"></span></li>'
+  };
+
+
+  Toolbar.prototype._render = function() {
+    var k, len, name, ref;
+    this.buttons = [];
+    //this.wrapper = $(this._tpl.wrapper).prependTo(this.editor.wrapper);
+    this.wrapper = $(this._elm).prependTo(this.editor.wrapper);
+    this.list = this.wrapper.find('ul');
+    ref = this.opts.toolbar;
+    for (k = 0, len = ref.length; k < len; k++) {
+      name = ref[k];
+      if (name === '|') {
+        //$(this._tpl.separator).appendTo(this.list);
+        $(this.options.separator.template).appendTo(this.list);
+        continue;
+      }
+      if (!this.constructor.buttons[name]) {
+        throw new Error("richeditor: invalid toolbar button " + name);
+        continue;
+      }
+      this.buttons.push(new this.constructor.buttons[name]({
+        toolbar : this,
+        editor: this.editor
+      }));
+    }
+    if (this.opts.toolbarHidden) {
+      return this.wrapper.hide();
+    }
+  };
+
+  Toolbar.prototype.findButton = function(name) {
+    var button;
+    button = this.list.find('.toolbar-item-' + name).data('button');
+    return button != null ? button : null;
+  };
+
+  Toolbar.addButton = function(btn) {
+    return this.buttons[btn.prototype.name] = btn;
+  };
+
+  Toolbar.buttons = {};
+
+  return Toolbar;
 
 });
