@@ -7,37 +7,32 @@ define([
 
 
   var Toolbar = Widget.inherit({
+    pluginName : "lark.toolbar",
+
     options : {
-      toolbar: true,
       toolbarFloat: true,
       toolbarHidden: false,
       toolbarFloatOffset: 0,
-      template : '<div class="richeditor-toolbar"><ul></ul></div>',
+      template : '<div class="lark-toolbar"><ul></ul></div>',
       separator : {
         template :  '<li><span class="separator"></span></li>'
       }
     },
 
-
-    _construct : function(editor,opts) {
-      this.editor =editor;
-      Widget.prototype._construct.call(this,opts);
-    },
-
-    _init : function(editor,opts) {
+    _init : function() {
       var floatInitialized, initToolbarFloat, toolbarHeight;
       //this.editor = editor;
 
       //this.opts = langx.extend({}, this.opts, opts);
       this.opts = this.options;
 
-      if (!this.opts.toolbar) {
-        return;
-      }
+
       //if (!langx.isArray(this.opts.toolbar)) {
       //  this.opts.toolbar = ['bold', 'italic', 'underline', 'strikethrough', '|', 'ol', 'ul', 'blockquote', 'code', '|', 'link', 'image', '|', 'indent', 'outdent'];
       //}
-      this._render();
+
+      this.wrapper = $(this._elm);
+      this.list = this.wrapper.find('ul');
       this.list.on('click', function(e) {
         return false;
       });
@@ -46,9 +41,9 @@ define([
           return _this.list.find('.menu-on').removeClass('.menu-on');
         };
       })(this));
-      $(document).on('mousedown.richeditor' + this.editor.id, (function(_this) {
+      $(document).on('mousedown.toolbar', (function(_this) {
         return function(e) {
-          return _this.list.find('.menu-on').removeClass('.menu-on');
+          return _this.list.find('.menu-on').removeClass('menu-on');
         };
       })(this));
       if (!this.opts.toolbarHidden && this.opts.toolbarFloat) {
@@ -68,6 +63,8 @@ define([
           };
         })(this);
         floatInitialized = null;
+
+        /*
         $(window).on('resize.richeditor-' + this.editor.id, function(e) {
           return floatInitialized = initToolbarFloat();
         });
@@ -94,70 +91,32 @@ define([
             }
           };
         })(this));
+        */
       }
+
+      /*
       this.editor.on('destroy', (function(_this) {
         return function() {
           return _this.buttons.length = 0;
         };
       })(this));
-      $(document).on("mousedown.richeditor-" + this.editor.id, (function(_this) {
-        return function(e) {
-          return _this.list.find('li.menu-on').removeClass('menu-on');
-        };
-      })(this));
+      */
+
+      
+    },
+
+    addToolItem : function(itemWidget) {
+      $(itemWidget._elm).appendTo(this.list);
+      return this;
+    },
+
+    addSeparator : function() {
+      $(this.options.separator.template).appendTo(this.list);
+      return this;
     }
 
   });
 
-  Toolbar.pluginName = 'Toolbar';
-
-
-
-  Toolbar.prototype._tpl = {
-    wrapper: '<div class="richeditor-toolbar"><ul></ul></div>',
-    separator: '<li><span class="separator"></span></li>'
-  };
-
-
-  Toolbar.prototype._render = function() {
-    var k, len, name, ref;
-    this.buttons = [];
-    //this.wrapper = $(this._tpl.wrapper).prependTo(this.editor.wrapper);
-    this.wrapper = $(this._elm).prependTo(this.editor.wrapper);
-    this.list = this.wrapper.find('ul');
-    ref = this.opts.toolbar;
-    for (k = 0, len = ref.length; k < len; k++) {
-      name = ref[k];
-      if (name === '|') {
-        //$(this._tpl.separator).appendTo(this.list);
-        $(this.options.separator.template).appendTo(this.list);
-        continue;
-      }
-      if (!this.constructor.buttons[name]) {
-        throw new Error("richeditor: invalid toolbar button " + name);
-        continue;
-      }
-      this.buttons.push(new this.constructor.buttons[name]({
-        toolbar : this,
-        editor: this.editor
-      }));
-    }
-    if (this.opts.toolbarHidden) {
-      return this.wrapper.hide();
-    }
-  };
-
-  Toolbar.prototype.findButton = function(name) {
-    var button;
-    button = this.list.find('.toolbar-item-' + name).data('button');
-    return button != null ? button : null;
-  };
-
-  Toolbar.addButton = function(btn) {
-    return this.buttons[btn.prototype.name] = btn;
-  };
-
-  Toolbar.buttons = {};
 
   return Toolbar;
 
