@@ -198,7 +198,7 @@ requirejs.config({
             main: 'main'
          },          
           {
-            name: 'skylark-ui-swt',
+            name: 'skylark-widgets-swt',
             location : "../src",
             main: 'main'
           }      
@@ -208,7 +208,7 @@ requirejs.config({
  
 // require(["module/name", ...], function(params){ ... });
 require(["skylark-utils-dom/query"], function ($) {
-    require(["skylark-ui-swt"], function (swt) {
+    require(["skylark-widgets-swt"], function (swt) {
         if (window.initPage) {
             window.initPage($,swt);
         }

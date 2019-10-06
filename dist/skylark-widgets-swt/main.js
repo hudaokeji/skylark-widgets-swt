@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-widgets/skylark-widgets-swt/
  * @license MIT
  */
-define(["./swt","./Widget","./Accordion","./Button","./Carousel","./CheckBox","./ComboBox","./InputBox","./ListGroup","./Menu","./Pagination","./Progress","./Radio","./SearchBox","./SelectList","./Tabular","./TabStrip","./Toolbar","./Uploader"],function(o){return o});
+define(["./swt","./Widget","./Accordion","./Button","./Carousel","./CheckBox","./ComboBox","./TextBox","./ListGroup","./Menu","./Pagination","./Progress","./Radio","./SearchBox","./SelectList","./Tabular","./TabStrip","./TextBox","./Toolbar","./Tree"],function(o){return o});
 //# sourceMappingURL=sourcemaps/main.js.map

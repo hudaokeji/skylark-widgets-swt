@@ -6,7 +6,7 @@ define([
     "./Carousel",
     "./CheckBox",
     "./ComboBox",
-    "./InputBox",
+    "./TextBox",
     "./ListGroup",
     "./Menu",
     "./Pagination",
@@ -16,8 +16,9 @@ define([
     "./SelectList",
     "./Tabular",
     "./TabStrip",
+    "./TextBox",
     "./Toolbar",
-    "./Uploader"
+    "./Tree"
 ], function(swt) {
     return swt;
 });

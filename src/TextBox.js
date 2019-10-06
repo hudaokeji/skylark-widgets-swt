@@ -14,10 +14,10 @@ define([
     'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
   ];
 
-	var InputBox =  Widget.inherit({
-		klassName: "InputBox",
+	var TextBox =  swt.TextBox = Widget.inherit({
+		klassName: "TextBox",
 
-    pluginName: "lark.inputbox",
+    pluginName: "lark.textbox",
 
     /*
      * Parse options from attached dom element.
@@ -99,6 +99,6 @@ define([
 
   });
 
-	return swt.InputBox = InputBox;
+	return TextBox;
 });
 

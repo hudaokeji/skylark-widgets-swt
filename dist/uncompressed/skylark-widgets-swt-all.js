@@ -10772,9 +10772,7 @@ define('skylark-domx-plugins/plugins',[
             }
             if (!plugin) {
                 plugin = instantiate(elm, pluginName,typeof options == 'object' && options || {});
-            }
-
-            if (options) {
+            } else  if (options) {
                 var args = slice.call(arguments,1); //2
                 if (extfn) {
                     return extfn.apply(plugin,args);
@@ -11334,6 +11332,17 @@ define('skylark-data-collection/Map',[
     return Map;
 });
 
+
+define('skylark-data-collection/HashMap',[
+    "./collections",
+	"./Map"
+],function(collections,_Map) {
+
+	var HashMap = collections.HashMap = _Map.inherit({
+	});
+
+	return HashMap;
+});
 define('skylark-widgets-base/base',[
 	"skylark-langx/skylark"
 ],function(skylark){
@@ -11350,9 +11359,9 @@ define('skylark-widgets-base/Widget',[
   "skylark-domx-velm",
   "skylark-domx-query",
   "skylark-domx-plugins",
-  "skylark-data-collection/Map",
+  "skylark-data-collection/HashMap",
   "./base"
-],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,Map,base){
+],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,HashMap,base){
 
 /*---------------------------------------------------------------------------------*/
 
@@ -11378,7 +11387,7 @@ define('skylark-widgets-base/Widget',[
         }
         
         Object.defineProperty(this,"state",{
-          value :this.options.state || new Map()
+          value :this.options.state || new HashMap()
         });
 
         //this.state = this.options.state || new Map();
@@ -13632,7 +13641,7 @@ define('skylark-widgets-swt/ComboBox',[
 	return swt.ComboBox = ComboBox;
 });
 
-define('skylark-widgets-swt/InputBox',[
+define('skylark-widgets-swt/TextBox',[
   "skylark-langx/langx",
   "skylark-utils-dom/browser",
   "skylark-utils-dom/eventer",
@@ -13648,10 +13657,10 @@ define('skylark-widgets-swt/InputBox',[
     'max', 'step', 'list', 'pattern', 'placeholder', 'required', 'multiple'
   ];
 
-	var InputBox =  Widget.inherit({
-		klassName: "InputBox",
+	var TextBox =  swt.TextBox = Widget.inherit({
+		klassName: "TextBox",
 
-    pluginName: "lark.inputbox",
+    pluginName: "lark.textbox",
 
     /*
      * Parse options from attached dom element.
@@ -13733,7 +13742,7 @@ define('skylark-widgets-swt/InputBox',[
 
   });
 
-	return swt.InputBox = InputBox;
+	return TextBox;
 });
 
 
@@ -13751,15 +13760,15 @@ define('skylark-widgets-swt/InputBox',[
 
         options : {
         	multiSelect: false,
-          	multiTier : false,
-          	toggle : false,
-          	classes : {
-            	active : "active"
-          	},
-          	selectors : {
-            	item : ".list-group-item"
-          	},
-          	selected : 0
+        	multiTier : false,
+        	toggle : false,
+        	classes : {
+          	active : "active"
+        	},
+        	selectors : {
+          	item : ".list-group-item"
+        	},
+        	selected : 0
         },
 
         state : {
@@ -17057,7 +17066,7 @@ define('skylark-widgets-swt/TabStrip',[
         }
     });
 
-    return TabStrip;
+    return swt.TabStrip = TabStrip;
 
 });
 define('skylark-widgets-swt/Toolbar',[
@@ -17183,2369 +17192,1205 @@ define('skylark-widgets-swt/Toolbar',[
   return Toolbar;
 
 });
-define('skylark-data-collection/List',[
-    "skylark-langx/arrays",
-    "./collections",
-    "./Collection"
-], function(arrays,collections, Collection) {
-
-    var List = collections.List = Collection.inherit({
-        
-        "klassName": "List",
-
-
-        _getInnerItems : function() {
-            return this._items;
-        },
-
-        _clear : function() {
-            this._items = [];
-        },
-
-        "contains": function( /*Object*/ item) {
-            //desc: "Determines whether an item is in the Collection.",
-            //result: {
-            //    type: Boolean,
-            //    desc: "true if item is found in the Collection; otherwise, false."
-            //},
-            //params: [{
-            //    name: "item",
-            //    type: Object,
-            //    desc: "The item to check."
-            //}],
-            var items = this._getInnerItems();
-            return items.indexOf(item) >= 0;
-        },
-
-        "count": function() {
-            //desc: "Gets the number of items actually contained in the Collection.",
-            //result: {
-            //    type: Number,
-            //    desc: "the number of items"
-            //},
-            //params: [],
-            var items = this._getInnerItems();
-            return items.length;
-        },
-
-        "getAll": function() {
-            //desc: "Returns all items.",
-            //result: {
-            //    type: Object,
-            //    desc: "all items"
-            //},
-            //params: [],
-            return this._getInnerItems();
-        },
-
-        "get": function(index) {
-            //desc: "Returns the item at the specified position in the List.",
-            //result: {
-            //    type: Object,
-            //    desc: "The item at the specified position."
-            //},
-            //params: [{
-            //    name: "index",
-            //    type: Number,
-            //    desc: "index of the element to return."
-            //}],
-            var items = this._getInnerItems();
-            if (index < 0 || index >= items.length) {
-                throw new Error("Not exist:" + index);
-            }
-            return items[index];
-        },
-
-        "getRange": function( /*Number*/ index, /*Number*/ count) {
-            //desc: "Returns an Array which represents a subset of the items in the source list.",
-            //result: {
-            //    type: Array,
-            //    desc: "An Array which represents a subset of the items in the source list."
-            //},
-            //params: [{
-            //    name: "index",
-            //    type: Number,
-            //    desc: "The zero-based list index at which the range starts."
-            //}, {
-            //    name: "count",
-            //    type: Number,
-            //    desc: "The number of items in the range."
-            //}],
-            var items = this._getInnerItems(),
-                a1 = [];
-            for (var i = Math.max(index, 0); i < count; i++) {
-                if (i >= items.length) {
-                    break;
-                }
-                a1.push(items[i]);
-            }
-            return a1;
-        },
-
-        "indexOf": function( /*Object*/ item) {
-            //desc: "Searches for the specified Object and returns the zero-based index of the first occurrence within the entire list.",
-            //result: {
-            //    type: Number,
-            //    desc: "The zero-based index of the first occurrence of value within the entire list,if found; otherwise, -1."
-            //},
-            //params: [{
-            //    name: "item",
-            //    type: Object,
-            //    desc: "The Object to locate in the list. The value can be null."
-            //}],
-            var items = this._getInnerItems();
-            return items.indexOf(item);
-        },
-
-        "iterator" : function() {
-            var i =0,
-                self = this;
-            return {
-                hasNext : function() {
-                    return i < self._items.length;
-                },
-                next : function() {
-                    return self._items[i++];
-                }
-            }
-        },
-
-        /*
-         *@params {Object}args
-         *  a plain object for the initialize arguments.
-         */
-        init :  function(/*Array*/data){
-            if (data) {
-                this._items = arrays.makeArray(data);
-            } else {
-                this._items =  [];
-            }
-        }
-    });
-
-    return List;
-});
-
-define('skylark-data-collection/ArrayList',[
-    "./collections",
-    "./List"
-], function(collections, List) {
-
-    var ArrayList = collections.ArrayList = List.inherit({
-        
-        "klassName": "ArrayList",
-
-        "add": function(item) {
-            //desc: "Adds an item to the end of the List.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call"
-            //},
-            //params: [{
-            //    name: "item",
-            //    type: Object,
-            //    desc: "The item to be added to the end of the List. \nThe item can be null."
-            //}],
-
-            var items = this._getInnerItems();
-            items.push(item);
-            this.trigger("changed:add",{
-                "data" :  [
-                    { "item" : item, "index": items.length - 1, isSingle: true}
-                ]
-            });
-            return this;
-        },
-
-        "addRange": function( /*Collection*/ c) {
-            //desc: "Adds the items of a collection into the List at the specified index.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call"
-            //},
-            //params: [{
-            //    name: "c",
-            //    type: [Collection, Array],
-            //    desc: "The Collection whose items should be added into the List.\nThe collection itself cannot be null, but it can contain items that are null."
-            //}],
-            var items = this._getInnerItems();
-            var a1 = c.toArray ? c.toArray() : c,
-                toAdd = [];
-            for (var i = 0; i < a1.length; i++) {
-                items.push(a1[i]);
-                toAdd.push({
-                    "item" : a1[i],
-                    "index" : items.length-1
-                });
-            }
-            this.trigger("changed:add",{
-                "data" :  toAdd
-            });
-            return this;
-        },
-
-
-        "clone": function() {
-            //desc: "Returns a shallow copy of this ArrayList instance. (The items themselves are not copied.)",
-            //result: {
-            //    type: ArrayList,
-            //   desc: "a clone of this ArrayList instance."
-            //},
-            //params: [],
-
-           return new ArrayList({
-                "items": this._.items
-            });
-        },
-
-        "insert": function( /*Number*/ index, /*Object*/ item) {
-            //desc: "Inserts an item into the list at the specified index.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [{
-            //    name: "index",
-            //    type: Number,
-            //    desc: "The zero-based index at which the new item should be inserted."
-            //}, {
-            //    name: "item",
-            //    type: Object,
-            //    desc: "The item to insert. The value can be null."
-            //}],
-            var items = this._getInnerItems();
-            if (index < 0 || index > items.length) {
-                throw new Error("invalid parameter!");
-            }
-            items.splice(index, 0, item);
-            this.trigger("changed",{
-                "data" :  [
-                    { "item" : item, "index" : index}
-                ]
-            });
-            return this;
-        },
-
-        "insertRange": function( /*Number*/ index, /*Collection*/ c) {
-            //desc: "Inserts the items of a collection into the list at the specified index.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [{
-            //    name: "index",
-            //    type: Number,
-            //    desc: "The zero-based index at which the new item should be inserted."
-            //}, {
-            //    name: "c",
-            //    type: Collection,
-            //    desc: "The Collection whose items should be inserted into the ArrayList. \nThe collection itself cannot be null, but it can contain items that are null. "
-            //}],
-            var items = this._getInnerItems(),
-                toAdd = [];
-            if (index < 0 || index >= items.length) {
-                throw new Error("invalid parameter!");
-            }
-            var a1 = c.toArray();
-            for (var i = 0; i<a1.length - 1; i++) {
-                items.splice(index+i, 0, a1[i]);
-                toAdd.push({
-                    "item" : a1[i],
-                    "index" : index+i
-                });
-            }
-            this.trigger("changed:insert",{
-                "data" :  toAdd
-            });
-            return this;
-        },
-
-        "removeFirstMatch": function( /*Object*/ item) {
-            //desc: "Removes the first occurrence of a specific item from the list.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [{
-            //    name: "item",
-            //    type: Object,
-            //    desc: "The item to remove from the list. The value can be null."
-            //}],
-            var items = this._getInnerItems();
-            for (var i = 0, len = items.length; i < len; i++) {
-                if (items[i] === item) {
-                    this.removeAt(i);
-                    break;
-                }
-            }
-            return this;
-        },
-
-        "remove": function( /*Object*/ item) {
-            //desc: "Removes the all occurrence of a specific item from the list.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [{
-            //    name: "item",
-            //    type: Object,
-            //    desc: "The item to remove from the list. The value can be null."
-            //}],
-            var items = this._getInnerItems(),
-                toRemove = [];
-            for (var i = 0, len = items.length; i < len; i++) {
-                if (items[i] === item) {
-                    Array.removeAt(items, i);
-                    toRemove.push({
-                        "item" : item,
-                        "index" : i
-                    });
-                }
-            }
-            this.trigger("changed:remove",{
-                "data" :  toRemove
-            });
-            return this;
-        },
-
-        "removeAt": function(index) {
-            //desc: "Removes the item at the specified index of the list.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [{
-            //    name: "index",
-            //    type: Number,
-            //    desc: "The zero-based index of the item to remove."
-            //}],
-            var items = this._getInnerItems(),
-                item = items.splice(index, 1)[0];
-            this.trigger("changed:remove",{
-                "data" :  [
-                    { "item" : item, "index" : index}
-                ]
-            });
-            return this;
-        },
-
-        "removeRange": function( /*Number*/ index, /*Number*/ count) {
-            //desc: "Removes a range of items from the list.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [{
-            //    name: "index",
-            //    type: Number,
-            //    desc: "The zero-based index of the item to remove."
-            //}, {
-            //    name: "count",
-            //    type: Number,
-            //    desc: "The number of items to remove."
-            //}],
-            var items = this._getInnerItems(),
-                toRemove = [];
-
-            for (var i = index; i<index+count;i++) {
-                toRemove.push({
-                    "item" : items[i],
-                    "index" : i
-                });
-            }
-            items.splice(index, count);
-
-            this.trigger("changed:remove",{
-                "data" : {
-                    "removed" : toRemove
-                }
-            });
-            return this;
-        },
-
-        "setByIndex": function( /*Number*/ index, /*Item*/ item) {
-            //desc: "Replaces the item at the specified position in the list with the specified item.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [{
-            //    name: "index",
-            //    type: Number,
-            //    desc: "index of the item to replace."
-            //}, {
-            //    name: "item",
-            //    type: Object,
-            //    desc: "item to be stored at the specified position."
-            //}],
-            var items = this._getInnerItems();
-            if (index < 0 || index >= items.length) throw new Error("" + i);
-            var old = items[index];
-            items[i] = item;
-
-            this.trigger("changed:update",{
-                "data" : [
-                    { "item" : item, "index" : index,"oldItem":old}
-                ]
-            });
-            return this;
-        },
-
-        "reset": function(newItems) {
-            //desc: "Reset the internal array.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [],
-            var items = this._getInnerItems();
-            items.length = 0;
-            for (var i=0;i<newItems.length;i++){
-                items.push(newItems[i]);
-            }
-            this.trigger("changed:reset");
-
-            return this;
-        },
-        
-        "reverse": function() {
-            //desc: "Reverse the internal array.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [],
-            var items = this._getInnerItems();
-            items.reverse();
-
-            this.trigger("changed:reverse");
-            return this;
-        },
-
-        "sort": function( /*Function?*/ fn) {
-            //desc: "sort the internal array.",
-            //result: {
-            //    type: List,
-            //    desc: "this instance for chain call."
-            //},
-            //params: [{
-            //    name: "fn",
-            //    type: Function,
-            //    desc: "The function for sort"
-            //}],
-            var items = this._getInnerItems();
-            if (fn) {
-                items.sort(fn);
-            } else {
-                items.sort();
-            }
-            this.trigger("changed:sort");
-            return this;
-        }
-
-    });
-
-    return ArrayList;
-});
-
-define('skylark-storages-diskfs/diskfs',[
-    "skylark-langx/skylark"
-], function(skylark) {
-
-    function dataURLtoBlob(dataurl) {
-        var arr = dataurl.split(','),
-            mime = arr[0].match(/:(.*?);/)[1],
-            bstr = atob(arr[1]),
-            n = bstr.length,
-            u8arr = new Uint8Array(n);
-        while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
-        }
-        return new Blob([u8arr], { type: mime });
-    }
-
-
-    var diskfs = function() {
-        return diskfs;
-    };
-
-    return skylark.attach("storages.diskfs", diskfs);
-});
-define('skylark-utils-dom/styler',[
-    "./dom",
-    "skylark-domx-styler"
-], function(dom, styler) {
-
-    return dom.styler = styler;
-});
- define('skylark-storages-diskfs/webentry',[
-    "skylark-langx/arrays",
-    "skylark-langx/Deferred",
-    "./diskfs"
-],function(arrays,Deferred, diskfs){
-    var concat = Array.prototype.concat;
-    var webentry = (function() {
-        function one(entry, path) {
-            var d = new Deferred(),
-                onError = function(e) {
-                    d.reject(e);
-                };
-
-            path = path || '';
-            if (entry.isFile) {
-                entry.file(function(file) {
-                    file.relativePath = path;
-                    d.resolve(file);
-                }, onError);
-            } else if (entry.isDirectory) {
-                var dirReader = entry.createReader();
-                dirReader.readEntries(function(entries) {
-                    all(
-                        entries,
-                        path + entry.name + '/'
-                    ).then(function(files) {
-                        d.resolve(files);
-                    }).catch(onError);
-                }, onError);
-            } else {
-                // Return an empy list for file system items
-                // other than files or directories:
-                d.resolve([]);
-            }
-            return d.promise;
-        }
-
-        function all(entries, path) {
-            return Deferred.all(
-                arrays.map(entries, function(entry) {
-                    return one(entry, path);
-                })
-            ).then(function() {
-                return concat.apply([], arguments);
-            });
-        }
-
-        return {
-            one: one,
-            all: all
-        };
-    })();
-
-    return diskfs.webentry = webentry;
-});
-  define('skylark-storages-diskfs/dropzone',[
-    "skylark-langx/arrays",
-    "skylark-langx/Deferred",
-    "skylark-utils-dom/styler",
-    "skylark-utils-dom/eventer",
-    "./diskfs",
-    "./webentry"
-],function(arrays,Deferred, styler, eventer, diskfs, webentry){  /*
-     * Make the specified element to could accept HTML5 file drag and drop.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} params
-     */
-    function dropzone(elm, params) {
-        params = params || {};
-        var hoverClass = params.hoverClass || "dropzone",
-            droppedCallback = params.dropped;
-
-        var enterdCount = 0;
-        eventer.on(elm, "dragenter", function(e) {
-            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
-                eventer.stop(e);
-                enterdCount++;
-                styler.addClass(elm, hoverClass)
-            }
-        });
-
-        eventer.on(elm, "dragover", function(e) {
-            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
-                eventer.stop(e);
-            }
-        });
-
-        eventer.on(elm, "dragleave", function(e) {
-            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
-                enterdCount--
-                if (enterdCount == 0) {
-                    styler.removeClass(elm, hoverClass);
-                }
-            }
-        });
-
-        eventer.on(elm, "drop", function(e) {
-            if (e.dataTransfer && e.dataTransfer.types.indexOf("Files") > -1) {
-                styler.removeClass(elm, hoverClass)
-                eventer.stop(e);
-                if (droppedCallback) {
-                    var items = e.dataTransfer.items;
-                    if (items && items.length && (items[0].webkitGetAsEntry ||
-                            items[0].getAsEntry)) {
-                        webentry.all(
-                            arrays.map(items, function(item) {
-                                if (item.webkitGetAsEntry) {
-                                    return item.webkitGetAsEntry();
-                                }
-                                return item.getAsEntry();
-                            })
-                        ).then(droppedCallback);
-                    } else {
-                        droppedCallback(e.dataTransfer.files);
-                    }
-                }
-            }
-        });
-
-        return this;
-    }
-
-     return diskfs.dropzone = dropzone;
-});
-define('skylark-storages-diskfs/pastezone',[
-    "skylark-langx/objects",
-    "skylark-utils-dom/eventer",
-    "./diskfs"
-],function(objects, eventer, diskfs){
-    function pastezone(elm, params) {
-        params = params || {};
-        var hoverClass = params.hoverClass || "pastezone",
-            pastedCallback = params.pasted;
-
-        eventer.on(elm, "paste", function(e) {
-            var items = e.originalEvent && e.originalEvent.clipboardData &&
-                e.originalEvent.clipboardData.items,
-                files = [];
-            if (items && items.length) {
-                objects.each(items, function(index, item) {
-                    var file = item.getAsFile && item.getAsFile();
-                    if (file) {
-                        files.push(file);
-                    }
-                });
-            }
-            if (pastedCallback && files.length) {
-                pastedCallback(files);
-            }
-        });
-
-        return this;
-    }
-
-    return diskfs.pastezone = pastezone;
-
-});
-
-define('skylark-storages-diskfs/select',[
-    "./diskfs"
-],function(diskfs){
-    var fileInput,
-        fileInputForm,
-        fileSelected,
-        maxFileSize = 1 / 0;
-
-    function select(params) {
-        params = params || {};
-        var directory = params.directory || false,
-            multiple = params.multiple || false,
-            fileSelected = params.picked;
-        if (!fileInput) {
-            var input = fileInput = document.createElement("input");
-
-            function selectFiles(pickedFiles) {
-                for (var i = pickedFiles.length; i--;) {
-                    if (pickedFiles[i].size > maxFileSize) {
-                        pickedFiles.splice(i, 1);
-                    }
-                }
-                fileSelected(pickedFiles);
-            }
-
-            input.type = "file";
-            input.style.position = "fixed";
-            input.style.left = 0;
-            input.style.top = 0;
-            input.style.opacity = .001;
-            document.body.appendChild(input);
-
-            input.onchange = function(e) {
-                var entries = e.target.webkitEntries || e.target.entries;
-
-                if (entries && entries.length) {
-                    webentry.all(entries).then(function(files) {
-                        selectFiles(files);
-                    });
-                } else {
-                    selectFiles(Array.prototype.slice.call(e.target.files));
-                }
-                // reset to "", so selecting the same file next time still trigger the change handler
-                input.value = "";
-            };
-        }
-        fileInput.multiple = multiple;
-        fileInput.webkitdirectory = directory;
-        fileInput.click();
-    }
-
-    return diskfs.select = select;
-});
-
-
-define('skylark-storages-diskfs/picker',[
-    "skylark-langx/objects",
-    "skylark-utils-dom/eventer",
-    "./diskfs",
-    "./select",
-],function(objects, eventer, diskfs, select){
-    /*
-     * Make the specified element to pop-up the file selection dialog box when clicked , and read the contents the files selected from client file system by user.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} params
-     */
-    function picker(elm, params) {
-        eventer.on(elm, "click", function(e) {
-            e.preventDefault();
-            select(params);
-        });
-        return this;
-    }
-
-    return diskfs.picker = picker;
-
-});
-
-
-
-define('skylark-storages-diskfs/upload',[
-	"skylark-langx/types",
-	"skylark-langx/objects",
-	"skylark-langx/arrays",
-    "skylark-langx/Deferred",
-	"skylark-langx/Xhr",
-	"./diskfs"
-],function(types, objects, arrays, Deferred,Xhr, diskfs){
-
-    function upload(params) {
-        var xoptions = objects.mixin({
-            contentRange: null, //
-
-            // The parameter name for the file form data (the request argument name).
-            // If undefined or empty, the name property of the file input field is
-            // used, or "files[]" if the file input name property is also empty,
-            // can be a string or an array of strings:
-            paramName: undefined,
-            // By default, each file of a selection is uploaded using an individual
-            // request for XHR type uploads. Set to false to upload file
-            // selections in one request each:
-            singleFileUploads: true,
-            // To limit the number of files uploaded with one XHR request,
-            // set the following option to an integer greater than 0:
-            limitMultiFileUploads: undefined,
-            // The following option limits the number of files uploaded with one
-            // XHR request to keep the request size under or equal to the defined
-            // limit in bytes:
-            limitMultiFileUploadSize: undefined,
-            // Multipart file uploads add a number of bytes to each uploaded file,
-            // therefore the following option adds an overhead for each file used
-            // in the limitMultiFileUploadSize configuration:
-            limitMultiFileUploadSizeOverhead: 512,
-            // Set the following option to true to issue all file upload requests
-            // in a sequential order:
-            sequentialUploads: false,
-            // To limit the number of concurrent uploads,
-            // set the following option to an integer greater than 0:
-            limitConcurrentUploads: undefined,
-            // By default, XHR file uploads are sent as multipart/form-data.
-            // The iframe transport is always using multipart/form-data.
-            // Set to false to enable non-multipart XHR uploads:
-            multipart: true,
-            // To upload large files in smaller chunks, set the following option
-            // to a preferred maximum chunk size. If set to 0, null or undefined,
-            // or the browser does not support the required Blob API, files will
-            // be uploaded as a whole.
-            maxChunkSize: undefined,
-            // When a non-multipart upload or a chunked multipart upload has been
-            // aborted, this option can be used to resume the upload by setting
-            // it to the size of the already uploaded bytes. This option is most
-            // useful when modifying the options object inside of the "add" or
-            // "send" callbacks, as the options are cloned for each file upload.
-            uploadedBytes: undefined,
-            // By default, failed (abort or error) file uploads are removed from the
-            // global progress calculation. Set the following option to false to
-            // prevent recalculating the global progress data:
-            recalculateProgress: true,
-            // Interval in milliseconds to calculate and trigger progress events:
-            progressInterval: 100,
-            // Interval in milliseconds to calculate progress bitrate:
-            bitrateInterval: 500,
-            // By default, uploads are started automatically when adding files:
-            autoUpload: true,
-
-            // Error and info messages:
-            messages: {
-                uploadedBytes: 'Uploaded bytes exceed file size'
-            },
-
-            // Translation function, gets the message key to be translated
-            // and an object with context specific data as arguments:
-            i18n: function(message, context) {
-                message = this.messages[message] || message.toString();
-                if (context) {
-                    objects.each(context, function(key, value) {
-                        message = message.replace('{' + key + '}', value);
-                    });
-                }
-                return message;
-            },
-
-            // Additional form data to be sent along with the file uploads can be set
-            // using this option, which accepts an array of objects with name and
-            // value properties, a function returning such an array, a FormData
-            // object (for XHR file uploads), or a simple object.
-            // The form of the first fileInput is given as parameter to the function:
-            formData: function(form) {
-                return form.serializeArray();
-            },
-
-            // The add callback is invoked as soon as files are added to the fileupload
-            // widget (via file input selection, drag & drop, paste or add API call).
-            // If the singleFileUploads option is enabled, this callback will be
-            // called once for each file in the selection for XHR file uploads, else
-            // once for each file selection.
-            //
-            // The upload starts when the submit method is invoked on the data parameter.
-            // The data object contains a files property holding the added files
-            // and allows you to override plugin options as well as define ajax settings.
-            //
-            // Listeners for this callback can also be bound the following way:
-            // .bind('fileuploadadd', func);
-            //
-            // data.submit() returns a Promise object and allows to attach additional
-            // handlers using jQuery's Deferred callbacks:
-            // data.submit().done(func).fail(func).always(func);
-            add: function(e, data) {
-                if (e.isDefaultPrevented()) {
-                    return false;
-                }
-                if (data.autoUpload || (data.autoUpload !== false &&
-                        $(this).fileupload('option', 'autoUpload'))) {
-                    data.process().done(function() {
-                        data.submit();
-                    });
-                }
-            },
-
-            // Other callbacks:
-
-            // Callback for the submit event of each file upload:
-            // submit: function (e, data) {}, // .bind('fileuploadsubmit', func);
-
-            // Callback for the start of each file upload request:
-            // send: function (e, data) {}, // .bind('fileuploadsend', func);
-
-            // Callback for successful uploads:
-            // done: function (e, data) {}, // .bind('fileuploaddone', func);
-
-            // Callback for failed (abort or error) uploads:
-            // fail: function (e, data) {}, // .bind('fileuploadfail', func);
-
-            // Callback for completed (success, abort or error) requests:
-            // always: function (e, data) {}, // .bind('fileuploadalways', func);
-
-            // Callback for upload progress events:
-            // progress: function (e, data) {}, // .bind('fileuploadprogress', func);
-
-            // Callback for global upload progress events:
-            // progressall: function (e, data) {}, // .bind('fileuploadprogressall', func);
-
-            // Callback for uploads start, equivalent to the global ajaxStart event:
-            // start: function (e) {}, // .bind('fileuploadstart', func);
-
-            // Callback for uploads stop, equivalent to the global ajaxStop event:
-            // stop: function (e) {}, // .bind('fileuploadstop', func);
-
-            // Callback for change events of the fileInput(s):
-            // change: function (e, data) {}, // .bind('fileuploadchange', func);
-
-            // Callback for paste events to the pasteZone(s):
-            // paste: function (e, data) {}, // .bind('fileuploadpaste', func);
-
-            // Callback for drop events of the dropZone(s):
-            // drop: function (e, data) {}, // .bind('fileuploaddrop', func);
-
-            // Callback for dragover events of the dropZone(s):
-            // dragover: function (e) {}, // .bind('fileuploaddragover', func);
-
-            // Callback for the start of each chunk upload request:
-            // chunksend: function (e, data) {}, // .bind('fileuploadchunksend', func);
-
-            // Callback for successful chunk uploads:
-            // chunkdone: function (e, data) {}, // .bind('fileuploadchunkdone', func);
-
-            // Callback for failed (abort or error) chunk uploads:
-            // chunkfail: function (e, data) {}, // .bind('fileuploadchunkfail', func);
-
-            // Callback for completed (success, abort or error) chunk upload requests:
-            // chunkalways: function (e, data) {}, // .bind('fileuploadchunkalways', func);
-
-            // The plugin options are used as settings object for the ajax calls.
-            // The following are jQuery ajax settings required for the file uploads:
-            processData: false,
-            contentType: false,
-            cache: false
-        }, params);
-
-        var blobSlice = function() {
-                var slice = Blob.prototype.slice || Blob.prototype.webkitSlice || Blob.prototype.mozSlice;
-  	            return slice.apply(this, arguments);
-            },
-            ajax = function(data) {
-                return Xhr.request(data.url, data);
-            };
-
-        function initDataSettings(o) {
-            o.type = o.type || "POST";
-
-            if (!chunkedUpload(o, true)) {
-                if (!o.data) {
-                    initXHRData(o);
-                }
-                //initProgressListener(o);
-            }
-        }
-
-        function initXHRData(o) {
-            var that = this,
-                formData,
-                file = o.files[0],
-                // Ignore non-multipart setting if not supported:
-                multipart = o.multipart,
-                paramName = types.type(o.paramName) === 'array' ?
-                o.paramName[0] : o.paramName;
-
-            o.headers = objects.mixin({}, o.headers);
-            if (o.contentRange) {
-                o.headers['Content-Range'] = o.contentRange;
-            }
-            if (!multipart) {
-                o.headers['Content-Disposition'] = 'attachment; filename="' +
-                    encodeURI(file.name) + '"';
-                o.contentType = file.type || 'application/octet-stream';
-                o.data = o.blob || file;
-            } else {
-                formData = new FormData();
-                if (o.blob) {
-                    formData.append(paramName, o.blob, file.name);
-                } else {
-                    objects.each(o.files, function(index, file) {
-                        // This check allows the tests to run with
-                        // dummy objects:
-                        formData.append(
-                            (types.type(o.paramName) === 'array' &&
-                                o.paramName[index]) || paramName,
-                            file,
-                            file.uploadName || file.name
-                        );
-                    });
-                }
-                o.data = formData;
-            }
-            // Blob reference is not needed anymore, free memory:
-            o.blob = null;
-        }
-
-        function getTotal(files) {
-            var total = 0;
-            objects.each(files, function(index, file) {
-                total += file.size || 1;
-            });
-            return total;
-        }
-
-        function getUploadedBytes(jqXHR) {
-            var range = jqXHR.getResponseHeader('Range'),
-                parts = range && range.split('-'),
-                upperBytesPos = parts && parts.length > 1 &&
-                parseInt(parts[1], 10);
-            return upperBytesPos && upperBytesPos + 1;
-        }
-
-        function initProgressObject(obj) {
-            var progress = {
-                loaded: 0,
-                total: 0,
-                bitrate: 0
-            };
-            if (obj._progress) {
-                objects.mixin(obj._progress, progress);
-            } else {
-                obj._progress = progress;
-            }
-        }
-
-        function BitrateTimer() {
-            this.timestamp = ((Date.now) ? Date.now() : (new Date()).getTime());
-            this.loaded = 0;
-            this.bitrate = 0;
-            this.getBitrate = function(now, loaded, interval) {
-                var timeDiff = now - this.timestamp;
-                if (!this.bitrate || !interval || timeDiff > interval) {
-                    this.bitrate = (loaded - this.loaded) * (1000 / timeDiff) * 8;
-                    this.loaded = loaded;
-                    this.timestamp = now;
-                }
-                return this.bitrate;
-            };
-        }
-
-        function chunkedUpload(options, testOnly) {
-            options.uploadedBytes = options.uploadedBytes || 0;
-            var that = this,
-                file = options.files[0],
-                fs = file.size,
-                ub = options.uploadedBytes,
-                mcs = options.maxChunkSize || fs,
-                slice = blobSlice,
-                dfd = new Deferred(),
-                promise = dfd.promise,
-                jqXHR,
-                upload;
-            if (!(slice && (ub || mcs < fs)) ||
-                options.data) {
-                return false;
-            }
-            if (testOnly) {
-                return true;
-            }
-            if (ub >= fs) {
-                file.error = options.i18n('uploadedBytes');
-                return this._getXHRPromise(
-                    false,
-                    options.context, [null, 'error', file.error]
-                );
-            }
-            // The chunk upload method:
-            upload = function() {
-                // Clone the options object for each chunk upload:
-                var o = objects.mixin({}, options),
-                    currentLoaded = o._progress.loaded;
-                o.blob = slice.call(
-                    file,
-                    ub,
-                    ub + mcs,
-                    file.type
-                );
-                // Store the current chunk size, as the blob itself
-                // will be dereferenced after data processing:
-                o.chunkSize = o.blob.size;
-                // Expose the chunk bytes position range:
-                o.contentRange = 'bytes ' + ub + '-' +
-                    (ub + o.chunkSize - 1) + '/' + fs;
-                // Process the upload data (the blob and potential form data):
-                initXHRData(o);
-                // Add progress listeners for this chunk upload:
-                //initProgressListener(o);
-                jqXHR = ajax(o).done(function(result, textStatus, jqXHR) {
-                        ub = getUploadedBytes(jqXHR) ||
-                            (ub + o.chunkSize);
-                        // Create a progress event if no final progress event
-                        // with loaded equaling total has been triggered
-                        // for this chunk:
-                        if (currentLoaded + o.chunkSize - o._progress.loaded) {
-                            dfd.progress({
-                                lengthComputable: true,
-                                loaded: ub - o.uploadedBytes,
-                                total: ub - o.uploadedBytes
-                            });
-                        }
-                        options.uploadedBytes = o.uploadedBytes = ub;
-                        o.result = result;
-                        o.textStatus = textStatus;
-                        o.jqXHR = jqXHR;
-                        //that._trigger('chunkdone', null, o);
-                        //that._trigger('chunkalways', null, o);
-                        if (ub < fs) {
-                            // File upload not yet complete,
-                            // continue with the next chunk:
-                            upload();
-                        } else {
-                            dfd.resolveWith(
-                                o.context, [result, textStatus, jqXHR]
-                            );
-                        }
-                    })
-                    .fail(function(jqXHR, textStatus, errorThrown) {
-                        o.jqXHR = jqXHR;
-                        o.textStatus = textStatus;
-                        o.errorThrown = errorThrown;
-                        //that._trigger('chunkfail', null, o);
-                        //that._trigger('chunkalways', null, o);
-                        dfd.rejectWith(
-                            o.context, [jqXHR, textStatus, errorThrown]
-                        );
-                    });
-            };
-            //this._enhancePromise(promise);
-            promise.abort = function() {
-                return jqXHR.abort();
-            };
-            upload();
-            return promise;
-        }
-
-        initDataSettings(xoptions);
-
-        xoptions._bitrateTimer = new BitrateTimer();
-
-        var jqXhr = chunkedUpload(xoptions) || ajax(xoptions);
-
-        jqXhr.options = xoptions;
-
-        return jqXhr;
-    }
-
-	return diskfs.upload = upload;	
-});
-define('skylark-storages-diskfs/uploader',[
-    "skylark-langx/langx",
-    "skylark-utils-dom/eventer",
-    "skylark-utils-dom/query",
-    "./diskfs",
-    "./dropzone",
-    "./pastezone",
-    "./picker",
-    "./upload"
-],function (langx,eventer,$,diskfs,dropzone,pastezone,picker,upload) {
-    'use strict';
-
-    var Deferred = langx.Deferred;
-
-
-    // The fileupload widget listens for change events on file input fields defined
-    // via fileInput setting and paste or drop events of the given dropZone.
-    // In addition to the default jQuery Widget methods, the fileupload widget
-    // exposes the "add" and "send" methods, to add or directly send files using
-    // the fileupload API.
-    // By default, files added via file input selection, paste, drag & drop or
-    // "add" method are uploaded immediately, but it is possible to override
-    // the "add" callback option to queue file uploads.
-
-    var FileUploader = langx.Evented.inherit( {
-
-        options: {
-            // The drop target element(s), by the default the complete document.
-            // Set to null to disable drag & drop support:
-            dropZone: $(document),
-
-            // The paste target element(s), by the default the complete document.
-            // Set to null to disable paste support:
-            pasteZone: $(document),
-
-            // The file input field(s), that are listened to for change events.
-            // If undefined, it is set to the file input fields inside
-            // of the widget element on plugin initialization.
-            // Set to null to disable the change listener.
-            picker: undefined,
-
-
-            // The parameter name for the file form data (the request argument name).
-            // If undefined or empty, the name property of the file input field is
-            // used, or "files[]" if the file input name property is also empty,
-            // can be a string or an array of strings:
-            paramName: undefined,
-            
-            // By default, each file of a selection is uploaded using an individual
-            // request for XHR type uploads. Set to false to upload file
-            // selections in one request each:
-            singleFileUploads: true,
-            
-            // To limit the number of files uploaded with one XHR request,
-            // set the following option to an integer greater than 0:
-            limitMultiFileUploads: undefined,
-            
-            // The following option limits the number of files uploaded with one
-            // XHR request to keep the request size under or equal to the defined
-            // limit in bytes:
-            limitMultiFileUploadSize: undefined,
-
-            // Multipart file uploads add a number of bytes to each uploaded file,
-            // therefore the following option adds an overhead for each file used
-            // in the limitMultiFileUploadSize configuration:
-            limitMultiFileUploadSizeOverhead: 512,
-
-            // Set the following option to true to issue all file upload requests
-            // in a sequential order:
-            sequentialUploads: false,
-            
-            // To limit the number of concurrent uploads,
-            // set the following option to an integer greater than 0:
-            limitConcurrentUploads: undefined,
-
-            // Set the following option to the location of a postMessage window,
-            // to enable postMessage transport uploads:
-            postMessage: undefined,
- 
-            // By default, XHR file uploads are sent as multipart/form-data.
-            // The iframe transport is always using multipart/form-data.
-            // Set to false to enable non-multipart XHR uploads:
-            multipart: true,
- 
-            // To upload large files in smaller chunks, set the following option
-            // to a preferred maximum chunk size. If set to 0, null or undefined,
-            // or the browser does not support the required Blob API, files will
-            // be uploaded as a whole.
-            maxChunkSize: undefined,
- 
-            // When a non-multipart upload or a chunked multipart upload has been
-            // aborted, this option can be used to resume the upload by setting
-            // it to the size of the already uploaded bytes. This option is most
-            // useful when modifying the options object inside of the "add" or
-            // "send" callbacks, as the options are cloned for each file upload.
-            uploadedBytes: undefined,
- 
-            // By default, failed (abort or error) file uploads are removed from the
-            // global progress calculation. Set the following option to false to
-            // prevent recalculating the global progress data:
-            recalculateProgress: true,
- 
-            // Interval in milliseconds to calculate and trigger progress events:
-            progressInterval: 100,
- 
-            // Interval in milliseconds to calculate progress bitrate:
-            bitrateInterval: 500,
- 
-            // By default, uploads are started automatically when adding files:
-            autoUpload: false,
-
-            // Error and info messages:
-            messages: {
-                uploadedBytes: 'Uploaded bytes exceed file size'
-            },
-
-            // Translation function, gets the message key to be translated
-            // and an object with context specific data as arguments:
-            i18n: function (message, context) {
-                message = this.messages[message] || message.toString();
-                if (context) {
-                    langx.each(context, function (key, value) {
-                        message = message.replace('{' + key + '}', value);
-                    });
-                }
-                return message;
-            },
-
-            // Additional form data to be sent along with the file uploads can be set
-            // using this option, which accepts an array of objects with name and
-            // value properties, a function returning such an array, a FormData
-            // object (for XHR file uploads), or a simple object.
-            // The form of the first fileInput is given as parameter to the function:
-            formData: function (form) {
-                return form.serializeArray();
-            },
-
-            // The add callback is invoked as soon as files are added to the fileupload
-            // widget (via file input selection, drag & drop, paste or add API call).
-            // If the singleFileUploads option is enabled, this callback will be
-            // called once for each file in the selection for XHR file uploads, else
-            // once for each file selection.
-            //
-            // The upload starts when the submit method is invoked on the data parameter.
-            // The data object contains a files property holding the added files
-            // and allows you to override plugin options as well as define ajax settings.
-            //
-            // Listeners for this callback can also be bound the following way:
-            // .bind('fileuploadadd', func);
-            //
-            // data.submit() returns a Promise object and allows to attach additional
-            // handlers using jQuery's Deferred callbacks:
-            // data.submit().done(func).fail(func).always(func);
-            add: function (e, data) {
-                if (e.isDefaultPrevented()) {
-                    return false;
-                }
-                if (data.autoUpload || (data.autoUpload !== false && $(this).fileupload("instance").option('autoUpload') )) {
-                    data.process().done(function () {
-                        data.submit();
-                    });
-                }
-            },
-
-            // Other callbacks:
-
-            // Callback for the submit event of each file upload:
-            // submit: function (e, data) {}, // .bind('fileuploadsubmit', func);
-
-            // Callback for the start of each file upload request:
-            // send: function (e, data) {}, // .bind('fileuploadsend', func);
-
-            // Callback for successful uploads:
-            // done: function (e, data) {}, // .bind('fileuploaddone', func);
-
-            // Callback for failed (abort or error) uploads:
-            // fail: function (e, data) {}, // .bind('fileuploadfail', func);
-
-            // Callback for completed (success, abort or error) requests:
-            // always: function (e, data) {}, // .bind('fileuploadalways', func);
-
-            // Callback for upload progress events:
-            // progress: function (e, data) {}, // .bind('fileuploadprogress', func);
-
-            // Callback for global upload progress events:
-            // progressall: function (e, data) {}, // .bind('fileuploadprogressall', func);
-
-            // Callback for uploads start, equivalent to the global ajaxStart event:
-            // start: function (e) {}, // .bind('fileuploadstart', func);
-
-            // Callback for uploads stop, equivalent to the global ajaxStop event:
-            // stop: function (e) {}, // .bind('fileuploadstop', func);
-
-            // Callback for change events of the fileInput(s):
-            // change: function (e, data) {}, // .bind('fileuploadchange', func);
-
-            // Callback for paste events to the pasteZone(s):
-            // paste: function (e, data) {}, // .bind('fileuploadpaste', func);
-
-            // Callback for drop events of the dropZone(s):
-            // drop: function (e, data) {}, // .bind('fileuploaddrop', func);
-
-            // Callback for dragover events of the dropZone(s):
-            // dragover: function (e) {}, // .bind('fileuploaddragover', func);
-
-            // Callback for the start of each chunk upload request:
-            // chunksend: function (e, data) {}, // .bind('fileuploadchunksend', func);
-
-            // Callback for successful chunk uploads:
-            // chunkdone: function (e, data) {}, // .bind('fileuploadchunkdone', func);
-
-            // Callback for failed (abort or error) chunk uploads:
-            // chunkfail: function (e, data) {}, // .bind('fileuploadchunkfail', func);
-
-            // Callback for completed (success, abort or error) chunk upload requests:
-            // chunkalways: function (e, data) {}, // .bind('fileuploadchunkalways', func);
-
-            // The plugin options are used as settings object for the ajax calls.
-            // The following are jQuery ajax settings required for the file uploads:
-            processData: false,
-            contentType: false,
-            cache: false
-        },
-
-        // A list of options that require reinitializing event listeners and/or
-        // special initialization code:
-        _specialOptions: [
-            'picker',
-            'dropZone',
-            'pasteZone',
-            'multipart',
-            'filesContainer',
-            'uploadTemplateId',
-            'downloadTemplateId'            
-        ],
-
-        _BitrateTimer: function () {
-            this.timestamp = ((Date.now) ? Date.now() : (new Date()).getTime());
-            this.loaded = 0;
-            this.bitrate = 0;
-            this.getBitrate = function (now, loaded, interval) {
-                var timeDiff = now - this.timestamp;
-                if (!this.bitrate || !interval || timeDiff > interval) {
-                    this.bitrate = (loaded - this.loaded) * (1000 / timeDiff) * 8;
-                    this.loaded = loaded;
-                    this.timestamp = now;
-                }
-                return this.bitrate;
-            };
-        },
-
-        _getTotal: function (files) {
-            var total = 0;
-            langx.each(files, function (index, file) {
-                total += file.size || 1;
-            });
-            return total;
-        },
-
-        _initProgressObject: function (obj) {
-            var progress = {
-                loaded: 0,
-                total: 0,
-                bitrate: 0
-            };
-            if (obj._progress) {
-                langx.extend(obj._progress, progress);
-            } else {
-                obj._progress = progress;
-            }
-        },
-
-        _initResponseObject: function (obj) {
-            var prop;
-            if (obj._response) {
-                for (prop in obj._response) {
-                    if (obj._response.hasOwnProperty(prop)) {
-                        delete obj._response[prop];
-                    }
-                }
-            } else {
-                obj._response = {};
-            }
-        },
-
-        _onProgress: function (e, data) {
-            if (e.lengthComputable) {
-                var now = ((Date.now) ? Date.now() : (new Date()).getTime()),
-                    loaded;
-                if (data._time && data.progressInterval &&
-                        (now - data._time < data.progressInterval) &&
-                        e.loaded !== e.total) {
-                    return;
-                }
-                data._time = now;
-                loaded = Math.floor(
-                    e.loaded / e.total * (data.chunkSize || data._progress.total)
-                ) + (data.uploadedBytes || 0);
-                // Add the difference from the previously loaded state
-                // to the global loaded counter:
-                this._progress.loaded += (loaded - data._progress.loaded);
-                this._progress.bitrate = this._bitrateTimer.getBitrate(
-                    now,
-                    this._progress.loaded,
-                    data.bitrateInterval
-                );
-                data._progress.loaded = data.loaded = loaded;
-                data._progress.bitrate = data.bitrate = data._bitrateTimer.getBitrate(
-                    now,
-                    loaded,
-                    data.bitrateInterval
-                );
-                // Trigger a custom progress event with a total data property set
-                // to the file size(s) of the current upload and a loaded data
-                // property calculated accordingly:
-                this._trigger(
-                    'progress',
-                    eventer.create('progress', {delegatedEvent: e}),
-                    data
-                );
-                // Trigger a global progress event for all current file uploads,
-                // including ajax calls queued for sequential file uploads:
-                this._trigger(
-                    'progressall',
-                    eventer.create('progressall', {delegatedEvent: e}),
-                    this._progress
-                );
-            }
-        },
-
-        _getParamName: function (options) {
-            var picker = $(options.picker),
-                paramName = options.paramName;
-            //if (!paramName) {
-            //    paramName = [fileInput.prop('name') || 'files[]'];
-            // } else if (!langx.isArray(paramName)) {
-
-            if (!langx.isArray(paramName)) {
-                paramName = [paramName];
-            }
-            return paramName;
-        },
-
-
-        // jQuery 1.6 doesn't provide .state(),
-        // while jQuery 1.8+ removed .isRejected() and .isResolved():
-        _getDeferredState: function (deferred) {
-            if (deferred.state) {
-                return deferred.state();
-            }
-            if (deferred.isResolved()) {
-                return 'resolved';
-            }
-            if (deferred.isRejected()) {
-                return 'rejected';
-            }
-            return 'pending';
-        },
-
-        // Maps jqXHR callbacks to the equivalent
-        // methods of the given Promise object:
-        _enhancePromise: function (promise) {
-            promise.success = promise.done;
-            promise.error = promise.fail;
-            promise.complete = promise.always;
-            return promise;
-        },
-
-        // Creates and returns a Promise object enhanced with
-        // the jqXHR methods abort, success, error and complete:
-        _getXHRPromise: function (resolveOrReject, context, args) {
-            var dfd = new Deferred(),
-                promise = dfd.promise;
-            context = context || this.options.context || promise;
-            if (resolveOrReject === true) {
-                dfd.resolveWith(context, args);
-            } else if (resolveOrReject === false) {
-                dfd.rejectWith(context, args);
-            }
-            promise.abort = dfd.promise;
-            return this._enhancePromise(promise);
-        },
-
-        // Adds convenience methods to the data callback argument:
-        _addConvenienceMethods: function (e, data) {
-            var that = this,
-                getPromise = function (args) {
-                    return new Deferred().resolveWith(that, args).promise;
-                };
-            data.process = function (resolveFunc, rejectFunc) {
-                if (resolveFunc || rejectFunc) {
-                    data._processQueue = this._processQueue =
-                        (this._processQueue || getPromise([this])).pipe(
-                            function () {
-                                if (data.errorThrown) {
-                                    return new Deferred()
-                                        .rejectWith(that, [data]).promise;
-                                }
-                                return getPromise(arguments);
-                            }
-                        ).pipe(resolveFunc, rejectFunc);
-                }
-                return this._processQueue || getPromise([this]);
-            };
-            data.submit = function () {
-                if (this.state() !== 'pending') {
-                    data.jqXHR = this.jqXHR =
-                        (that._trigger(
-                            'submit',
-                            eventer.create('submit', {delegatedEvent: e}),
-                            this
-                        ) !== false) && that._onSend(e, this);
-                }
-                return this.jqXHR || that._getXHRPromise();
-            };
-            data.abort = function () {
-                if (this.jqXHR) {
-                    return this.jqXHR.abort();
-                }
-                this.errorThrown = 'abort';
-                that._trigger('fail', null, this);
-                return that._getXHRPromise(false);
-            };
-            data.state = function () {
-                if (this.jqXHR) {
-                    return that._getDeferredState(this.jqXHR);
-                }
-                if (this._processQueue) {
-                    return that._getDeferredState(this._processQueue);
-                }
-            };
-            data.processing = function () {
-                return !this.jqXHR && this._processQueue && that
-                    ._getDeferredState(this._processQueue) === 'pending';
-            };
-            data.progress = function () {
-                return this._progress;
-            };
-            data.response = function () {
-                return this._response;
-            };
-        },
-
-        _beforeSend: function (e, data) {
-            if (this._active === 0) {
-                // the start callback is triggered when an upload starts
-                // and no other uploads are currently running,
-                // equivalent to the global ajaxStart event:
-                this._trigger('start');
-                // Set timer for global bitrate progress calculation:
-                this._bitrateTimer = new this._BitrateTimer();
-                // Reset the global progress values:
-                this._progress.loaded = this._progress.total = 0;
-                this._progress.bitrate = 0;
-            }
-            // Make sure the container objects for the .response() and
-            // .progress() methods on the data object are available
-            // and reset to their initial state:
-            this._initResponseObject(data);
-            this._initProgressObject(data);
-            data._progress.loaded = data.loaded = data.uploadedBytes || 0;
-            data._progress.total = data.total = this._getTotal(data.files) || 1;
-            data._progress.bitrate = data.bitrate = 0;
-            this._active += 1;
-            // Initialize the global progress values:
-            this._progress.loaded += data.loaded;
-            this._progress.total += data.total;
-        },
-
-        _onDone: function (result, textStatus, jqXHR, options) {
-            var total = options._progress.total,
-                response = options._response;
-            if (options._progress.loaded < total) {
-                // Create a progress event if no final progress event
-                // with loaded equaling total has been triggered:
-                this._onProgress(eventer.create('progress', {
-                    lengthComputable: true,
-                    loaded: total,
-                    total: total
-                }), options);
-            }
-            response.result = options.result = result;
-            response.textStatus = options.textStatus = textStatus;
-            response.jqXHR = options.jqXHR = jqXHR;
-            this._trigger('done', null, options);
-        },
-
-        _onFail: function (jqXHR, textStatus, errorThrown, options) {
-            var response = options._response;
-            if (options.recalculateProgress) {
-                // Remove the failed (error or abort) file upload from
-                // the global progress calculation:
-                this._progress.loaded -= options._progress.loaded;
-                this._progress.total -= options._progress.total;
-            }
-            response.jqXHR = options.jqXHR = jqXHR;
-            response.textStatus = options.textStatus = textStatus;
-            response.errorThrown = options.errorThrown = errorThrown;
-            this._trigger('fail', null, options);
-        },
-
-        _trigger : function(type,event,data) {
-            var e = eventer.proxy(event);
-            e.type = type;
-            e.data =data;
-            return this.trigger(e,data);
-        },
-
-        _onAlways: function (jqXHRorResult, textStatus, jqXHRorError, options) {
-            // jqXHRorResult, textStatus and jqXHRorError are added to the
-            // options object via done and fail callbacks
-            this._trigger('always', null, options);
-        },
-
-        _onSend: function (e, data) {
-            if (!data.submit) {
-                this._addConvenienceMethods(e, data);
-            }
-            var that = this,
-                jqXHR,
-                aborted,
-                slot,
-                pipe,
-                send = function () {
-                    that._sending += 1;
-                    data.url = that.options.url;
-                    data.dataType = that.options.dataType;
-                    data.xhrFields = that.options.xhrFields;
-
-                    jqXHR = upload(data);
-
-                    jqXHR.progress(function(e){
-                        //var oe = e.originalEvent;
-                        // Make sure the progress event properties get copied over:
-                        //e.lengthComputable = oe.lengthComputable;
-                        //e.loaded = oe.loaded;
-                        //e.total = oe.total;
-                        that._onProgress(e, jqXHR.options);
-
-                    }).done(function (result, textStatus) {
-                        that._onDone(result, textStatus, jqXHR, jqXHR.options);
-                    }).fail(function (e, textStatus) {
-                        that._onFail(jqXHR, textStatus,e, jqXHR.options);
-                    }).always(function () {
-                        that._sending -= 1;
-                        that._active -= 1;
-                        that._trigger('stop');
-                    });
-                    return jqXHR;
-                };
-            this._beforeSend(e, data);
-
-            return send();
-        },
-        _onAdd: function (e, data) {
-            var that = this,
-                result = true,
-                options = langx.extend({}, this.options, data),
-                files = data.files,
-                filesLength = files.length,
-                limit = options.limitMultiFileUploads,
-                limitSize = options.limitMultiFileUploadSize,
-                overhead = options.limitMultiFileUploadSizeOverhead,
-                batchSize = 0,
-                paramName = this._getParamName(options),
-                paramNameSet,
-                paramNameSlice,
-                fileSet,
-                i,
-                j = 0;
-            if (limitSize && (!filesLength || files[0].size === undefined)) {
-                limitSize = undefined;
-            }
-            if (!(options.singleFileUploads || limit || limitSize)) {
-                fileSet = [files];
-                paramNameSet = [paramName];
-            } else if (!(options.singleFileUploads || limitSize) && limit) {
-                fileSet = [];
-                paramNameSet = [];
-                for (i = 0; i < filesLength; i += limit) {
-                    fileSet.push(files.slice(i, i + limit));
-                    paramNameSlice = paramName.slice(i, i + limit);
-                    if (!paramNameSlice.length) {
-                        paramNameSlice = paramName;
-                    }
-                    paramNameSet.push(paramNameSlice);
-                }
-            } else if (!options.singleFileUploads && limitSize) {
-                fileSet = [];
-                paramNameSet = [];
-                for (i = 0; i < filesLength; i = i + 1) {
-                    batchSize += files[i].size + overhead;
-                    if (i + 1 === filesLength ||
-                            ((batchSize + files[i + 1].size + overhead) > limitSize) ||
-                            (limit && i + 1 - j >= limit)) {
-                        fileSet.push(files.slice(j, i + 1));
-                        paramNameSlice = paramName.slice(j, i + 1);
-                        if (!paramNameSlice.length) {
-                            paramNameSlice = paramName;
-                        }
-                        paramNameSet.push(paramNameSlice);
-                        j = i + 1;
-                        batchSize = 0;
-                    }
-                }
-            } else {
-                paramNameSet = paramName;
-            }
-            data.originalFiles = files;
-            langx.each(fileSet || files, function (index, element) {
-                var newData = langx.extend({}, data);
-                newData.files = fileSet ? element : [element];
-                newData.paramName = paramNameSet[index];
-                that._initResponseObject(newData);
-                that._initProgressObject(newData);
-                that._addConvenienceMethods(e, newData);
-                result = that._trigger(
-                    'add',
-                    eventer.create('add', {delegatedEvent: e}),
-                    newData
-                );
-                return result;
-            });
-            return result;
-        },
-
-        _initEventHandlers: function () {
-            var that = this;
-
-            dropzone(this.options.dropZone[0],{
-                dropped : function (files) {
-                    var data = {};
-                    data.files = files;
-                    that._onAdd(null, data);
-                }
-            });
-
-            pastezone(this.options.pasteZone[0],{
-                pasted : function (files) {
-                    var data = {};
-                    data.files = files;
-                    that._onAdd(null, data);
-                }
-            });
-
-            picker(this.options.picker[0],{
-                multiple: true,
-                picked : function (files) {
-                    var data = {};
-                    data.files = files;
-                    that._onAdd(null, data);
-                }
-            });
-        },
-
-        _destroyEventHandlers: function () {
-            //this._off(this.options.dropZone, 'dragover drop');
-            //this._off(this.options.pasteZone, 'paste');
-            //this._off(this.options.picker, 'change');
-        },
-
-        _setOption: function (key, value) {
-            var reinit = langx.inArray(key, this._specialOptions) !== -1;
-            if (reinit) {
-                this._destroyEventHandlers();
-            }
-            this._super(key, value);
-            if (reinit) {
-                this._initSpecialOptions();
-                this._initEventHandlers();
-            }
-        },
-
-        _initSpecialOptions: function () {
-            var options = this.options;
-            //if (options.fileInput === undefined) {
-            //    //options.fileInput = this.element.is('input[type="file"]') ?
-            //    //        this.element : this.element.find('input[type="file"]');
-            //    options.fileInput = this.element.find('.fileinput-button');
-            
-            if (options.picker) {
-                if (!(options.picker instanceof $)) {
-                    options.picker = $(options.picker,this._elm);
-                }                
-            }
-
-            if (options.dropZone) {
-                if (!(options.dropZone instanceof $)) {
-                    options.dropZone = $(options.dropZone,this._elm);
-                }
-            }
-
-            if (options.pasteZone) {
-                if (!(options.pasteZone instanceof $)) {
-                    options.pasteZone = $(options.pasteZone,this._elm);
-                }                
-            }
-        },
-
-        _getRegExp: function (str) {
-            var parts = str.split('/'),
-                modifiers = parts.pop();
-            parts.shift();
-            return new RegExp(parts.join('/'), modifiers);
-        },
-
-        _isRegExpOption: function (key, value) {
-            return key !== 'url' && langx.type(value) === 'string' &&
-                /^\/.*\/[igm]{0,3}$/.test(value);
-        },
-
-        _construct: function (elm,options) {
-            this._elm = elm;
-            this.options = langx.mixin({},this.options,options);
-            this._initSpecialOptions();
-            this._slots = [];
-            this._sequence = this._getXHRPromise(true);
-            this._sending = this._active = 0;
-            this._initProgressObject(this);
-            this._initEventHandlers();
-        },
-
-        // This method is exposed to the widget API and allows to query
-        // the number of active uploads:
-        active: function () {
-            return this._active;
-        },
-
-        // This method is exposed to the widget API and allows to query
-        // the widget upload progress.
-        // It returns an object with loaded, total and bitrate properties
-        // for the running uploads:
-        progress: function () {
-            return this._progress;
-        },
-
-        // This method is exposed to the widget API and allows adding files
-        // using the fileupload API. The data parameter accepts an object which
-        // must have a files property and can contain additional options:
-        // .fileupload('add', {files: filesList});
-        add: function (data) {
-            var that = this;
-            if (!data || this.options.disabled) {
-                return;
-            }
-            data.files = langx.makeArray(data.files);
-            this._onAdd(null, data);
-        },
-
-        // This method is exposed to the widget API and allows sending files
-        // using the fileupload API. The data parameter accepts an object which
-        // must have a files or fileInput property and can contain additional options:
-        // .fileupload('send', {files: filesList});
-        // The method returns a Promise object for the file upload call.
-        send: function (data) {
-            if (data && !this.options.disabled) {
-                data.files = langx.makeArray(data.files);
-                if (data.files.length) {
-                    return this._onSend(null, data);
-                }
-            }
-            return this._getXHRPromise(false, data && data.context);
-        }
-
-    });
-
-
-    function uploader(elm,options) {
-        var fuInst = new FileUploader(elm,options);
-        fuInst.on("all",function(evt,data){
-            var typ = evt.type;
-            if (langx.isFunction(options[typ])) {
-                options[typ].call(fuInst._elm,evt,data);
-            }
-        });
-        return fuInst;
-    }
-
-    return diskfs.uploader = uploader;
-
-});
-
-define('skylark-widgets-swt/Uploader',[
+define('skylark-widgets-swt/Tree',[
+  "skylark-langx/skylark",
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
-  "skylark-data-collection/ArrayList",
-  "skylark-storages-diskfs/uploader",
+  "skylark-domx-query",
+  "skylark-utils-dom/plugins",
   "./swt",
-  "./Widget"
-],function(langx,browser,eventer,noder,geom,$,ArrayList,uploader,swt,Widget){
+  "./Widget"  
+], function(skylark,langx,$,plugins,swt,Widget) {
 
-    /**
-     * This model represents a file.
-     *
-     */
-    var FileItem = langx.Stateful.inherit({
-        state: "pending",
+  /*global jQuery, console*/
 
-        /**
-         * Start upload.
-         *
-         */
-        start: function ()  {
-            if (this.isPending()) {
-                this.get('processor').submit();
-                this.state = "running";
+  'use strict';
 
-                // Dispatch event
-                this.trigger('filestarted', this);
-            }
-        },
 
-        /**
-         * Cancel a file upload.
-         *
-         */
-        cancel: function () {
-            this.get('processor').abort();
-            this.destroy();
+  var _default = {};
 
-            // Dispatch event
-            this.state = "canceled";
-            this.trigger('filecanceled', this);
-        },
+  _default.settings = {
 
-        /**
-         * Notify file that progress updated.
-         *
-         */
-        progress: function (data)  {
-            // Dispatch event
-            this.trigger('fileprogress', this.get('processor').progress());
-        },
+    injectStyle: true,
 
-        /**
-         * Notify file that upload failed.
-         *
-         */
-        fail: function (error)  {
-            // Dispatch event
-            this.state = "error";
-            this.trigger('filefailed', error);
-        },
+    levels: 2,
 
-        /**
-         * Notify file that upload is done.
-         *
-         */
-        done: function (result)  {
-            // Dispatch event
-            this.state = "error";
-            this.trigger('filedone', result);
-        },
+    expandIcon: 'glyphicon glyphicon-plus',
+    collapseIcon: 'glyphicon glyphicon-minus',
+    emptyIcon: 'glyphicon',
+    nodeIcon: '',
+    selectedIcon: '',
+    checkedIcon: 'glyphicon glyphicon-check',
+    uncheckedIcon: 'glyphicon glyphicon-unchecked',
 
-        /**
-         * Is this file pending to be uploaded ?
-         *
-         */
-        isPending: function ()  {
-            return this.getState() == "pending";
-        },
+    color: undefined, // '#000000',
+    backColor: undefined, // '#FFFFFF',
+    borderColor: undefined, // '#dddddd',
+    onhoverColor: '#F5F5F5',
+    selectedColor: '#FFFFFF',
+    selectedBackColor: '#428bca',
+    searchResultColor: '#D9534F',
+    searchResultBackColor: undefined, //'#FFFFFF',
 
-        /**
-         * Is this file currently uploading ?
-         *
-         */
-        isRunning: function () {
-            return this.getState() == "running";
-        },
+    enableLinks: false,
+    highlightSelected: true,
+    highlightSearchResults: true,
+    showBorder: true,
+    showIcon: true,
+    showCheckbox: false,
+    showTags: false,
+    multiSelect: false,
 
-        /**
-         * Is this file uploaded ?
-         *
-         */
-        isDone: function () {
-            return this.getState() == "done";
-        },
+    // Event handlers
+    onNodeChecked: undefined,
+    onNodeCollapsed: undefined,
+    onNodeDisabled: undefined,
+    onNodeEnabled: undefined,
+    onNodeExpanded: undefined,
+    onNodeSelected: undefined,
+    onNodeUnchecked: undefined,
+    onNodeUnselected: undefined,
+    onSearchComplete: undefined,
+    onSearchCleared: undefined
+  };
 
-        /**
-         * Is this upload in error ?
-         *
-         */
-        isError: function () {
-            return this.getState() == "error" || this.getState == "canceled";
-        },
+  _default.options = {
+    silent: false,
+    ignoreChildren: false
+  };
 
-        /**
-         * Get the file state.
-         *
-         */
-        getState: function () {
-            return this.state;
+  _default.searchOptions = {
+    ignoreCase: true, 
+    exactMatch: false,
+    revealResults: true
+  };
+
+  var Tree =  swt.Tree = Widget.inherit({
+    klassName: "Tree",
+
+    pluginName : "lark.tree",
+
+    widgetClass : "lark-tree",
+
+    options : {
+      injectStyle: true,
+
+      levels: 2,
+
+      expandIcon: 'glyphicon glyphicon-plus',
+      collapseIcon: 'glyphicon glyphicon-minus',
+      emptyIcon: 'glyphicon',
+      nodeIcon: '',
+      selectedIcon: '',
+      checkedIcon: 'glyphicon glyphicon-check',
+      uncheckedIcon: 'glyphicon glyphicon-unchecked',
+
+      color: undefined, // '#000000',
+      backColor: undefined, // '#FFFFFF',
+      borderColor: undefined, // '#dddddd',
+      onhoverColor: '#F5F5F5',
+      selectedColor: '#FFFFFF',
+      selectedBackColor: '#428bca',
+      searchResultColor: '#D9534F',
+      searchResultBackColor: undefined, //'#FFFFFF',
+
+      enableLinks: false,
+      highlightSelected: true,
+      highlightSearchResults: true,
+      showBorder: true,
+      showIcon: true,
+      showCheckbox: false,
+      showTags: false,
+      multiSelect: false,
+
+      // Event handlers
+      onNodeChecked: undefined,
+      onNodeCollapsed: undefined,
+      onNodeDisabled: undefined,
+      onNodeEnabled: undefined,
+      onNodeExpanded: undefined,
+      onNodeSelected: undefined,
+      onNodeUnchecked: undefined,
+      onNodeUnselected: undefined,
+      onSearchComplete: undefined,
+      onSearchCleared: undefined
+
+    },   
+
+    template : {
+      list: '<ul class="list-group"></ul>',
+      item: '<li class="list-group-item"></li>',
+      indent: '<span class="indent"></span>',
+      icon: '<span class="icon"></span>',
+      link: '<a href="#" style="color:inherit;"></a>',
+      badge: '<span class="badge"></span>'
+    },
+
+    css : '.Tree .list-group-item{cursor:pointer}.Tree span.indent{margin-left:10px;margin-right:10px}.Tree span.icon{width:12px;margin-right:5px}.Tree .node-disabled{color:silver;cursor:not-allowed}' ,
+
+    _construct : function (element, options) {
+
+      this.$element = $(element);
+      this.elementId = element.id;
+      this.styleId = this.elementId + '-style';
+
+      this._init(options);
+    },
+
+    _init : function (options) {
+
+      //var options = this.options
+
+      this.tree = [];
+      this.nodes = [];
+
+      if (options.data) {
+        if (typeof options.data === 'string') {
+          options.data = JSON.parse(options.data);
         }
-    });
+        this.tree = langx.extend(true, [], options.data);
+        delete options.data;
+      }
+      //this.options = langx.extend({}, _default.settings, options);
 
-    /**
-     * This is a file collection, used to manage the selected
-     * and processing files.
-     *
-     */
-    var FileItemCollection = ArrayList.inherit({
-        item: FileItem
-    });
+      this.destroy();
+      this.subscribeEvents();
+      this.setInitialStates({ nodes: this.tree }, 0);
+      this.render();
+    },
 
-    /**
-     * A file view, which is the view that manage a single file
-     * process in the upload manager.
-     *
-     */
-    var FileItemWidget = Widget.inherit({
-        className: 'upload-manager-file row',
+    remove : function () {
+      this.destroy();
+      datax.removeData(this, this.pluginName);
+      $('#' + this.styleId).remove();
+    },
 
-        options : {
-          selectors : {
-            fileName : ".name",
-            fileSize : ".size",
-            cancel : ".cancel",
-            clear : ".clear",
-            progress : ".progress",
-            message : ".message"
+    destroy : function () {
+
+      if (!this.initialized) return;
+
+      this.$wrapper.remove();
+      this.$wrapper = null;
+
+      // Switch off events
+      this.unsubscribeEvents();
+
+      // Reset this.initialized flag
+      this.initialized = false;
+    },
+
+    unsubscribeEvents : function () {
+
+      this.$element.off('click');
+      this.$element.off('nodeChecked');
+      this.$element.off('nodeCollapsed');
+      this.$element.off('nodeDisabled');
+      this.$element.off('nodeEnabled');
+      this.$element.off('nodeExpanded');
+      this.$element.off('nodeSelected');
+      this.$element.off('nodeUnchecked');
+      this.$element.off('nodeUnselected');
+      this.$element.off('searchComplete');
+      this.$element.off('searchCleared');
+    },
+
+    subscribeEvents : function () {
+
+      this.unsubscribeEvents();
+
+      this.$element.on('click', langx.proxy(this.clickHandler, this));
+
+      if (typeof (this.options.onNodeChecked) === 'function') {
+        this.$element.on('nodeChecked', this.options.onNodeChecked);
+      }
+
+      if (typeof (this.options.onNodeCollapsed) === 'function') {
+        this.$element.on('nodeCollapsed', this.options.onNodeCollapsed);
+      }
+
+      if (typeof (this.options.onNodeDisabled) === 'function') {
+        this.$element.on('nodeDisabled', this.options.onNodeDisabled);
+      }
+
+      if (typeof (this.options.onNodeEnabled) === 'function') {
+        this.$element.on('nodeEnabled', this.options.onNodeEnabled);
+      }
+
+      if (typeof (this.options.onNodeExpanded) === 'function') {
+        this.$element.on('nodeExpanded', this.options.onNodeExpanded);
+      }
+
+      if (typeof (this.options.onNodeSelected) === 'function') {
+        this.$element.on('nodeSelected', this.options.onNodeSelected);
+      }
+
+      if (typeof (this.options.onNodeUnchecked) === 'function') {
+        this.$element.on('nodeUnchecked', this.options.onNodeUnchecked);
+      }
+
+      if (typeof (this.options.onNodeUnselected) === 'function') {
+        this.$element.on('nodeUnselected', this.options.onNodeUnselected);
+      }
+
+      if (typeof (this.options.onSearchComplete) === 'function') {
+        this.$element.on('searchComplete', this.options.onSearchComplete);
+      }
+
+      if (typeof (this.options.onSearchCleared) === 'function') {
+        this.$element.on('searchCleared', this.options.onSearchCleared);
+      }
+    },
+
+    /*
+      Recurse the tree structure and ensure all nodes have
+      valid initial states.  User defined states will be preserved.
+      For performance we also take this opportunity to
+      index nodes in a flattened structure
+    */
+    setInitialStates : function (node, level) {
+
+      if (!node.nodes) return;
+      level += 1;
+
+      var parent = node;
+      var _this = this;
+      langx.each(node.nodes, function checkStates(index, node) {
+
+        // nodeId : unique, incremental identifier
+        node.nodeId = _this.nodes.length;
+
+        // parentId : transversing up the tree
+        node.parentId = parent.nodeId;
+
+        // if not provided set selectable default value
+        if (!node.hasOwnProperty('selectable')) {
+          node.selectable = true;
+        }
+
+        // where provided we should preserve states
+        node.state = node.state || {};
+
+        // set checked state; unless set always false
+        if (!node.state.hasOwnProperty('checked')) {
+          node.state.checked = false;
+        }
+
+        // set enabled state; unless set always false
+        if (!node.state.hasOwnProperty('disabled')) {
+          node.state.disabled = false;
+        }
+
+        // set expanded state; if not provided based on levels
+        if (!node.state.hasOwnProperty('expanded')) {
+          if (!node.state.disabled &&
+              (level < _this.options.levels) &&
+              (node.nodes && node.nodes.length > 0)) {
+            node.state.expanded = true;
           }
-        },
-
-        state : {
-          fileName : String,
-          fileSize : Number
-        },
-
-        _init: function () {
-            this.processUploadMsg = this.options.processUploadMsg;
-            this.doneMsg = this.options.doneMsg;
-
-            this.fileName(this.options.fileName);
-            this.fileSize(this.options.fileSize);
-
-            // Bind model events
-            this.model.on('destroy', this.close, this);
-            this.model.on('fileprogress', this.updateProgress, this);
-            this.model.on('filefailed', this.hasFailed, this);
-            this.model.on('filedone', this.hasDone, this);
-
-            // In each case, update view
-            this.model.on('all', this.update, this);
-
-            // Bind events
-            this.bindEvents();
-
-            // Update elements
-            this.update();            
-        },
-
-        _refresh : function(updates) {
-
-        },
-
-        /**
-         * Update upload progress.
-         *
-         */
-        updateProgress: function (progress) {
-            var percent = parseInt(progress.loaded / progress.total * 100, 10);
-            var progressHTML = this.getHelpers().displaySize(progress.loaded)+' of '+this.getHelpers().displaySize(progress.total);
-            if (percent >= 100 && this.processUploadMsg) { progressHTML = this.processUploadMsg; }
-
-            $('.progress', this.el)
-                .find('.bar')
-                .css('width', percent+'%')
-                .parent()
-                .find('.progress-label')
-                .html(progressHTML);
-        },
-
-        /**
-         * File upload has failed.
-         *
-         */
-        hasFailed: function (error){
-            $('.message', this.el).html('<i class="icon-error"></i> '+error);
-        },
-
-        /**
-         * File upload is done.
-         *
-         */
-        hasDone: function (result){
-            $('.message', this.el).html('<i class="icon-success"></i> ' + (this.doneMsg || 'Uploaded'));
-        },
-
-        /**
-         * Update view without complete rendering.
-         *
-         */
-        update: function () {
-            var selectors = this.options.selectors,
-                when_pending = this._velm.$(selectors.size + "," + selectors.cancel),
-                when_running = this._velm.$(selectors.progress + "," + selectors.cancel),
-                when_done = this._velm.$(selectors.message + "," + selectors.clear);
-
-            if (this.model.isPending()) {
-                when_running.add(when_done).addClass('hidden');
-                when_pending.removeClass('hidden');
-            } else if (this.model.isRunning()) {
-                when_pending.add(when_done).addClass('hidden');
-                when_running.removeClass('hidden');
-            } else if (this.model.isDone() || this.model.isError()) {
-                when_pending.add(when_running).addClass('hidden');
-                when_done.removeClass('hidden');
-            }
-        },
-
-        /**
-         * Startup widget with binding events
-         * @override
-         *
-         */
-        _startup: function () {
-            var self = this;
-
-            // DOM events
-            this._velm.$(this.options.selectors.cancel).click(function(){
-                self.model.cancel();
-                self.collection.remove(self.model);
-            });
-            this._velm.$(this.options.selectors.clear).click(function(){
-                self.model.destroy();
-                self.collection.remove(self.model);
-            });
-        },
-
-        /**
-         * Compute data to be passed to the view.
-         *
-         */
-        computeData: function () {
-            return $.extend(this.getHelpers(), this.model.get('data'));
+          else {
+            node.state.expanded = false;
+          }
         }
-    });
 
+        // set selected state; unless set always false
+        if (!node.state.hasOwnProperty('selected')) {
+          node.state.selected = false;
+        }
 
-    var Uploader =  Widget.inherit({
-        klassName : "Uploader",
-        pluginName : "lark.uploader",
+        // index nodes in a flattened structure for use later
+        _this.nodes.push(node);
 
-        options: {
+        // recurse child nodes and transverse the tree
+        if (node.nodes) {
+          _this.setInitialStates(node, level);
+        }
+      });
+    },
 
-            uploadUrl: '/upload',
-            autoUpload: false,
-            selectors : {
-              fileList : '.file-list',
-              nodata : ".file-list .no-data",
-              pickFiles: '.file-picker',
-              startUploads: '.start-uploads',
-              cancelUploads: '.cancel-uploads',
-            },
+    clickHandler : function (event) {
 
-            dataType: 'json',
+      if (!this.options.enableLinks) event.preventDefault();
 
-            fileItem : {
-            	selectors : {
+      var target = $(event.target);
+      var node = this.findNode(target);
+      if (!node || node.state.disabled) return;
+      
+      var classList = target.attr('class') ? target.attr('class').split(' ') : [];
+      if ((classList.indexOf('expand-icon') !== -1)) {
 
-            	},
-
-            	template : null
-            }
-        },
-
-        state : {
-          files : FileItemCollection
-        },
-
-        /**
-         * Render the main part of upload manager.
-         *
-         */
-        _init: function () {
-            var self = this;
-
-
-            // Create the file list
-            var files = this.files(new FileItemCollection());
-
-            // Add add files handler
-            var filePicker = this._velm.$(this.options.selectors.pickFiles), self = this;
-
-            this.uploadProcess =  uploader(this._elm,{  //$.$(this.el).fileupload({
-                dataType: this.options.dataType,
-                url: this.options.uploadUrl,
-                formData: this.options.formData,
-                autoUpload: this.options.autoUpload,
-                singleFileUploads: true,
-                picker : filePicker,
-
-                'add' : function (e, data) {
-                    // Create an array in which the file objects
-                    // will be stored.
-                    data.uploadManagerFiles = [];
-
-                    // A file is added, process for each file.
-                    // Note: every times, the data.files array length is 1 because
-                    //       of "singleFileUploads" option.
-                    langx.each(data.files, function (index, file_data) {
-                        // Create the file object
-                        file_data.id = self.file_id++;
-                        var file = new FileItem({
-                            data: file_data,
-                            processor: data
-                        });
-
-                        // Add file in data
-                        data.uploadManagerFiles.push(file);
-
-                        // Trigger event
-                        //self.trigger('fileadd', file);
-                        // Add it to current list
-                        self.files.add(file);
-
-                        // Create the view
-                        self.renderFile(file);
-
-
-                    });
-                },
-                'progress' : function (e, data) {
-                    langx.each(data.uploadManagerFiles, function (index, file) {
-                        //self.trigger('fileprogress', file, data);
-
-                        file.progress(progress);
-                    });
-                },
-
-                'fail' : function (e, data) {
-                    langx.each(data.uploadManagerFiles, function (index, file) {
-                        var error = "Unknown error";
-                        if (typeof data.errorThrown == "string") {
-                            error = data.errorThrown;
-                        } else if (typeof data.errorThrown == "object") {
-                            error = data.errorThrown.message;
-                        } else if (data.result) {
-                            if (data.result.error) {
-                                error = data.result.error;
-                            } else if (data.result.files && data.result.files[index] && data.result.files[index].error) {
-                                error = data.result.files[index].error;
-                            } else {
-                                error = "Unknown remote error";
-                            }
-                        }
-
-                        //self.trigger('filefail', file, error);
-                        file.fail(error);
-                    });
-                },
-
-                'done' : function (e, data) {
-                    langx.each(data.uploadManagerFiles, function (index, file) {
-                        //self.trigger('filedone', file, data);
-                        file.done(data.result);
-                    });
-                }
-
-            });
-
-            // Add upload process events handlers
-            this.bindProcessEvents();
-
-            // Add cancel all handler
-            this._velm.$(this.options.selectors.cancelUploads).click(function(){
-                while (self.files.length) {
-                    self.files.at(0).cancel();
-                }
-            });
-
-            // Add start uploads handler
-            this._velm.$(this.options.selectors.startUploads).click(function(){
-                self.files.forEach(function(file){
-                    file.start();
-                });
-            });
-
-            // Render current files
-            /*
-            this.files.forEach(function (file) {
-                self.renderFile(file);
-            });
-            */
-
-            this._refresh({files:true});
+        this.toggleExpandedState(node, _default.options);
+        this.render();
+      }
+      else if ((classList.indexOf('check-icon') !== -1)) {
         
-        },
-
-        _refresh : function(updates) {
-            var self = this;
-            function updateFileList()  {
-                var selectors = self.options.selectors,
-                    files = self.files();
-                var with_files_elements = self._velm.$(selectors.cancelUploads + ',' + selectors.startUploads);
-                var without_files_elements = self._velm.$(selectors.nodata);
-                if (files.length > 0) {
-                    with_files_elements.removeClass('hidden');
-                    without_files_elements.addClass('hidden');
-                } else {
-                    with_files_elements.addClass('hidden');
-                    without_files_elements.removeClass('hidden');
-                }
-            }
-
-            if (updates["files"]) {
-              updateFileList();
-            }
-
-        },
-
-        /**
-         * Render a file.
-         *
-         */
-        renderFile: function (file) {
-            var file_view = new FileItemWidget(langx.mixin({},this.options, {
-              model: file,
-              template : this.options.fileItem.template
-            }));
-            //this._velm.$(this.options.selectors.fileList).append(file_view.render());
-            file_view.attach(this._velm.$(this.options.selectors.fileList));
-        },
-
-        /**
-         * Bind events on the upload processor.
-         *
-         */
-        bindProcessEvents: function () {
+        this.toggleCheckedState(node, _default.options);
+        this.render();
+      }
+      else {
+        
+        if (node.selectable) {
+          this.toggleSelectedState(node, _default.options);
+        } else {
+          this.toggleExpandedState(node, _default.options);
         }
-    });
 
-    return swt.Uploader = Uploader;
+        this.render();
+      }
+    },
+
+    // Looks up the DOM for the closest parent list item to retrieve the
+    // data attribute nodeid, which is used to lookup the node in the flattened structure.
+    findNode : function (target) {
+
+      var nodeId = target.closest('li.list-group-item').attr('data-nodeid');
+      var node = this.nodes[nodeId];
+
+      if (!node) {
+        console.log('Error: node does not exist');
+      }
+      return node;
+    },
+
+    toggleExpandedState : function (node, options) {
+      if (!node) return;
+      this.setExpandedState(node, !node.state.expanded, options);
+    },
+
+    setExpandedState : function (node, state, options) {
+
+      if (state === node.state.expanded) return;
+
+      if (state && node.nodes) {
+
+        // Expand a node
+        node.state.expanded = true;
+        if (!options.silent) {
+          this.$element.trigger('nodeExpanded', langx.extend(true, {}, node));
+        }
+      }
+      else if (!state) {
+
+        // Collapse a node
+        node.state.expanded = false;
+        if (!options.silent) {
+          this.$element.trigger('nodeCollapsed', langx.extend(true, {}, node));
+        }
+
+        // Collapse child nodes
+        if (node.nodes && !options.ignoreChildren) {
+          langx.each(node.nodes, langx.proxy(function (index, node) {
+            this.setExpandedState(node, false, options);
+          }, this));
+        }
+      }
+    },
+
+    toggleSelectedState : function (node, options) {
+      if (!node) return;
+      this.setSelectedState(node, !node.state.selected, options);
+    },
+
+    setSelectedState : function (node, state, options) {
+
+      if (state === node.state.selected) return;
+
+      if (state) {
+
+        // If multiSelect false, unselect previously selected
+        if (!this.options.multiSelect) {
+          langx.each(this.findNodes('true', 'g', 'state.selected'), langx.proxy(function (index, node) {
+            this.setSelectedState(node, false, options);
+          }, this));
+        }
+
+        // Continue selecting node
+        node.state.selected = true;
+        if (!options.silent) {
+          this.$element.trigger('nodeSelected', langx.extend(true, {}, node));
+        }
+      }
+      else {
+
+        // Unselect node
+        node.state.selected = false;
+        if (!options.silent) {
+          this.$element.trigger('nodeUnselected', langx.extend(true, {}, node));
+        }
+      }
+    },
+
+    toggleCheckedState : function (node, options) {
+      if (!node) return;
+      this.setCheckedState(node, !node.state.checked, options);
+    },
+
+    setCheckedState : function (node, state, options) {
+
+      if (state === node.state.checked) return;
+
+      if (state) {
+
+        // Check node
+        node.state.checked = true;
+
+        if (!options.silent) {
+          this.$element.trigger('nodeChecked', langx.extend(true, {}, node));
+        }
+      }
+      else {
+
+        // Uncheck node
+        node.state.checked = false;
+        if (!options.silent) {
+          this.$element.trigger('nodeUnchecked', langx.extend(true, {}, node));
+        }
+      }
+    },
+
+    setDisabledState : function (node, state, options) {
+
+      if (state === node.state.disabled) return;
+
+      if (state) {
+
+        // Disable node
+        node.state.disabled = true;
+
+        // Disable all other states
+        this.setExpandedState(node, false, options);
+        this.setSelectedState(node, false, options);
+        this.setCheckedState(node, false, options);
+
+        if (!options.silent) {
+          this.$element.trigger('nodeDisabled', langx.extend(true, {}, node));
+        }
+      }
+      else {
+
+        // Enabled node
+        node.state.disabled = false;
+        if (!options.silent) {
+          this.$element.trigger('nodeEnabled', langx.extend(true, {}, node));
+        }
+      }
+    },
+
+    render : function () {
+
+      if (!this.initialized) {
+
+        // Setup first time only components
+        this.$element.addClass(this.widgetClass);
+        this.$wrapper = $(this.template.list);
+
+        this.injectStyle();
+
+        this.initialized = true;
+      }
+
+      this.$element.empty().append(this.$wrapper.empty());
+
+      // Build tree
+      this.buildTree(this.tree, 0);
+    },
+
+    // Starting from the root node, and recursing down the
+    // structure we build the tree one node at a time
+    buildTree : function (nodes, level) {
+
+      if (!nodes) return;
+      level += 1;
+
+      var _this = this;
+      langx.each(nodes, function addNodes(id, node) {
+
+        var treeItem = $(_this.template.item)
+          .addClass('node-' + _this.elementId)
+          .addClass(node.state.checked ? 'node-checked' : '')
+          .addClass(node.state.disabled ? 'node-disabled': '')
+          .addClass(node.state.selected ? 'node-selected' : '')
+          .addClass(node.searchResult ? 'search-result' : '') 
+          .attr('data-nodeid', node.nodeId)
+          .attr('style', _this.buildStyleOverride(node));
+
+        // Add indent/spacer to mimic tree structure
+        for (var i = 0; i < (level - 1); i++) {
+          treeItem.append(_this.template.indent);
+        }
+
+        // Add expand, collapse or empty spacer icons
+        var classList = [];
+        if (node.nodes) {
+          classList.push('expand-icon');
+          if (node.state.expanded) {
+            classList.push(_this.options.collapseIcon);
+          }
+          else {
+            classList.push(_this.options.expandIcon);
+          }
+        }
+        else {
+          classList.push(_this.options.emptyIcon);
+        }
+
+        treeItem
+          .append($(_this.template.icon)
+            .addClass(classList.join(' '))
+          );
+
+
+        // Add node icon
+        if (_this.options.showIcon) {
+          
+          var classList = ['node-icon'];
+
+          classList.push(node.icon || _this.options.nodeIcon);
+          if (node.state.selected) {
+            classList.pop();
+            classList.push(node.selectedIcon || _this.options.selectedIcon || 
+                    node.icon || _this.options.nodeIcon);
+          }
+
+          treeItem
+            .append($(_this.template.icon)
+              .addClass(classList.join(' '))
+            );
+        }
+
+        // Add check / unchecked icon
+        if (_this.options.showCheckbox) {
+
+          var classList = ['check-icon'];
+          if (node.state.checked) {
+            classList.push(_this.options.checkedIcon); 
+          }
+          else {
+            classList.push(_this.options.uncheckedIcon);
+          }
+
+          treeItem
+            .append($(_this.template.icon)
+              .addClass(classList.join(' '))
+            );
+        }
+
+        // Add text
+        if (_this.options.enableLinks) {
+          // Add hyperlink
+          treeItem
+            .append($(_this.template.link)
+              .attr('href', node.href)
+              .append(node.text)
+            );
+        }
+        else {
+          // otherwise just text
+          treeItem
+            .append(node.text);
+        }
+
+        // Add tags as badges
+        if (_this.options.showTags && node.tags) {
+          langx.each(node.tags, function addTag(id, tag) {
+            treeItem
+              .append($(_this.template.badge)
+                .append(tag)
+              );
+          });
+        }
+
+        // Add item to the tree
+        _this.$wrapper.append(treeItem);
+
+        // Recursively add child ndoes
+        if (node.nodes && node.state.expanded && !node.state.disabled) {
+          return _this.buildTree(node.nodes, level);
+        }
+      });
+    },
+
+    // Define any node level style override for
+    // 1. selectedNode
+    // 2. node|data assigned color overrides
+    buildStyleOverride : function (node) {
+
+      if (node.state.disabled) return '';
+
+      var color = node.color;
+      var backColor = node.backColor;
+
+      if (this.options.highlightSelected && node.state.selected) {
+        if (this.options.selectedColor) {
+          color = this.options.selectedColor;
+        }
+        if (this.options.selectedBackColor) {
+          backColor = this.options.selectedBackColor;
+        }
+      }
+
+      if (this.options.highlightSearchResults && node.searchResult && !node.state.disabled) {
+        if (this.options.searchResultColor) {
+          color = this.options.searchResultColor;
+        }
+        if (this.options.searchResultBackColor) {
+          backColor = this.options.searchResultBackColor;
+        }
+      }
+
+      return 'color:' + color +
+        ';background-color:' + backColor + ';';
+    },
+
+    // Add inline style into head
+    injectStyle : function () {
+
+      if (this.options.injectStyle && !document.getElementById(this.styleId)) {
+        $('<style type="text/css" id="' + this.styleId + '"> ' + this.buildStyle() + ' </style>').appendTo('head');
+      }
+    },
+
+    // Construct trees style based on user options
+    buildStyle : function () {
+
+      var style = '.node-' + this.elementId + '{';
+
+      if (this.options.color) {
+        style += 'color:' + this.options.color + ';';
+      }
+
+      if (this.options.backColor) {
+        style += 'background-color:' + this.options.backColor + ';';
+      }
+
+      if (!this.options.showBorder) {
+        style += 'border:none;';
+      }
+      else if (this.options.borderColor) {
+        style += 'border:1px solid ' + this.options.borderColor + ';';
+      }
+      style += '}';
+
+      if (this.options.onhoverColor) {
+        style += '.node-' + this.elementId + ':not(.node-disabled):hover{' +
+          'background-color:' + this.options.onhoverColor + ';' +
+        '}';
+      }
+
+      return this.css + style;
+    },
+
+    /**
+      Returns a single node object that matches the given node id.
+      @param {Number} nodeId - A node's unique identifier
+      @return {Object} node - Matching node
+    */
+    getNode : function (nodeId) {
+      return this.nodes[nodeId];
+    },
+
+    /**
+      Returns the parent node of a given node, if valid otherwise returns undefined.
+      @param {Object|Number} identifier - A valid node or node id
+      @returns {Object} node - The parent node
+    */
+    getParent : function (identifier) {
+      var node = this.identifyNode(identifier);
+      return this.nodes[node.parentId];
+    },
+
+    /**
+      Returns an array of sibling nodes for a given node, if valid otherwise returns undefined.
+      @param {Object|Number} identifier - A valid node or node id
+      @returns {Array} nodes - Sibling nodes
+    */
+    getSiblings : function (identifier) {
+      var node = this.identifyNode(identifier);
+      var parent = this.getParent(node);
+      var nodes = parent ? parent.nodes : this.tree;
+      return nodes.filter(function (obj) {
+          return obj.nodeId !== node.nodeId;
+        });
+    },
+
+    /**
+      Returns an array of selected nodes.
+      @returns {Array} nodes - Selected nodes
+    */
+    getSelected : function () {
+      return this.findNodes('true', 'g', 'state.selected');
+    },
+
+    /**
+      Returns an array of unselected nodes.
+      @returns {Array} nodes - Unselected nodes
+    */
+    getUnselected : function () {
+      return this.findNodes('false', 'g', 'state.selected');
+    },
+
+    /**
+      Returns an array of expanded nodes.
+      @returns {Array} nodes - Expanded nodes
+    */
+    getExpanded : function () {
+      return this.findNodes('true', 'g', 'state.expanded');
+    },
+
+    /**
+      Returns an array of collapsed nodes.
+      @returns {Array} nodes - Collapsed nodes
+    */
+    getCollapsed : function () {
+      return this.findNodes('false', 'g', 'state.expanded');
+    },
+
+    /**
+      Returns an array of checked nodes.
+      @returns {Array} nodes - Checked nodes
+    */
+    getChecked : function () {
+      return this.findNodes('true', 'g', 'state.checked');
+    },
+
+    /**
+      Returns an array of unchecked nodes.
+      @returns {Array} nodes - Unchecked nodes
+    */
+    getUnchecked : function () {
+      return this.findNodes('false', 'g', 'state.checked');
+    },
+
+    /**
+      Returns an array of disabled nodes.
+      @returns {Array} nodes - Disabled nodes
+    */
+    getDisabled : function () {
+      return this.findNodes('true', 'g', 'state.disabled');
+    },
+
+    /**
+      Returns an array of enabled nodes.
+      @returns {Array} nodes - Enabled nodes
+    */
+    getEnabled : function () {
+      return this.findNodes('false', 'g', 'state.disabled');
+    },
+
+
+    /**
+      Set a node state to selected
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    selectNode : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setSelectedState(node, true, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Set a node state to unselected
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    unselectNode : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setSelectedState(node, false, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Toggles a node selected state; selecting if unselected, unselecting if selected.
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    toggleNodeSelected : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.toggleSelectedState(node, options);
+      }, this));
+
+      this.render();
+    },
+
+
+    /**
+      Collapse all tree nodes
+      @param {optional Object} options
+    */
+    collapseAll : function (options) {
+      var identifiers = this.findNodes('true', 'g', 'state.expanded');
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setExpandedState(node, false, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Collapse a given tree node
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    collapseNode : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setExpandedState(node, false, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Expand all tree nodes
+      @param {optional Object} options
+    */
+    expandAll : function (options) {
+      options = langx.extend({}, _default.options, options);
+
+      if (options && options.levels) {
+        this.expandLevels(this.tree, options.levels, options);
+      }
+      else {
+        var identifiers = this.findNodes('false', 'g', 'state.expanded');
+        this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+          this.setExpandedState(node, true, options);
+        }, this));
+      }
+
+      this.render();
+    },
+
+    /**
+      Expand a given tree node
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    expandNode : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setExpandedState(node, true, options);
+        if (node.nodes && (options && options.levels)) {
+          this.expandLevels(node.nodes, options.levels-1, options);
+        }
+      }, this));
+
+      this.render();
+    },
+
+    expandLevels : function (nodes, level, options) {
+      options = langx.extend({}, _default.options, options);
+
+      langx.each(nodes, langx.proxy(function (index, node) {
+        this.setExpandedState(node, (level > 0) ? true : false, options);
+        if (node.nodes) {
+          this.expandLevels(node.nodes, level-1, options);
+        }
+      }, this));
+    },
+
+    /**
+      Reveals a given tree node, expanding the tree from node to root.
+      @param {Object|Number|Array} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    revealNode : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        var parentNode = this.getParent(node);
+        while (parentNode) {
+          this.setExpandedState(parentNode, true, options);
+          parentNode = this.getParent(parentNode);
+        }
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Toggles a nodes expanded state; collapsing if expanded, expanding if collapsed.
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    toggleNodeExpanded : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.toggleExpandedState(node, options);
+      }, this));
+      
+      this.render();
+    },
+
+
+    /**
+      Check all tree nodes
+      @param {optional Object} options
+    */
+    checkAll : function (options) {
+      var identifiers = this.findNodes('false', 'g', 'state.checked');
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setCheckedState(node, true, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Check a given tree node
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    checkNode : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setCheckedState(node, true, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Uncheck all tree nodes
+      @param {optional Object} options
+    */
+    uncheckAll : function (options) {
+      var identifiers = this.findNodes('true', 'g', 'state.checked');
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setCheckedState(node, false, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Uncheck a given tree node
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    uncheckNode : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setCheckedState(node, false, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Toggles a nodes checked state; checking if unchecked, unchecking if checked.
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    toggleNodeChecked : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.toggleCheckedState(node, options);
+      }, this));
+
+      this.render();
+    },
+
+
+    /**
+      Disable all tree nodes
+      @param {optional Object} options
+    */
+    disableAll : function (options) {
+      var identifiers = this.findNodes('false', 'g', 'state.disabled');
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setDisabledState(node, true, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Disable a given tree node
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    disableNode : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setDisabledState(node, true, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Enable all tree nodes
+      @param {optional Object} options
+    */
+    enableAll : function (options) {
+      var identifiers = this.findNodes('true', 'g', 'state.disabled');
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setDisabledState(node, false, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Enable a given tree node
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    enableNode : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setDisabledState(node, false, options);
+      }, this));
+
+      this.render();
+    },
+
+    /**
+      Toggles a nodes disabled state; disabling is enabled, enabling if disabled.
+      @param {Object|Number} identifiers - A valid node, node id or array of node identifiers
+      @param {optional Object} options
+    */
+    toggleNodeDisabled : function (identifiers, options) {
+      this.forEachIdentifier(identifiers, options, langx.proxy(function (node, options) {
+        this.setDisabledState(node, !node.state.disabled, options);
+      }, this));
+
+      this.render();
+    },
+
+
+    /**
+      Common code for processing multiple identifiers
+    */
+    forEachIdentifier : function (identifiers, options, callback) {
+
+      options = langx.extend({}, _default.options, options);
+
+      if (!(identifiers instanceof Array)) {
+        identifiers = [identifiers];
+      }
+
+      langx.each(identifiers, langx.proxy(function (index, identifier) {
+        callback(this.identifyNode(identifier), options);
+      }, this));  
+    },
+
+    /*
+      Identifies a node from either a node id or object
+    */
+    identifyNode : function (identifier) {
+      return ((typeof identifier) === 'number') ?
+              this.nodes[identifier] :
+              identifier;
+    },
+
+    /**
+      Searches the tree for nodes (text) that match given criteria
+      @param {String} pattern - A given string to match against
+      @param {optional Object} options - Search criteria options
+      @return {Array} nodes - Matching nodes
+    */
+    search : function (pattern, options) {
+      options = langx.extend({}, _default.searchOptions, options);
+
+      this.clearSearch({ render: false });
+
+      var results = [];
+      if (pattern && pattern.length > 0) {
+
+        if (options.exactMatch) {
+          pattern = '^' + pattern + '$';
+        }
+
+        var modifier = 'g';
+        if (options.ignoreCase) {
+          modifier += 'i';
+        }
+
+        results = this.findNodes(pattern, modifier);
+
+        // Add searchResult property to all matching nodes
+        // This will be used to apply custom styles
+        // and when identifying result to be cleared
+        langx.each(results, function (index, node) {
+          node.searchResult = true;
+        })
+      }
+
+      // If revealResults, then render is triggered from revealNode
+      // otherwise we just call render.
+      if (options.revealResults) {
+        this.revealNode(results);
+      }
+      else {
+        this.render();
+      }
+
+      this.$element.trigger('searchComplete', langx.extend(true, {}, results));
+
+      return results;
+    },
+
+    /**
+      Clears previous search results
+    */
+    clearSearch : function (options) {
+
+      options = langx.extend({}, { render: true }, options);
+
+      var results = langx.each(this.findNodes('true', 'g', 'searchResult'), function (index, node) {
+        node.searchResult = false;
+      });
+
+      if (options.render) {
+        this.render();  
+      }
+      
+      this.$element.trigger('searchCleared', langx.extend(true, {}, results));
+    },
+
+    /**
+      Find nodes that match a given criteria
+      @param {String} pattern - A given string to match against
+      @param {optional String} modifier - Valid RegEx modifiers
+      @param {optional String} attribute - Attribute to compare pattern against
+      @return {Array} nodes - Nodes that match your criteria
+    */
+    findNodes : function (pattern, modifier, attribute) {
+
+      modifier = modifier || 'g';
+      attribute = attribute || 'text';
+
+      var _this = this;
+      return langx.grep(this.nodes, function (node) {
+        var val = _this.getNodeValue(node, attribute);
+        if (typeof val === 'string') {
+          return val.match(new RegExp(pattern, modifier));
+        }
+      });
+    },
+
+    /**
+      Recursive find for retrieving nested attributes values
+      All values are return as strings, unless invalid
+      @param {Object} obj - Typically a node, could be any object
+      @param {String} attr - Identifies an object property using dot notation
+      @return {String} value - Matching attributes string representation
+    */
+    getNodeValue : function (obj, attr) {
+      var index = attr.indexOf('.');
+      if (index > 0) {
+        var _obj = obj[attr.substring(0, index)];
+        var _attr = attr.substring(index + 1, attr.length);
+        return this.getNodeValue(_obj, _attr);
+      }
+      else {
+        if (obj.hasOwnProperty(attr)) {
+          return obj[attr].toString();
+        }
+        else {
+          return undefined;
+        }
+      }
+    }
+  });
+
+
+  return Tree;
 });
-
 define('skylark-widgets-swt/main',[
     "./swt",
     "./Widget",
@@ -19554,7 +18399,7 @@ define('skylark-widgets-swt/main',[
     "./Carousel",
     "./CheckBox",
     "./ComboBox",
-    "./InputBox",
+    "./TextBox",
     "./ListGroup",
     "./Menu",
     "./Pagination",
@@ -19564,8 +18409,9 @@ define('skylark-widgets-swt/main',[
     "./SelectList",
     "./Tabular",
     "./TabStrip",
+    "./TextBox",
     "./Toolbar",
-    "./Uploader"
+    "./Tree"
 ], function(swt) {
     return swt;
 });

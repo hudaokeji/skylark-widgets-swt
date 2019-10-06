@@ -12,15 +12,15 @@
 
         options : {
         	multiSelect: false,
-          	multiTier : false,
-          	toggle : false,
-          	classes : {
-            	active : "active"
-          	},
-          	selectors : {
-            	item : ".list-group-item"
-          	},
-          	selected : 0
+        	multiTier : false,
+        	toggle : false,
+        	classes : {
+          	active : "active"
+        	},
+        	selectors : {
+          	item : ".list-group-item"
+        	},
+        	selected : 0
         },
 
         state : {

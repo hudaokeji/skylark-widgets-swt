@@ -50,6 +50,6 @@ define([
         }
     });
 
-    return TabStrip;
+    return swt.TabStrip = TabStrip;
 
 });
