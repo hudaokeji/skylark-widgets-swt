@@ -12,64 +12,6 @@ define([
   'use strict';
 
 
-  var _default = {};
-
-  _default.settings = {
-
-    injectStyle: true,
-
-    levels: 2,
-
-    expandIcon: 'glyphicon glyphicon-plus',
-    collapseIcon: 'glyphicon glyphicon-minus',
-    emptyIcon: 'glyphicon',
-    nodeIcon: '',
-    selectedIcon: '',
-    checkedIcon: 'glyphicon glyphicon-check',
-    uncheckedIcon: 'glyphicon glyphicon-unchecked',
-
-    color: undefined, // '#000000',
-    backColor: undefined, // '#FFFFFF',
-    borderColor: undefined, // '#dddddd',
-    onhoverColor: '#F5F5F5',
-    selectedColor: '#FFFFFF',
-    selectedBackColor: '#428bca',
-    searchResultColor: '#D9534F',
-    searchResultBackColor: undefined, //'#FFFFFF',
-
-    enableLinks: false,
-    highlightSelected: true,
-    highlightSearchResults: true,
-    showBorder: true,
-    showIcon: true,
-    showCheckbox: false,
-    showTags: false,
-    multiSelect: false,
-
-    // Event handlers
-    onNodeChecked: undefined,
-    onNodeCollapsed: undefined,
-    onNodeDisabled: undefined,
-    onNodeEnabled: undefined,
-    onNodeExpanded: undefined,
-    onNodeSelected: undefined,
-    onNodeUnchecked: undefined,
-    onNodeUnselected: undefined,
-    onSearchComplete: undefined,
-    onSearchCleared: undefined
-  };
-
-  _default.options = {
-    silent: false,
-    ignoreChildren: false
-  };
-
-  _default.searchOptions = {
-    ignoreCase: true, 
-    exactMatch: false,
-    revealResults: true
-  };
-
   var Tree =  swt.Tree = Widget.inherit({
     klassName: "Tree",
 
@@ -78,26 +20,49 @@ define([
     widgetClass : "lark-tree",
 
     options : {
+      multiSelect: false,
+      //multiTier : false,
+      //levels: 2,
+
+      multiTier : {
+        nest   : true,
+      //  popup  : true,
+        levels : 2,
+        selectors :  {
+          children : ".list-group"
+        },
+        classes : {
+          expandIcon: 'glyphicon glyphicon-plus',
+          collapseIcon: 'glyphicon glyphicon-minus',
+        },        
+      },
+
+      selectors : {
+        item : ".list-group-item",
+        children : ".list-group"
+      },
+
       injectStyle: true,
 
-      levels: 2,
 
-      expandIcon: 'glyphicon glyphicon-plus',
-      collapseIcon: 'glyphicon glyphicon-minus',
       emptyIcon: 'glyphicon',
       nodeIcon: '',
       selectedIcon: '',
       checkedIcon: 'glyphicon glyphicon-check',
       uncheckedIcon: 'glyphicon glyphicon-unchecked',
 
-      color: undefined, // '#000000',
-      backColor: undefined, // '#FFFFFF',
-      borderColor: undefined, // '#dddddd',
-      onhoverColor: '#F5F5F5',
-      selectedColor: '#FFFFFF',
-      selectedBackColor: '#428bca',
-      searchResultColor: '#D9534F',
-      searchResultBackColor: undefined, //'#FFFFFF',
+
+      colors : {
+        normal: undefined, // '#000000',
+        normalBack: undefined, // '#FFFFFF',
+        border: undefined, // '#dddddd',
+        onhover: '#F5F5F5',
+        selected: '#FFFFFF',
+        selectedBack: '#428bca',
+        searchResult: '#D9534F',
+        searchResultBack: undefined //'#FFFFFF',
+      },
+
 
       enableLinks: false,
       highlightSelected: true,
@@ -106,7 +71,28 @@ define([
       showIcon: true,
       showCheckbox: false,
       showTags: false,
-      multiSelect: false,
+
+      search : {
+        ignoreCase: true, 
+        exactMatch: false,
+        revealResults: true    
+      },
+
+      noding : {
+        silent: false,
+        ignoreChildren: false
+      },
+
+
+      templates : {
+        list: '<ul class="list-group"></ul>',
+        item: '<li class="list-group-item"></li>',
+        indent: '<span class="indent"></span>',
+        icon: '<span class="icon"></span>',
+        link: '<a href="#" style="color:inherit;"></a>',
+        badge: '<span class="badge"></span>'
+      },
+
 
       // Event handlers
       onNodeChecked: undefined,
@@ -122,29 +108,19 @@ define([
 
     },   
 
-    template : {
-      list: '<ul class="list-group"></ul>',
-      item: '<li class="list-group-item"></li>',
-      indent: '<span class="indent"></span>',
-      icon: '<span class="icon"></span>',
-      link: '<a href="#" style="color:inherit;"></a>',
-      badge: '<span class="badge"></span>'
-    },
 
     css : '.Tree .list-group-item{cursor:pointer}.Tree span.indent{margin-left:10px;margin-right:10px}.Tree span.icon{width:12px;margin-right:5px}.Tree .node-disabled{color:silver;cursor:not-allowed}' ,
 
-    _construct : function (element, options) {
+
+    _init : function () {
+
+      var options = this.options,
+          element = this._elm;
 
       this.$element = $(element);
       this.elementId = element.id;
       this.styleId = this.elementId + '-style';
 
-      this._init(options);
-    },
-
-    _init : function (options) {
-
-      //var options = this.options
 
       this.tree = [];
       this.nodes = [];
@@ -154,9 +130,7 @@ define([
           options.data = JSON.parse(options.data);
         }
         this.tree = langx.extend(true, [], options.data);
-        delete options.data;
       }
-      //this.options = langx.extend({}, _default.settings, options);
 
       this.destroy();
       this.subscribeEvents();
@@ -288,7 +262,7 @@ define([
         // set expanded state; if not provided based on levels
         if (!node.state.hasOwnProperty('expanded')) {
           if (!node.state.disabled &&
-              (level < _this.options.levels) &&
+              (level < _this.options.multiTier.levels) &&
               (node.nodes && node.nodes.length > 0)) {
             node.state.expanded = true;
           }
@@ -323,20 +297,20 @@ define([
       var classList = target.attr('class') ? target.attr('class').split(' ') : [];
       if ((classList.indexOf('expand-icon') !== -1)) {
 
-        this.toggleExpandedState(node, _default.options);
+        this.toggleExpandedState(node,this.options.noding);
         this.render();
       }
       else if ((classList.indexOf('check-icon') !== -1)) {
         
-        this.toggleCheckedState(node, _default.options);
+        this.toggleCheckedState(node,this.options.noding);
         this.render();
       }
       else {
         
         if (node.selectable) {
-          this.toggleSelectedState(node, _default.options);
+          this.toggleSelectedState(node,this.options.noding);
         } else {
-          this.toggleExpandedState(node, _default.options);
+          this.toggleExpandedState(node,this.options.noding);
         }
 
         this.render();
@@ -347,7 +321,8 @@ define([
     // data attribute nodeid, which is used to lookup the node in the flattened structure.
     findNode : function (target) {
 
-      var nodeId = target.closest('li.list-group-item').attr('data-nodeid');
+      //var nodeId = target.closest('li.list-group-item').attr('data-nodeid');
+      var nodeId = target.closest(this.options.selectors.item).attr('data-nodeid');
       var node = this.nodes[nodeId];
 
       if (!node) {
@@ -486,7 +461,7 @@ define([
 
         // Setup first time only components
         this.$element.addClass(this.widgetClass);
-        this.$wrapper = $(this.template.list);
+        this.$wrapper = $(this.options.templates.list);
 
         this.injectStyle();
 
@@ -509,7 +484,7 @@ define([
       var _this = this;
       langx.each(nodes, function addNodes(id, node) {
 
-        var treeItem = $(_this.template.item)
+        var treeItem = $(_this.options.templates.item)
           .addClass('node-' + _this.elementId)
           .addClass(node.state.checked ? 'node-checked' : '')
           .addClass(node.state.disabled ? 'node-disabled': '')
@@ -520,7 +495,7 @@ define([
 
         // Add indent/spacer to mimic tree structure
         for (var i = 0; i < (level - 1); i++) {
-          treeItem.append(_this.template.indent);
+          treeItem.append(_this.options.templates.indent);
         }
 
         // Add expand, collapse or empty spacer icons
@@ -528,10 +503,10 @@ define([
         if (node.nodes) {
           classList.push('expand-icon');
           if (node.state.expanded) {
-            classList.push(_this.options.collapseIcon);
+            classList.push(_this.options.multiTier.classes.collapseIcon);
           }
           else {
-            classList.push(_this.options.expandIcon);
+            classList.push(_this.options.multiTier.classes.expandIcon);
           }
         }
         else {
@@ -539,7 +514,7 @@ define([
         }
 
         treeItem
-          .append($(_this.template.icon)
+          .append($(_this.options.templates.icon)
             .addClass(classList.join(' '))
           );
 
@@ -557,7 +532,7 @@ define([
           }
 
           treeItem
-            .append($(_this.template.icon)
+            .append($(_this.options.templates.icon)
               .addClass(classList.join(' '))
             );
         }
@@ -574,7 +549,7 @@ define([
           }
 
           treeItem
-            .append($(_this.template.icon)
+            .append($(_this.options.templates.icon)
               .addClass(classList.join(' '))
             );
         }
@@ -583,7 +558,7 @@ define([
         if (_this.options.enableLinks) {
           // Add hyperlink
           treeItem
-            .append($(_this.template.link)
+            .append($(_this.options.templates.link)
               .attr('href', node.href)
               .append(node.text)
             );
@@ -598,7 +573,7 @@ define([
         if (_this.options.showTags && node.tags) {
           langx.each(node.tags, function addTag(id, tag) {
             treeItem
-              .append($(_this.template.badge)
+              .append($(_this.options.templates.badge)
                 .append(tag)
               );
           });
@@ -625,20 +600,20 @@ define([
       var backColor = node.backColor;
 
       if (this.options.highlightSelected && node.state.selected) {
-        if (this.options.selectedColor) {
-          color = this.options.selectedColor;
+        if (this.options.colors.selected) {
+          color = this.options.colors.selected;
         }
-        if (this.options.selectedBackColor) {
-          backColor = this.options.selectedBackColor;
+        if (this.options.colors.selectedBack) {
+          backColor = this.options.colors.selectedBack;
         }
       }
 
       if (this.options.highlightSearchResults && node.searchResult && !node.state.disabled) {
-        if (this.options.searchResultColor) {
-          color = this.options.searchResultColor;
+        if (this.options.colors.searchResult) {
+          color = this.options.colors.searchResult;
         }
-        if (this.options.searchResultBackColor) {
-          backColor = this.options.searchResultBackColor;
+        if (this.options.colors.searchResultBack) {
+          backColor = this.options.colors.searchResultBack;
         }
       }
 
@@ -659,25 +634,25 @@ define([
 
       var style = '.node-' + this.elementId + '{';
 
-      if (this.options.color) {
-        style += 'color:' + this.options.color + ';';
+      if (this.options.colors.normal) {
+        style += 'color:' + this.options.colors.normal + ';';
       }
 
-      if (this.options.backColor) {
-        style += 'background-color:' + this.options.backColor + ';';
+      if (this.options.colors.normalBack) {
+        style += 'background-color:' + this.options.colors.normalBack + ';';
       }
 
       if (!this.options.showBorder) {
         style += 'border:none;';
       }
-      else if (this.options.borderColor) {
-        style += 'border:1px solid ' + this.options.borderColor + ';';
+      else if (this.options.colors.border) {
+        style += 'border:1px solid ' + this.options.colors.border + ';';
       }
       style += '}';
 
-      if (this.options.onhoverColor) {
+      if (this.options.colors.onhover) {
         style += '.node-' + this.elementId + ':not(.node-disabled):hover{' +
-          'background-color:' + this.options.onhoverColor + ';' +
+          'background-color:' + this.options.colors.onhover + ';' +
         '}';
       }
 
@@ -853,7 +828,7 @@ define([
       @param {optional Object} options
     */
     expandAll : function (options) {
-      options = langx.extend({}, _default.options, options);
+      options = langx.extend({},this.options.noding, options);
 
       if (options && options.levels) {
         this.expandLevels(this.tree, options.levels, options);
@@ -885,7 +860,7 @@ define([
     },
 
     expandLevels : function (nodes, level, options) {
-      options = langx.extend({}, _default.options, options);
+      options = langx.extend({},this.options.noding, options);
 
       langx.each(nodes, langx.proxy(function (index, node) {
         this.setExpandedState(node, (level > 0) ? true : false, options);
@@ -1063,7 +1038,7 @@ define([
     */
     forEachIdentifier : function (identifiers, options, callback) {
 
-      options = langx.extend({}, _default.options, options);
+      options = langx.extend({},this.options.noding, options);
 
       if (!(identifiers instanceof Array)) {
         identifiers = [identifiers];
@@ -1090,7 +1065,7 @@ define([
       @return {Array} nodes - Matching nodes
     */
     search : function (pattern, options) {
-      options = langx.extend({}, _default.searchOptions, options);
+      options = langx.extend({},this.options.search, options);
 
       this.clearSearch({ render: false });
 
