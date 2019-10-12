@@ -1,9 +1,0 @@
-/**
- * skylark-widgets-swt - The skylark widget framework and standard widgets
- * @author Hudaokeji, Inc.
- * @version v0.9.0
- * @link https://github.com/skylark-widgets/skylark-widgets-swt/
- * @license MIT
- */
-define(["skylark-langx/langx","skylark-utils-dom/query","./swt","./Widget"],function(e,t,i,s){return s.inherit({klassName:"ListGroup",pluginName:"lark.listgroup",options:{multiSelect:!1,multiTier:!1,toggle:!1,classes:{active:"active"},selectors:{item:".list-group-item"},selected:0},state:{selected:Object},_init:function(){this.overrided();var e=this,i=this._velm,s=this.options.selectors.item;this._$items=i.$(s),i.on("click",s,function(){var t=e._elmx(this);if(!t.hasClass("disabled")){var i=t.data("value");void 0===i&&(i=e._$items.index(this)),e.state.set("selected",i)}return!1}),this.state.set("selected",this.options.selected);var l=i,a=this.options.toggle,o=this;l.query("li.active").has("ul").children("ul").addClass("collapse in"),l.query("li").not(".active").has("ul").children("ul").addClass("collapse"),o.options.doubleTapToGo&&l.query("li.active").has("ul").children("a").addClass("doubleTapToGo"),l.query("li").has("ul").children("a").on("click."+this.pluginName,function(e){if(e.preventDefault(),o.options.doubleTapToGo&&o.doubleTapToGo(t(this))&&"#"!==t(this).attr("href")&&""!==t(this).attr("href"))return e.stopPropagation(),void(document.location=t(this).attr("href"));t(this).parent("li").toggleClass("active").children("ul").collapse("toggle"),a&&t(this).parent("li").siblings().removeClass("active").children("ul.in").collapse("hide")})},_refresh:function(t){this.overrided(t);var i=this;function s(t){return e.isNumber(t)?i._$items.eq(t):i._$items.filter('[data-value="'+t+'"]')}t.selected&&(this.options.multiSelect||(s(t.selected.oldValue).removeClass(i.options.classes.active),function(e){s(e).addClass(i.options.classes.active)}(t.selected.value)))}})});
-//# sourceMappingURL=sourcemaps/ListGroup.js.map

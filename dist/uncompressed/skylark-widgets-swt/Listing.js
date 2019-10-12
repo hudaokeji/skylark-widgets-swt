@@ -5,20 +5,43 @@
   "./Widget"
 ],function(langx,$,swt,Widget){
 
-    var ListGroup = Widget.inherit({
-        klassName : "ListGroup",
+    var Listing = Widget.inherit({
+        klassName : "Listing",
 
-        pluginName : "lark.listgroup",
+        pluginName : "lark.listing",
 
         options : {
         	multiSelect: false,
-        	multiTier : false,
+        	//multiTier : false,
+
+          multiTier : {
+            mode   : "",  // "tree" or "accordion" or "popup"
+            levels : 2,
+            selectors :  {
+              children : "> ul",  // "> .list-group"
+              hasChildren : ":has(ul)"
+            },
+            classes : {
+              expandIcon: 'glyphicon glyphicon-plus',    // "glyphicon-chevron-down"
+              collapseIcon: 'glyphicon glyphicon-minus', // "glyphicon-chevron-right"
+              children : ""                              // "list-group children"
+            },
+            templates : {
+              tree : {
+                item : "<span><i class=\"glyphicon\"></i><a href=\"javascript: void(0);\"></a> </span>",
+                itemGroup: ""
+
+              }
+                            
+            }
+          },
+
         	toggle : false,
         	classes : {
           	active : "active"
         	},
         	selectors : {
-          	item : ".list-group-item"
+          	item : "li"                   // ".list-group-item"
         	},
         	selected : 0
         },
@@ -53,7 +76,28 @@
 
             var $this = velm,
                 $toggle = this.options.toggle,
+                multiTierMode = this.options.multiTier.mode,
                 obj = this;
+
+            if (multiTierMode == "tree") {
+                 $this.query(this.options.selectors.item).each(function(){
+                   if($(this).is(self.options.multiTier.selectors.hasChildren)) {
+                      var children = $(this).find(' > ul');
+                      $(children).remove();
+                      text = $(this).text().trim();
+                      $(this).html(self.options.multiTier.templates.tree.item);
+                      $(this).find(' > span > i').addClass('glyphicon-folder-open');
+                      $(this).find(' > span > a').text(text);
+                      $(this).append(children);
+                    }  else {
+                      text = $(this).text().trim();
+                      $(this).html(self.options.multiTier.templates.tree.item);
+                      $(this).find(' > span > i').addClass('glyphicon-file');
+                      $(this).find(' > span > a').text(text);
+                  }
+
+                 });
+            }
 
             //if (this.isIE() <= 9) {
             //    $this.find("li.active").has("ul").children("ul").collapse("show");
@@ -63,29 +107,16 @@
                 $this.query("li").not(".active").has("ul").children("ul").addClass("collapse");
             //}
 
-            //add the "doubleTapToGo" class to active items if needed
-            if (obj.options.doubleTapToGo) {
-                $this.query("li.active").has("ul").children("a").addClass("doubleTapToGo");
-            }
 
-            $this.query("li").has("ul").children("a").on("click" + "." + this.pluginName, function(e) {
+
+
+            $this.query("li").has("ul").find("a").on("click" + "." + this.pluginName, function(e) {
                 e.preventDefault();
 
-                //Do we need to enable the double tap
-                if (obj.options.doubleTapToGo) {
-
-                    //if we hit a second time on the link and the href is valid, navigate to that url
-                    if (obj.doubleTapToGo($(this)) && $(this).attr("href") !== "#" && $(this).attr("href") !== "") {
-                        e.stopPropagation();
-                        document.location = $(this).attr("href");
-                        return;
-                    }
-                }
-
-                $(this).parent("li").toggleClass("active").children("ul").collapse("toggle");
+                $(this).closest("li").toggleClass("active").children("ul").collapse("toggle");
 
                 if ($toggle) {
-                    $(this).parent("li").siblings().removeClass("active").children("ul.in").collapse("hide");
+                    $(this).closest("li").siblings().removeClass("active").children("ul.in").collapse("hide");
                 }
 
             });
@@ -127,7 +158,7 @@
 
   });
 
-  return ListGroup;
+  return swt.Listing = Listing;
 
 });
 

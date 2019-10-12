@@ -7,8 +7,7 @@ define([
     "./CheckBox",
     "./ComboBox",
     "./TextBox",
-    "./ListGroup",
-    "./Menu",
+    "./Listing",
     "./Pagination",
     "./Progress",
     "./Radio",
@@ -17,8 +16,7 @@ define([
     "./Tabular",
     "./TabStrip",
     "./TextBox",
-    "./Toolbar",
-    "./Tree"
+    "./Toolbar"
 ], function(swt) {
     return swt;
 });
