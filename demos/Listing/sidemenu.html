@@ -6,9 +6,8 @@
     <title>listgroup.js Test Suite</title>
     <link rel="stylesheet" href="../themes/twbs/css/bootstrap.css">
     <link rel="stylesheet" href="../themes/twbs/css/font-awesome.4.7.min.css">
+    <link rel="stylesheet" href="../../skins/default/listing.css">
     <link rel="stylesheet" href="./app.css">
-    <link rel="stylesheet" href="./metisMenu.css">
-    <link rel="stylesheet" href="./mm-vertical.css">
     <style>
         .hidden {
             display: none
@@ -31,7 +30,7 @@
         <div class="row">
             <aside class="col-md-3">
                 <nav class="sidebar-nav">
-                    <ul class="metismenu" id="menu1">
+                    <ul class="lark-listing accordion" id="menu1">
                         <li>
                             <a class="has-arrow" href="#">
                                 <span class="fa fa-fw fa-github fa-lg"></span> metisMenu
@@ -124,7 +123,7 @@
         <div class="row">
             <div class="col-md-3">
                 <nav class="sidebar-nav">
-                    <ul class="metismenu" id="menu2">
+                    <ul class="lark-listing accordion" id="menu2">
                         <li>
                             <a class="has-arrow" href="#">
                                 <span class="fa fa-fw fa-github fa-lg"></span> metisMenu
@@ -237,7 +236,7 @@
 
             <div class="col-md-3">
                 <nav class="sidebar-nav">
-                    <ul class="metismenu" id="menu3">
+                    <ul class="lark-listing accordion" id="menu3">
                         <li>
                             <a class="has-arrow" href="#">
                                 <span class="fa fa-fw fa-github fa-lg"></span> metisMenu
@@ -314,7 +313,11 @@
     <script type="text/javascript" src="../require.js" data-main="../bootstrap.js"></script>
     <script>
         var initPage = function($) {
-            $('#menu1').plugin("lark.listing");
+            $('.lark-listing.accordion').plugin("lark.listing",{
+              "multiTier" : {
+                "mode" : "accordion"
+              }                
+            });
 
         };
     </script>
