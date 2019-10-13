@@ -4107,14 +4107,6 @@ define('skylark-langx/langx',[
 
     return skylark.langx = langx;
 });
-define('skylark-utils-dom/skylark',["skylark-langx/skylark"], function(skylark) {
-    return skylark;
-});
-
-define('skylark-utils-dom/dom',["./skylark"], function(skylark) {
-	return skylark.dom = skylark.attach("dom",{});
-});
-
 define('skylark-domx-browser/browser',[
     "skylark-langx/skylark",
     "skylark-langx/langx"
@@ -4250,15 +4242,6 @@ define('skylark-domx-browser/main',[
 	return browser;
 });
 define('skylark-domx-browser', ['skylark-domx-browser/main'], function (main) { return main; });
-
-define('skylark-utils-dom/browser',[
-    "./dom",
-    "skylark-domx-browser"
-], function(dom,browser) {
-    "use strict";
-
-    return dom.browser = browser;
-});
 
 define('skylark-domx-styler/styler',[
     "skylark-langx/skylark",
@@ -7547,20 +7530,6 @@ define('skylark-domx-eventer/main',[
 });
 define('skylark-domx-eventer', ['skylark-domx-eventer/main'], function (main) { return main; });
 
-define('skylark-utils-dom/eventer',[
-    "./dom",
-    "skylark-domx-eventer"
-], function(dom, eventer) {
- 
-    return dom.eventer = eventer;
-});
-define('skylark-utils-dom/noder',[
-    "./dom",
-    "skylark-domx-noder"
-], function(dom, noder) {
-
-    return dom.noder = noder;
-});
 define('skylark-domx-geom/geom',[
     "skylark-langx/skylark",
     "skylark-langx/langx",
@@ -8630,13 +8599,6 @@ define('skylark-domx-geom/main',[
 });
 define('skylark-domx-geom', ['skylark-domx-geom/main'], function (main) { return main; });
 
-define('skylark-utils-dom/geom',[
-    "./dom",
-    "skylark-domx-geom"
-], function(dom, geom) {
-
-    return dom.geom = geom;
-});
 define('skylark-domx-fx/fx',[
     "skylark-langx/skylark",
     "skylark-langx/langx",
@@ -10334,22 +10296,14 @@ define('skylark-domx-query/main',[
 });
 define('skylark-domx-query', ['skylark-domx-query/main'], function (main) { return main; });
 
-define('skylark-utils-dom/query',[
-    "./dom",
-    "skylark-domx-query"
-], function(dom, query) {
-
-    return dom.query = query;
-
-});
 define('skylark-widgets-swt/swt',[
   "skylark-langx/skylark",
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query"
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query"
 ],function(skylark,langx,browser,eventer,noder,geom,$){
 	var ui = skylark.ui = skylark.ui || {};
 		sbswt = ui.sbswt = {};
@@ -11784,6 +11738,52 @@ define('skylark-widgets-swt/Widget',[
   return Widget;
 });
 
+define('skylark-utils-dom/skylark',["skylark-langx/skylark"], function(skylark) {
+    return skylark;
+});
+
+define('skylark-utils-dom/dom',["./skylark"], function(skylark) {
+	return skylark.dom = skylark.attach("dom",{});
+});
+
+define('skylark-utils-dom/browser',[
+    "./dom",
+    "skylark-domx-browser"
+], function(dom,browser) {
+    "use strict";
+
+    return dom.browser = browser;
+});
+
+define('skylark-utils-dom/eventer',[
+    "./dom",
+    "skylark-domx-eventer"
+], function(dom, eventer) {
+ 
+    return dom.eventer = eventer;
+});
+define('skylark-utils-dom/noder',[
+    "./dom",
+    "skylark-domx-noder"
+], function(dom, noder) {
+
+    return dom.noder = noder;
+});
+define('skylark-utils-dom/geom',[
+    "./dom",
+    "skylark-domx-geom"
+], function(dom, geom) {
+
+    return dom.geom = geom;
+});
+define('skylark-utils-dom/query',[
+    "./dom",
+    "skylark-domx-query"
+], function(dom, query) {
+
+    return dom.query = query;
+
+});
 define('skylark-utils-dom/plugins',[
     "./dom",
     "skylark-domx-plugins"
@@ -12120,11 +12120,11 @@ define('skylark-bootstrap3/collapse',[
 
 define('skylark-widgets-swt/Panel',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "skylark-bootstrap3/collapse",
   "./swt",
   "./Widget"
@@ -12204,11 +12204,11 @@ define('skylark-widgets-swt/Panel',[
 });
 define('skylark-widgets-swt/Accordion',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "skylark-bootstrap3/collapse",
   "./swt",
   "./Widget",
@@ -12348,7 +12348,7 @@ define('skylark-widgets-swt/Accordion',[
 
 define('skylark-widgets-swt/Button',[
   "skylark-langx/langx",
-  "skylark-utils-dom/query",
+  "skylark-domx-query",
   "./swt",
   "./Widget"
 ],function(langx,$,swt,Widget){
@@ -12770,11 +12770,11 @@ define('skylark-bootstrap3/carousel',[
 });
 define('skylark-widgets-swt/Carousel',[
     "skylark-langx/langx",
-    "skylark-utils-dom/browser",
-    "skylark-utils-dom/eventer",
-    "skylark-utils-dom/noder",
-    "skylark-utils-dom/geom",
-    "skylark-utils-dom/query",
+    "skylark-domx-browser",
+    "skylark-domx-eventer",
+    "skylark-domx-noder",
+    "skylark-domx-geom",
+    "skylark-domx-query",
     "./swt",
     "./Widget",
     "skylark-bootstrap3/carousel"
@@ -12934,11 +12934,11 @@ define('skylark-widgets-swt/Carousel',[
 });
 define('skylark-widgets-swt/_Toggler',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,swt,Widget){
@@ -12982,11 +12982,11 @@ define('skylark-widgets-swt/_Toggler',[
 
 define('skylark-widgets-swt/CheckBox',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./_Toggler"
 ],function(langx,browser,eventer,noder,geom,$,swt,_Toggler){
@@ -13314,11 +13314,11 @@ define('skylark-bootstrap3/dropdown',[
 
 define('skylark-widgets-swt/ComboBox',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./Widget",
   "skylark-bootstrap3/dropdown"
@@ -13644,11 +13644,11 @@ define('skylark-widgets-swt/ComboBox',[
 
 define('skylark-widgets-swt/TextBox',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,swt,Widget){
@@ -13749,7 +13749,7 @@ define('skylark-widgets-swt/TextBox',[
 
  define('skylark-widgets-swt/Listing',[
   "skylark-langx/langx",
-  "skylark-utils-dom/query",
+  "skylark-domx-query",
   "./swt",
   "./Widget"
 ],function(langx,$,swt,Widget){
@@ -13960,11 +13960,11 @@ define('skylark-widgets-swt/TextBox',[
 
 define('skylark-widgets-swt/Pagination',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,swt,Widget){
@@ -14194,11 +14194,11 @@ define('skylark-widgets-swt/Pagination',[
 });
 define('skylark-widgets-swt/Progress',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,swt,Widget){
@@ -14261,11 +14261,11 @@ define('skylark-widgets-swt/Progress',[
  });
 define('skylark-widgets-swt/Radio',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./_Toggler"
 ],function(langx,browser,eventer,noder,geom,$,swt,_Toggler){
@@ -14392,11 +14392,11 @@ define('skylark-widgets-swt/Radio',[
 
 define('skylark-widgets-swt/SearchBox',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./Widget",
   "skylark-bootstrap3/dropdown"
@@ -14547,11 +14547,11 @@ define('skylark-widgets-swt/SearchBox',[
 
 define('skylark-widgets-swt/SelectList',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./Widget",
   "skylark-bootstrap3/dropdown"
@@ -14777,15 +14777,14 @@ define('skylark-widgets-swt/SelectList',[
 
 define('skylark-widgets-swt/Tabular',[
   "skylark-langx/langx",
-  "skylark-utils-dom/browser",
-  "skylark-utils-dom/eventer",
-  "skylark-utils-dom/noder",
-  "skylark-utils-dom/geom",
-  "skylark-utils-dom/query",
+  "skylark-domx-browser",
+  "skylark-domx-eventer",
+  "skylark-domx-noder",
+  "skylark-domx-geom",
+  "skylark-domx-query",
   "./swt",
   "./Widget"
 ],function(langx,browser,eventer,noder,geom,$,swt,Widget){
-
 
     var Tabular = Widget.inherit({
         klassName : "Tabular",
@@ -16715,11 +16714,11 @@ define('skylark-bootstrap3/tab',[
 
 define('skylark-widgets-swt/TabStrip',[
     "skylark-langx/langx",
-    "skylark-utils-dom/browser",
-    "skylark-utils-dom/eventer",
-    "skylark-utils-dom/noder",
-    "skylark-utils-dom/geom",
-    "skylark-utils-dom/query",
+    "skylark-domx-browser",
+    "skylark-domx-eventer",
+    "skylark-domx-noder",
+    "skylark-domx-geom",
+    "skylark-domx-query",
     "./swt",
     "./Widget",
     "skylark-bootstrap3/tab",
@@ -16770,7 +16769,7 @@ define('skylark-widgets-swt/TabStrip',[
 });
 define('skylark-widgets-swt/Toolbar',[
   "skylark-langx/langx",
-  "skylark-utils-dom/query",
+  "skylark-domx-query",
   "skylark-widgets-base/Widget"
 ],function(langx,$,Widget){ 
 
