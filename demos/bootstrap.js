@@ -173,11 +173,6 @@ requirejs.config({
          },
                   
          {
-           name : "skylark-utils-dom" ,
-           location : "../node_modules/skylark-utils-dom/dist/uncompressed/skylark-utils-dom",
-            main: 'main'
-         },
-         {
            name : "skylark-data-collection" ,
            location : "../node_modules/skylark-data-collection/dist/uncompressed/skylark-data-collection",
             main: 'main'
@@ -207,7 +202,7 @@ requirejs.config({
 });
  
 // require(["module/name", ...], function(params){ ... });
-require(["skylark-utils-dom/query"], function ($) {
+require(["skylark-domx-query"], function ($) {
     require(["skylark-widgets-swt"], function (swt) {
         if (window.initPage) {
             window.initPage($,swt);
