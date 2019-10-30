@@ -47,6 +47,8 @@ define([
 
             var $emptyCell = $('<td></td>').text(settings._i18n.rowEmpty).attr('colspan', settings._finalColSpan);
             $('table.body tbody', tbWrap).append($('<tr></tr>').addClass('empty').append($emptyCell));
+
+            /*
             if (!skipWidthCalculation && settings.maxBodyHeight > 0) {
                 // Check scrolling enabled
                 if (settings.autoColumnWidth) {
@@ -56,6 +58,7 @@ define([
                     $emptyCell.width($('table.head', tbWrap).width() - 4);
                 }
             }
+            */
         },  
 
         _calculateColumnWidth : function () {
@@ -216,9 +219,11 @@ define([
             var tbBody = tbWhole.getElementsByTagName('tbody')[0];
             var tbRow, tbSubRow = null, tbCell, reachMaxRow = false, calColWidth = false;
             var oldHeight = 0, oldScroll = 0;
+            /*
             if (settings.maxBodyHeight > 0) {
                 tbHead = $('#' + settings._wrapperId + ' table thead')[0];
             }
+            */
             // Check number of row to be inserted
             var numOfRow = numOfRowOrRowArray, loadData = false;
             if (langx.isArray(numOfRowOrRowArray)) {
@@ -589,6 +594,7 @@ define([
                 }
             }
             // Check if re-calculate column width is required
+            /*
             if (0 < settings.maxBodyHeight && settings._calculateWidth && !calColWidth) {
                 var scroll = $('#' + settings._wrapperId + '>div.scroller')[0];
                 if (scroll.scrollHeight > scroll.offsetHeight) {
@@ -596,12 +602,15 @@ define([
                     settings._calculateWidth = false;
                 }
             }
+            */
             // Save setting
             this._saveSetting(settings);
             // Calculate column width
+            /*
             if (calColWidth && settings.autoColumnWidth && settings.maxBodyHeight > 0) {
                 this._calculateColumnWidth();
             }
+            */
             // Trigger events
             if (langx.isNumeric(rowIndex)) {
                 if (langx.isFunction(settings.afterRowInserted)) {
@@ -814,6 +823,7 @@ define([
             $(tbWrap).attr('id', settings._wrapperId).addClass('appendGrid').insertAfter(tbWhole);
             $(tbWhole).empty().addClass('ui-widget').appendTo(tbWrap);
             // Check if content scrolling is enabled
+            /*
             if (settings.maxBodyHeight > 0) {
                 // Seperate the thead and tfoot from source table
                 $('<table></table>').addClass('ui-widget head').append(tbHead).prependTo(tbWrap);
@@ -823,6 +833,10 @@ define([
                 // Add thead, tbody and tfoot to the same table
                 $(tbWhole).addClass('head body foot').append(tbColGp, tbHead, tbBody, tbFoot);
             }
+            */
+            // Add thead, tbody and tfoot to the same table
+            $(tbWhole).addClass('head body foot').append(tbColGp, tbHead, tbBody, tbFoot);
+
             // Handle header row
             var tbHeadCellRowNum, tbHeadCellRowButton;
             tbHead.appendChild(tbRow = document.createElement('tr'));
@@ -1042,6 +1056,8 @@ define([
             if (settings._rowOrder.length == 0) {
                 this._showEmptyMessage(settings, true);
             }
+
+            /*
             // Calculate column width
             if (settings.maxBodyHeight > 0) {
                 if (settings.autoColumnWidth) {
@@ -1050,6 +1066,7 @@ define([
                     $('table.foot', tbWrap).width($(tbWhole).width());
                 }
             }
+            */
         },
 
         isReady: function () {
