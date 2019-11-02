@@ -6419,6 +6419,8 @@ define('skylark-domx-query/query',[
 
             empty: wrapper_every_act(noder.empty, noder),
 
+            html: wrapper_every_act(noder.html, noder),
+
             // `pluck` is borrowed from Prototype.js
             pluck: function(property) {
                 return langx.map(this, function(el) {
@@ -6961,11 +6963,11 @@ define('skylark-domx-velm/main',[
 define('skylark-domx-velm', ['skylark-domx-velm/main'], function (main) { return main; });
 
 define('skylark-domx-data/main',[
-	"./data",
-	"skylark-domx-velm",
-	"skylark-domx-query"	
+    "./data",
+    "skylark-domx-velm",
+    "skylark-domx-query"    
 ],function(data,velm,$){
-    // from ./datax
+    // from ./data
     velm.delegate([
         "attr",
         "data",
@@ -6974,26 +6976,26 @@ define('skylark-domx-data/main',[
         "removeData",
         "text",
         "val"
-    ], datax);
+    ], data);
 
-    $.fn.text = $.wraps.wrapper_value(datax.text, datax, datax.text);
+    $.fn.text = $.wraps.wrapper_value(data.text, data, data.text);
 
-    $.fn.attr = $.wraps.wrapper_name_value(datax.attr, datax, datax.attr);
+    $.fn.attr = $.wraps.wrapper_name_value(data.attr, data, data.attr);
 
-    $.fn.removeAttr = $.wraps.wrapper_every_act(datax.removeAttr, datax);
+    $.fn.removeAttr = $.wraps.wrapper_every_act(data.removeAttr, data);
 
-    $.fn.prop = $.wraps.wrapper_name_value(datax.prop, datax, datax.prop);
+    $.fn.prop = $.wraps.wrapper_name_value(data.prop, data, data.prop);
 
-    $.fn.removeProp = $.wraps.wrapper_every_act(datax.removeProp, datax);
+    $.fn.removeProp = $.wraps.wrapper_every_act(data.removeProp, data);
 
-    $.fn.data = $.wraps.wrapper_name_value(datax.data, datax, datax.data);
+    $.fn.data = $.wraps.wrapper_name_value(data.data, data, data.data);
 
-    $.fn.removeData = $.wraps.wrapper_every_act(datax.removeData, datax);
+    $.fn.removeData = $.wraps.wrapper_every_act(data.removeData, data);
 
-    $.fn.val = $.wraps.wrapper_value(datax.val, datax, datax.val);
+    $.fn.val = $.wraps.wrapper_value(data.val, data, data.val);
 
 
-	return data;
+    return data;
 });
 define('skylark-domx-data', ['skylark-domx-data/main'], function (main) { return main; });
 
@@ -7681,9 +7683,9 @@ define('skylark-domx-eventer/eventer',[
     return skylark.attach("domx.eventer",eventer);
 });
 define('skylark-domx-eventer/main',[
-	"./eventer",
-	"skylark-domx-velm",
-	"skylark-domx-query"		
+    "./eventer",
+    "skylark-domx-velm",
+    "skylark-domx-query"        
 ],function(eventer,velm,$){
 
     // from ./eventer
@@ -7702,7 +7704,7 @@ define('skylark-domx-eventer/main',[
 
         var method = event;
 
-        VisualElement.prototype[method ] = function ( callback ) {
+        velm.VisualElement.prototype[method ] = function ( callback ) {
 
             this.on( event.toLowerCase(), callback);
 
@@ -7744,7 +7746,7 @@ define('skylark-domx-eventer/main',[
 
     $.ready = eventer.ready;
 
-	return eventer;
+    return eventer;
 });
 define('skylark-domx-eventer', ['skylark-domx-eventer/main'], function (main) { return main; });
 
@@ -8044,7 +8046,7 @@ define('skylark-domx-styler/main',[
 
         var method = property;
 
-        VisualElement.prototype[method ] = function (value) {
+        velm.VisualElement.prototype[method ] = function (value) {
 
             this.css( property, value );
 
@@ -9150,9 +9152,9 @@ define('skylark-domx-geom/geom',[
     return skylark.attach("domx.geom", geom);
 });
 define('skylark-domx-geom/main',[
-	"./geom",
-	"skylark-domx-velm",
-	"skylark-domx-query"		
+    "./geom",
+    "skylark-domx-velm",
+    "skylark-domx-query"        
 ],function(geom,velm,$){
    // from ./geom
     velm.delegate([
@@ -9206,13 +9208,13 @@ define('skylark-domx-geom/main',[
     $.fn.offsetParent = $.wraps.wrapper_map(geom.offsetParent, geom);
 
 
-    $.fn.size = wrapper_value(geom.size, geom);
+    $.fn.size = $.wraps.wrapper_value(geom.size, geom);
 
-    $.fn.width = wrapper_value(geom.width, geom, geom.width);
+    $.fn.width = $.wraps.wrapper_value(geom.width, geom, geom.width);
 
-    $.fn.height = wrapper_value(geom.height, geom, geom.height);
+    $.fn.height = $.wraps.wrapper_value(geom.height, geom, geom.height);
 
-    $.fn.clientSize = wrapper_value(geom.clientSize, geom.clientSize);
+    $.fn.clientSize = $.wraps.wrapper_value(geom.clientSize, geom.clientSize);
     
     ['width', 'height'].forEach(function(dimension) {
         var offset, Dimension = dimension.replace(/./, function(m) {
@@ -9264,11 +9266,11 @@ define('skylark-domx-geom/main',[
         };
     })
 
-    $.fn.innerWidth = wrapper_value(geom.clientWidth, geom, geom.clientWidth);
+    $.fn.innerWidth = $.wraps.wrapper_value(geom.clientWidth, geom, geom.clientWidth);
 
-    $.fn.innerHeight = wrapper_value(geom.clientHeight, geom, geom.clientHeight);
+    $.fn.innerHeight = $.wraps.wrapper_value(geom.clientHeight, geom, geom.clientHeight);
 
-	return geom;
+    return geom;
 });
 define('skylark-domx-geom', ['skylark-domx-geom/main'], function (main) { return main; });
 
@@ -9341,10 +9343,11 @@ define('skylark-domx-fx/fx',[
     "skylark-langx/skylark",
     "skylark-langx/langx",
     "skylark-domx-browser",
+    "skylark-domx-noder",
     "skylark-domx-geom",
     "skylark-domx-styler",
     "skylark-domx-eventer"
-], function(skylark, langx, browser, geom, styler, eventer) {
+], function(skylark, langx, browser, noder, geom, styler, eventer) {
     var animationName,
         animationDuration,
         animationTiming,
@@ -9857,7 +9860,7 @@ define('skylark-domx-fx/fx',[
      * @param {Node} params
      */
     function overlay(elm, params) {
-        var overlayDiv = createElement("div", params);
+        var overlayDiv = noder.createElement("div", params);
         styler.css(overlayDiv, {
             position: "absolute",
             top: 0,
@@ -9886,23 +9889,23 @@ define('skylark-domx-fx/fx',[
             callback = params.callback,
             timer,
 
-            throbber = this.createElement("div", {
+            throbber = noder.createElement("div", {
                 "class": params.className || "throbber"
             }),
             _overlay = overlay(throbber, {
                 "class": 'overlay fade'
             }),
-            throb = this.createElement("div", {
+            throb = noder.createElement("div", {
                 "class": "throb"
             }),
-            textNode = this.createTextNode(text || ""),
+            textNode = noder.createTextNode(text || ""),
             remove = function() {
                 if (timer) {
                     clearTimeout(timer);
                     timer = null;
                 }
                 if (throbber) {
-                    self.remove(throbber);
+                    noder.remove(throbber);
                     throbber = null;
                 }
             },
@@ -9985,7 +9988,7 @@ define('skylark-domx-fx/main',[
         "toggle"
     ], fx);
 
-    $fn.hide =  $.wraps.wrapper_every_act(fx.hide, fx);
+    $.fn.hide =  $.wraps.wrapper_every_act(fx.hide, fx);
 
     $.fn.animate = $.wraps.wrapper_every_act(fx.animate, fx);
     $.fn.emulateTransitionEnd = $.wraps.wrapper_every_act(fx.emulateTransitionEnd, fx);
@@ -10708,14 +10711,15 @@ define('skylark-widgets-base/Widget',[
   "skylark-domx-geom",
   "skylark-domx-velm",
   "skylark-domx-query",
+  "skylark-domx-fx",
   "skylark-domx-plugins",
   "skylark-data-collection/HashMap",
   "./base"
-],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,plugins,HashMap,base){
+],function(skylark,langx,browser,datax,eventer,noder,geom,elmx,$,fx,plugins,HashMap,base){
 
 /*---------------------------------------------------------------------------------*/
 
-	var Widget = plugins.Plugin.inherit({
+  var Widget = plugins.Plugin.inherit({
     klassName: "Widget",
 
     _elmx : elmx,
@@ -11042,7 +11046,7 @@ define('skylark-widgets-base/Widget',[
     },
 
     throb: function(params) {
-      return noder.throb(this._elm,params);
+      return fx.throb(this._elm,params);
     },
 
 
@@ -11126,7 +11130,7 @@ define('skylark-widgets-base/Widget',[
     return ctor;
   };
 
-	return base.Widget = Widget;
+  return base.Widget = Widget;
 });
 
 define('skylark-widgets-swt/Widget',[
