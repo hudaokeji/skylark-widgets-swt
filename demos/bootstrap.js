@@ -111,6 +111,11 @@ requirejs.config({
             main: 'main'
          },
          {
+           name : "skylark-domx-files",
+           location : "../node_modules/skylark-domx-files/dist/uncompressed/skylark-domx-files",
+            main: 'main'
+         },
+         {
            name : "skylark-domx-finder",
            location : "../node_modules/skylark-domx-finder/dist/uncompressed/skylark-domx-finder",
             main: 'main'
