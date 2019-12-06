@@ -95,8 +95,7 @@ define('skylark-widgets-swt/swt',[
   "skylark-domx-geom",
   "skylark-domx-query"
 ],function(skylark,langx,browser,eventer,noder,geom,$){
-	var ui = skylark.ui = skylark.ui || {};
-		sbswt = ui.sbswt = {};
+	var swt = {};
 
 	var CONST = {
 		BACKSPACE_KEYCODE: 8,
@@ -136,7 +135,7 @@ define('skylark-widgets-swt/swt',[
 		return $('<i>').text(questionableMarkup).html();
 	};
 
-	langx.mixin(ui, {
+	langx.mixin(swt, {
 		CONST: CONST,
 		cleanInput: cleanInput,
 		isBackspaceKey: isBackspaceKey,
@@ -147,7 +146,7 @@ define('skylark-widgets-swt/swt',[
 		isDownArrow: isDownArrow
 	});
 
-	return ui;
+	return skylark.attach("widgets.swt",swt);
 
 });
 
