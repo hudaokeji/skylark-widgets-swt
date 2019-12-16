@@ -9576,6 +9576,8 @@ define('skylark-storages-diskfs/select',[
         params = params || {};
         var directory = params.directory || false,
             multiple = params.multiple || false,
+            accept = params.accept || "", //'image/gif,image/jpeg,image/jpg,image/png,image/svg'
+            title = params.title || "",
             fileSelected = params.picked;
         if (!fileInput) {
             var input = fileInput = document.createElement("input");
@@ -9611,6 +9613,9 @@ define('skylark-storages-diskfs/select',[
             };
         }
         fileInput.multiple = multiple;
+        fileInput.accept = accept;
+        fileInput.title = title;
+
         fileInput.webkitdirectory = directory;
         fileInput.click();
     }
