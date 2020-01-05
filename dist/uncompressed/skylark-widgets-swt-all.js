@@ -5708,9 +5708,7 @@ define('skylark-domx-data/data',[
                 }
                 return this;
             } else {
-                if (elm.hasAttribute && elm.hasAttribute(name)) {
-                    return elm.getAttribute(name);
-                }
+                return elm.getAttribute(name);
             }
         } else {
             elm.setAttribute(name, value);
