@@ -1,9 +1,0 @@
-/**
- * skylark-widgets-swt - The skylark widget framework and standard widgets
- * @author Hudaokeji, Inc.
- * @version v0.9.0
- * @link https://github.com/skylark-widgets/skylark-widgets-swt/
- * @license MIT
- */
-define([],{".ui-checkbox":{"margin-bottom":"5px","line-height":"10px","font-size":"12px","*":{"box-sizing":"border-box"},span:{cursor:"pointer","vertical-align":"middle"},div:{position:"relative",display:"inline-block",width:"16px",height:"16px",border:"1px solid #D0D0D0","margin-right":"6px","vertical-align":"middle",cursor:"pointer",color:"white","font-size":"11px","text-align":"center",padding:"1px 0 0 1px","background-color":"white","border-radius":"2px"},".fa":{display:"none"}},".ui-checkbox-checked":{" div":{"background-color":"#017CCA","border-color":"#017CCA"},".ui-checkbox-checked .fa":{display:"block !important"}},".ui-checkbox.ui-disabled":{div:{"background-color":"#F0F0F0 !important","border-color":"#E0E0E0 !important",color:"gray !important"}}});
-//# sourceMappingURL=../sourcemaps/checkbox/css.js.map
