@@ -1,0 +1,1 @@
+{"version":3,"sources":["Widget.js"],"names":["define","Widget"],"mappings":";;;;;;;AAAAA,QACE,+BACA,SAASC,GACT,OAAOA","file":"../Widget.js","sourcesContent":["define([\r\n  \"skylark-widgets-base/Widget\"\r\n],function(Widget){\r\n  return Widget;\r\n});\r\n"]}
