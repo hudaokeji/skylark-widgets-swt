@@ -22,16 +22,16 @@
   },
   "license": "MIT",
   "dependencies": {
-    "skylark-bootstrap3": "git+https://github.com/skylark-integration/skylark-bootstrap3.git#master",
-    "skylark-data-collection": "git+https://github.com/skylark-data/skylark-data-collection.git#master",
-    "skylark-domx-browser": "git+https://github.com/skylark-domx/skylark-domx-browser.git#master",
-    "skylark-domx-eventer": "git+https://github.com/skylark-domx/skylark-domx-eventer.git#master",
-    "skylark-domx-geom": "git+https://github.com/skylark-domx/skylark-domx-geom.git#master",
-    "skylark-domx-noder": "git+https://github.com/skylark-domx/skylark-domx-noder.git#master",
-    "skylark-domx-query": "git+https://github.com/skylark-domx/skylark-domx-query.git#master",
-    "skylark-io-diskfs": "git+https://github.com/skylark-io/skylark-io-diskfs.git#master",
-    "skylark-langx": "git+https://github.com/skylark-langx/skylark-langx.git#master",
-    "skylark-widgets-base": "git+https://github.com/skylark-widgets/skylark-widgets-base.git#master"
+    "skylark-bootstrap3": "git+https://github.com/skylark-integration/skylark-bootstrap3.git",
+    "skylark-data-collection": "git+https://github.com/skylark-data/skylark-data-collection.git",
+    "skylark-domx-browser": "git+https://github.com/skylark-domx/skylark-domx-browser.git",
+    "skylark-domx-eventer": "git+https://github.com/skylark-domx/skylark-domx-eventer.git",
+    "skylark-domx-geom": "git+https://github.com/skylark-domx/skylark-domx-geom.git",
+    "skylark-domx-noder": "git+https://github.com/skylark-domx/skylark-domx-noder.git",
+    "skylark-domx-query": "git+https://github.com/skylark-domx/skylark-domx-query.git",
+    "skylark-io-diskfs": "git+https://github.com/skylark-io/skylark-io-diskfs.git",
+    "skylark-langx": "git+https://github.com/skylark-langx/skylark-langx.git",
+    "skylark-widgets-base": "git+https://github.com/skylark-widgets/skylark-widgets-base.git"
   },
   "engines": {
     "node": ">=0.10.1"
